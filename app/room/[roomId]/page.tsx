@@ -15,6 +15,7 @@ import {
 import { useSocket } from '@/hooks/use-socket';
 import { YouTubePlayer, YouTubePlayerRef, YT_STATES } from '@/components/youtube-player';
 import { VideoPlayer, VideoPlayerRef } from '@/components/video-player';
+import { HLSPlayer, HLSPlayerRef } from '@/components/hls-player';
 import { Chat } from '@/components/chat';
 import { UserList } from '@/components/user-list';
 import { VideoSetup } from '@/components/video-setup';
@@ -32,12 +33,14 @@ export default function RoomPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState('');
   const [showHostDialog, setShowHostDialog] = useState(false);
+  const [showGuestInfoBanner, setShowGuestInfoBanner] = useState(false);
   const [syncError, setSyncError] = useState('');
   const [isJoining, setIsJoining] = useState(false);
 
   const { socket, isConnected } = useSocket();
   const youtubePlayerRef = useRef<YouTubePlayerRef>(null);
   const videoPlayerRef = useRef<VideoPlayerRef>(null);
+  const hlsPlayerRef = useRef<HLSPlayerRef>(null);
   const lastSyncTimeRef = useRef<number>(0);
   const hasAttemptedJoinRef = useRef<boolean>(false);
   const lastControlActionRef = useRef<{ timestamp: number; type: string; userId: string | null }>({
@@ -78,7 +81,11 @@ export default function RoomPage() {
       }
 
       const player =
-        room.videoType === 'youtube' ? youtubePlayerRef.current : videoPlayerRef.current;
+        room.videoType === 'youtube'
+          ? youtubePlayerRef.current
+          : room.videoType === 'm3u8'
+            ? hlsPlayerRef.current
+            : videoPlayerRef.current;
       if (!player) return;
 
       const timeDiff = (now - timestamp) / 1000;
@@ -112,7 +119,8 @@ export default function RoomPage() {
             ytPlayer.pause();
           }
         } else {
-          const videoPlayer = player as VideoPlayerRef;
+          // Handle both MP4 and HLS players (they have the same interface)
+          const videoPlayer = player as VideoPlayerRef | HLSPlayerRef;
 
           if (isPlaying && videoPlayer.isPaused()) {
             console.log('▶️ Syncing play state');
@@ -137,14 +145,20 @@ export default function RoomPage() {
       if (!room || !currentUser?.isHost || !socket) return;
 
       const player =
-        room.videoType === 'youtube' ? youtubePlayerRef.current : videoPlayerRef.current;
+        room.videoType === 'youtube'
+          ? youtubePlayerRef.current
+          : room.videoType === 'm3u8'
+            ? hlsPlayerRef.current
+            : videoPlayerRef.current;
       if (!player) return;
 
       const currentTime = player.getCurrentTime();
       const isPlaying =
         room.videoType === 'youtube'
           ? youtubePlayerRef.current?.getPlayerState() === YT_STATES.PLAYING
-          : !videoPlayerRef.current?.isPaused();
+          : room.videoType === 'm3u8'
+            ? !hlsPlayerRef.current?.isPaused()
+            : !videoPlayerRef.current?.isPaused();
 
       // Send periodic sync to ensure everyone is in sync
       console.log(`🔄 Periodic sync check: ${currentTime.toFixed(2)}s, playing: ${isPlaying}`);
@@ -179,6 +193,13 @@ export default function RoomPage() {
       setError('');
       setIsJoining(false);
       hasAttemptedJoinRef.current = false; // Reset for potential future rejoins
+
+      // Show info banner for guests when joining a room with video
+      if (!user.isHost && joinedRoom.videoUrl) {
+        setShowGuestInfoBanner(true);
+        // Auto-hide banner after 5 seconds
+        setTimeout(() => setShowGuestInfoBanner(false), 5000);
+      }
     };
 
     const handleUserJoined = ({ user }: { user: User }) => {
@@ -246,7 +267,7 @@ export default function RoomPage() {
       videoType,
     }: {
       videoUrl: string;
-      videoType: 'youtube' | 'mp4';
+      videoType: 'youtube' | 'mp4' | 'm3u8';
     }) => {
       setRoom(prev =>
         prev
@@ -263,6 +284,13 @@ export default function RoomPage() {
             }
           : null
       );
+
+      // Show info banner for guests when video is set
+      if (currentUser && !currentUser.isHost) {
+        setShowGuestInfoBanner(true);
+        // Auto-hide banner after 5 seconds
+        setTimeout(() => setShowGuestInfoBanner(false), 5000);
+      }
     };
 
     const handleVideoPlayed = ({
@@ -488,11 +516,50 @@ export default function RoomPage() {
     };
   }, [currentUser?.isHost, room?.videoUrl, startSyncCheck, stopSyncCheck]);
 
+  // Keyboard shortcut listener for guests
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      // Only handle shortcuts if there's a video and user is not a host
+      if (!room?.videoUrl || currentUser?.isHost) return;
+
+      // Common video shortcuts that guests might try
+      const videoShortcuts = [
+        ' ',
+        'k',
+        'ArrowLeft',
+        'ArrowRight',
+        'ArrowUp',
+        'ArrowDown',
+        'j',
+        'l',
+        'f',
+        'm',
+      ];
+
+      if (videoShortcuts.includes(event.key)) {
+        // Prevent default behavior and show dialog
+        event.preventDefault();
+        handleVideoControlAttempt();
+      }
+    };
+
+    // Only add listener if user is a guest with video present
+    if (room?.videoUrl && currentUser && !currentUser.isHost) {
+      document.addEventListener('keydown', handleKeyPress);
+      return () => document.removeEventListener('keydown', handleKeyPress);
+    }
+  }, [room?.videoUrl, currentUser?.isHost, currentUser]);
+
   // Video event handlers for hosts
   const handleVideoPlay = useCallback(() => {
     if (!room || !currentUser?.isHost || !socket) return;
 
-    const player = room.videoType === 'youtube' ? youtubePlayerRef.current : videoPlayerRef.current;
+    const player =
+      room.videoType === 'youtube'
+        ? youtubePlayerRef.current
+        : room.videoType === 'm3u8'
+          ? hlsPlayerRef.current
+          : videoPlayerRef.current;
     if (!player) return;
 
     const currentTime = player.getCurrentTime();
@@ -510,7 +577,12 @@ export default function RoomPage() {
   const handleVideoPause = useCallback(() => {
     if (!room || !currentUser?.isHost || !socket) return;
 
-    const player = room.videoType === 'youtube' ? youtubePlayerRef.current : videoPlayerRef.current;
+    const player =
+      room.videoType === 'youtube'
+        ? youtubePlayerRef.current
+        : room.videoType === 'm3u8'
+          ? hlsPlayerRef.current
+          : videoPlayerRef.current;
     if (!player) return;
 
     const currentTime = player.getCurrentTime();
@@ -528,7 +600,12 @@ export default function RoomPage() {
   const handleVideoSeek = useCallback(() => {
     if (!room || !currentUser?.isHost || !socket) return;
 
-    const player = room.videoType === 'youtube' ? youtubePlayerRef.current : videoPlayerRef.current;
+    const player =
+      room.videoType === 'youtube'
+        ? youtubePlayerRef.current
+        : room.videoType === 'm3u8'
+          ? hlsPlayerRef.current
+          : videoPlayerRef.current;
     if (!player) return;
 
     const currentTime = player.getCurrentTime();
@@ -601,11 +678,13 @@ export default function RoomPage() {
     [currentUser, socket, roomId]
   );
 
-  const handleVideoControlAttempt = () => {
+  const handleVideoControlAttempt = useCallback(() => {
     if (!currentUser?.isHost) {
       setShowHostDialog(true);
+      // Also hide the guest banner when they interact to show the detailed modal
+      setShowGuestInfoBanner(false);
     }
-  };
+  }, [currentUser?.isHost]);
 
   const handleSetVideo = (videoUrl: string) => {
     if (!socket || !currentUser?.isHost) return;
@@ -718,6 +797,40 @@ export default function RoomPage() {
         </Card>
       )}
 
+      {/* Guest Info Banner */}
+      {showGuestInfoBanner && !currentUser.isHost && room.videoUrl && (
+        <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-blue-700 dark:text-blue-300">
+                <Video className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  You&apos;re watching as a guest - only hosts can control playback
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowHostDialog(true)}
+                  className="text-blue-700 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200"
+                >
+                  Learn More
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowGuestInfoBanner(false)}
+                  className="text-blue-700 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200"
+                >
+                  ✕
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-4">
         {/* Main Content */}
         <div className="space-y-6 lg:col-span-3">
@@ -731,6 +844,15 @@ export default function RoomPage() {
                       ref={youtubePlayerRef}
                       videoId={parsedVideo.embedUrl.split('/embed/')[1]?.split('?')[0] || ''}
                       onStateChange={handleYouTubeStateChange}
+                      className="h-full w-full"
+                    />
+                  ) : parsedVideo.type === 'm3u8' ? (
+                    <HLSPlayer
+                      ref={hlsPlayerRef}
+                      src={parsedVideo.embedUrl}
+                      onPlay={handleVideoPlay}
+                      onPause={handleVideoPause}
+                      onSeeked={handleVideoSeek}
                       className="h-full w-full"
                     />
                   ) : (
@@ -750,7 +872,7 @@ export default function RoomPage() {
                       className={`absolute z-10 ${
                         parsedVideo.type === 'youtube'
                           ? 'inset-0' // Cover entire YouTube video (controls are everywhere)
-                          : 'inset-x-0 bottom-0 h-12' // Only cover bottom controls for regular video
+                          : 'inset-x-0 bottom-0 h-12' // Only cover bottom controls for regular video and HLS
                       }`}
                       onClick={handleVideoControlAttempt}
                       title="Only hosts can control video playback"
@@ -763,7 +885,11 @@ export default function RoomPage() {
                     <div className="flex items-center space-x-2">
                       <Video className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">
-                        {parsedVideo.type === 'youtube' ? 'YouTube' : 'Video File'}
+                        {parsedVideo.type === 'youtube'
+                          ? 'YouTube'
+                          : parsedVideo.type === 'm3u8'
+                            ? 'HLS Stream'
+                            : 'Video File'}
                       </span>
                     </div>
                     <Button
@@ -806,14 +932,62 @@ export default function RoomPage() {
 
       {/* Host Control Dialog */}
       <Dialog open={showHostDialog} onOpenChange={setShowHostDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Host Controls Only</DialogTitle>
+            <DialogTitle className="flex items-center space-x-2">
+              <Video className="h-5 w-5 text-blue-500" />
+              <span>Video Control Information</span>
+            </DialogTitle>
             <DialogDescription>
-              Only hosts can control video playback. You can watch along and use the chat to
-              communicate. Ask a host to promote you if you need video controls.
+              Learn about video controls and permissions in Watch.with rooms.
             </DialogDescription>
           </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-950">
+              <h4 className="font-medium text-blue-900 dark:text-blue-100">Guest Permissions</h4>
+              <ul className="mt-2 space-y-1 text-sm text-blue-700 dark:text-blue-300">
+                <li>• Watch videos in perfect sync with everyone</li>
+                <li>• Use chat to communicate with other viewers</li>
+                <li>• See who's currently watching</li>
+                <li>• Request host promotion from current hosts</li>
+              </ul>
+            </div>
+
+            <div className="rounded-lg bg-green-50 p-4 dark:bg-green-950">
+              <h4 className="font-medium text-green-900 dark:text-green-100">Host Permissions</h4>
+              <ul className="mt-2 space-y-1 text-sm text-green-700 dark:text-green-300">
+                <li>• Control video playback (play, pause, seek)</li>
+                <li>• Set or change the video URL</li>
+                <li>• Promote other users to host</li>
+                <li>• All guest permissions</li>
+              </ul>
+            </div>
+
+            <div className="rounded-lg bg-amber-50 p-4 dark:bg-amber-950">
+              <h4 className="font-medium text-amber-900 dark:text-amber-100">Need Controls?</h4>
+              <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
+                Ask any current host to promote you using the crown button (👑) next to your name in
+                the user list.
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
+              <h4 className="font-medium text-gray-900 dark:text-gray-100">Keyboard Shortcuts</h4>
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                These shortcuts work for hosts only:
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-700 dark:text-gray-300">
+                <div>• Space/K - Play/Pause</div>
+                <div>• ←/→ - Seek ±10s</div>
+                <div>• J/L - Seek ±10s</div>
+                <div>• ↑/↓ - Volume</div>
+                <div>• F - Fullscreen</div>
+                <div>• M - Mute</div>
+              </div>
+            </div>
+          </div>
+
           <div className="flex justify-end">
             <Button onClick={() => setShowHostDialog(false)}>Got it</Button>
           </div>

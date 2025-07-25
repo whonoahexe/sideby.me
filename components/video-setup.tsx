@@ -38,7 +38,7 @@ export function VideoSetup({ onVideoSet, isHost, hasVideo, videoUrl }: VideoSetu
 
     const parsed = parseVideoUrl(url.trim());
     if (!parsed) {
-      setError('Please enter a valid YouTube or MP4 video URL');
+      setError('Please enter a valid YouTube, MP4, or M3U8 video URL');
       return;
     }
 
@@ -95,7 +95,8 @@ export function VideoSetup({ onVideoSet, isHost, hasVideo, videoUrl }: VideoSetu
                   <DialogHeader>
                     <DialogTitle>Change Video</DialogTitle>
                     <DialogDescription>
-                      Enter a new YouTube or MP4 video URL to change what everyone is watching.
+                      Enter a new YouTube, MP4, or M3U8 (HLS) video URL to change what everyone is
+                      watching.
                     </DialogDescription>
                   </DialogHeader>
                   <VideoUrlForm url={url} setUrl={setUrl} error={error} onSubmit={handleSubmit} />
@@ -129,7 +130,9 @@ export function VideoSetup({ onVideoSet, isHost, hasVideo, videoUrl }: VideoSetu
           <Video className="h-5 w-5" />
           <span>Set Up Video</span>
         </CardTitle>
-        <CardDescription>Add a YouTube or MP4 video URL to start watching together</CardDescription>
+        <CardDescription>
+          Add a YouTube, MP4, or M3U8 (HLS) video URL to start watching together
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <VideoUrlForm url={url} setUrl={setUrl} error={error} onSubmit={handleSubmit} />
@@ -144,6 +147,10 @@ export function VideoSetup({ onVideoSet, isHost, hasVideo, videoUrl }: VideoSetu
             <div className="flex items-center space-x-2">
               <FileVideo className="h-4 w-4 text-blue-500" />
               <span>Direct video files (MP4, WebM, OGG)</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Video className="h-4 w-4 text-green-500" />
+              <span>HLS streams (M3U8, live streams)</span>
             </div>
           </div>
         </div>

@@ -30,6 +30,14 @@ export function parseVideoUrl(url: string): { type: VideoType; embedUrl: string 
       };
     }
 
+    // M3U8 HLS streams
+    if (url.match(/\.(m3u8)(\?.*)?$/i) || url.includes('/live/') || url.includes('.m3u8')) {
+      return {
+        type: 'm3u8',
+        embedUrl: url,
+      };
+    }
+
     return null;
   } catch {
     return null;

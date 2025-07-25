@@ -11,7 +11,7 @@ export interface Room {
   hostName: string;
   hostToken: string;
   videoUrl?: string;
-  videoType: 'youtube' | 'mp4' | null;
+  videoType: 'youtube' | 'mp4' | 'm3u8' | null;
   videoState: VideoState;
   users: User[];
   createdAt: Date;
@@ -26,7 +26,7 @@ export interface JoinRoomData {
   userName: string;
 }
 
-export type VideoType = 'youtube' | 'mp4' | null;
+export type VideoType = 'youtube' | 'mp4' | 'm3u8' | null;
 
 export interface VideoState {
   isPlaying: boolean;
