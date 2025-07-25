@@ -41,6 +41,19 @@ export default function RoomPage() {
   const lastSyncTimeRef = useRef<number>(0);
   const syncThresholdRef = useRef<number>(2); // 2 seconds threshold for sync
   const hasAttemptedJoinRef = useRef<boolean>(false);
+  const cleanupDataRef = useRef<{
+    socket: any;
+    isConnected: boolean;
+    roomId: string;
+    room: Room | null;
+    currentUser: User | null;
+  }>({
+    socket: null,
+    isConnected: false,
+    roomId: '',
+    room: null,
+    currentUser: null,
+  });
 
   // Sync video playback
   const syncVideo = useCallback(
@@ -326,6 +339,29 @@ export default function RoomPage() {
     console.log('📝 Joining room with prompted name:', userName.trim());
     socket.emit('join-room', { roomId, userName: userName.trim() });
   }, [socket, isConnected, roomId, router, room, currentUser]);
+
+  // Update cleanup data ref whenever values change
+  useEffect(() => {
+    cleanupDataRef.current = {
+      socket,
+      isConnected,
+      roomId,
+      room,
+      currentUser,
+    };
+  }, [socket, isConnected, roomId, room, currentUser]);
+
+  // Cleanup when leaving the room page (stable effect with no dependencies)
+  useEffect(() => {
+    return () => {
+      // Use ref values to avoid dependencies
+      const { socket, isConnected, roomId, room, currentUser } = cleanupDataRef.current;
+      if (socket && isConnected && room && currentUser) {
+        console.log('🚪 Component unmounting, leaving room...');
+        socket.emit('leave-room', { roomId });
+      }
+    };
+  }, []); // Empty dependency array - effect only runs once
 
   // Video event handlers for hosts
   const handleVideoPlay = useCallback(() => {
