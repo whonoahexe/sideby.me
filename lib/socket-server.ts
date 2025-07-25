@@ -89,24 +89,43 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
           return;
         }
 
-        // Check if this socket already has data for this room (room creator case)
-        if (socket.data.roomId === roomId && socket.data.userId) {
-          // User is already in the room (room creator), just send the room state
-          const existingUser = room.users.find(u => u.id === socket.data.userId);
-          if (existingUser) {
-            socket.emit('room-joined', { room, user: existingUser });
-            console.log(`${socket.data.userName} rejoined room ${roomId} (creator)`);
-            return;
-          }
+        // Check if this user is already in the room (by name and to prevent duplicates)
+        const existingUser = room.users.find(u => u.name === userName);
+        if (existingUser) {
+          // User already exists in room, just update their socket data and emit join success
+          socket.data.userId = existingUser.id;
+          socket.data.userName = existingUser.name;
+          socket.data.roomId = roomId;
+
+          await socket.join(roomId);
+          console.log(
+            `${userName} rejoined room ${roomId} (existing user, isHost: ${existingUser.isHost})`
+          );
+          console.log('Existing user object:', JSON.stringify(existingUser, null, 2));
+          console.log('Room hostName:', room.hostName);
+          console.log('Room hostId:', room.hostId);
+          socket.emit('room-joined', { room, user: existingUser });
+          return;
         }
 
+        // Check if this user is the room host (by name)
+        const isRoomHost = room.hostName === userName;
+
+        // Create new user
         const userId = uuidv4();
         const user: User = {
           id: userId,
           name: userName,
-          isHost: false,
+          isHost: isRoomHost,
           joinedAt: new Date(),
         };
+
+        // If this is the host rejoining, update the room's hostId
+        if (isRoomHost) {
+          room.hostId = userId;
+          await redisService.updateRoom(roomId, room);
+          console.log(`Host ${userName} rejoining room ${roomId} with new user ID`);
+        }
 
         await redisService.addUserToRoom(roomId, user);
         const updatedRoom = await redisService.getRoom(roomId);
@@ -120,7 +139,7 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
         socket.emit('room-joined', { room: updatedRoom!, user });
         socket.to(roomId).emit('user-joined', { user });
 
-        console.log(`${userName} joined room ${roomId}`);
+        console.log(`${userName} joined room ${roomId} as ${isRoomHost ? 'host' : 'guest'}`);
       } catch (error) {
         console.error('Error joining room:', error);
         socket.emit('room-error', { error: 'Failed to join room' });

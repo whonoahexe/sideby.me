@@ -33,12 +33,14 @@ export default function RoomPage() {
   const [error, setError] = useState('');
   const [showHostDialog, setShowHostDialog] = useState(false);
   const [syncError, setSyncError] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
 
   const { socket, isConnected } = useSocket();
   const youtubePlayerRef = useRef<YouTubePlayerRef>(null);
   const videoPlayerRef = useRef<VideoPlayerRef>(null);
   const lastSyncTimeRef = useRef<number>(0);
   const syncThresholdRef = useRef<number>(2); // 2 seconds threshold for sync
+  const hasAttemptedJoinRef = useRef<boolean>(false);
 
   // Sync video playback
   const syncVideo = useCallback(
@@ -92,23 +94,32 @@ export default function RoomPage() {
     if (!socket || !isConnected) return;
 
     const handleRoomJoined = ({ room: joinedRoom, user }: { room: Room; user: User }) => {
+      console.log('✅ Room joined successfully:', {
+        room: joinedRoom.id,
+        user: user.name,
+        isHost: user.isHost,
+      });
       setRoom(joinedRoom);
       setCurrentUser(user);
       setError('');
-    };
-
-    const handleRoomCreated = ({ room: createdRoom }: { room: Room }) => {
-      // When room is created, the creator is automatically the host
-      setRoom(createdRoom);
-      const hostUser = createdRoom.users.find(u => u.isHost);
-      if (hostUser) {
-        setCurrentUser(hostUser);
-        setError('');
-      }
+      setIsJoining(false);
+      hasAttemptedJoinRef.current = false; // Reset for potential future rejoins
     };
 
     const handleUserJoined = ({ user }: { user: User }) => {
-      setRoom(prev => (prev ? { ...prev, users: [...prev.users, user] } : null));
+      setRoom(prev => {
+        if (!prev) return null;
+        // Check if user already exists to prevent duplicates
+        const existingUserIndex = prev.users.findIndex(u => u.id === user.id);
+        if (existingUserIndex >= 0) {
+          console.log('🔄 User already exists, updating:', user.name);
+          const updatedUsers = [...prev.users];
+          updatedUsers[existingUserIndex] = user;
+          return { ...prev, users: updatedUsers };
+        }
+        console.log('👋 New user joined:', user.name);
+        return { ...prev, users: [...prev.users, user] };
+      });
     };
 
     const handleUserLeft = ({ userId }: { userId: string }) => {
@@ -190,7 +201,10 @@ export default function RoomPage() {
     };
 
     const handleRoomError = ({ error }: { error: string }) => {
+      console.error('🚨 Room error:', error);
       setError(error);
+      setIsJoining(false);
+      hasAttemptedJoinRef.current = false; // Reset so user can try again
     };
 
     const handleSocketError = ({ error }: { error: string }) => {
@@ -198,7 +212,6 @@ export default function RoomPage() {
       setTimeout(() => setSyncError(''), 5000);
     };
 
-    socket.on('room-created', handleRoomCreated);
     socket.on('room-joined', handleRoomJoined);
     socket.on('user-joined', handleUserJoined);
     socket.on('user-left', handleUserLeft);
@@ -211,7 +224,6 @@ export default function RoomPage() {
     socket.on('error', handleSocketError);
 
     return () => {
-      socket.off('room-created', handleRoomCreated);
       socket.off('room-joined', handleRoomJoined);
       socket.off('user-joined', handleUserJoined);
       socket.off('user-left', handleUserLeft);
@@ -227,45 +239,92 @@ export default function RoomPage() {
 
   // Join room on mount
   useEffect(() => {
-    if (!socket || !isConnected || !roomId) return;
+    if (!socket || !isConnected || !roomId) {
+      console.log('🚫 Not ready to join:', { socket: !!socket, isConnected, roomId });
+      return;
+    }
 
-    // Check if we're already in a room (page refresh case or coming from room creation)
-    if (room && currentUser) return;
+    // Check if we're already in a room
+    if (room && currentUser) {
+      console.log('🔄 Already in room, skipping join');
+      return;
+    }
 
-    // Check if this user created the room (from sessionStorage)
-    const roomCreatorData = sessionStorage.getItem('room-creator');
-    if (roomCreatorData) {
+    // Prevent multiple join attempts (especially important for React Strict Mode)
+    if (isJoining || hasAttemptedJoinRef.current) {
+      console.log('⏳ Join already in progress or attempted, skipping');
+      return;
+    }
+
+    // Start the join process
+    console.log('🚀 Starting room join process...');
+    setIsJoining(true);
+    hasAttemptedJoinRef.current = true;
+
+    // Check if this user is the room creator first
+    const creatorData = sessionStorage.getItem('room-creator');
+    if (creatorData) {
       try {
-        const { roomId: createdRoomId, hostName, timestamp } = JSON.parse(roomCreatorData);
+        const { roomId: creatorRoomId, hostName, timestamp } = JSON.parse(creatorData);
 
-        // Check if the data is recent (within 1 minute) and for the correct room
-        if (createdRoomId === roomId && Date.now() - timestamp < 60000) {
-          // Clear the data to prevent reuse
+        // Check if the data is recent (within 5 minutes) and for the correct room
+        if (creatorRoomId === roomId && Date.now() - timestamp < 300000) {
+          console.log('👑 Room creator detected, joining as host:', hostName);
+          // Clear the creator data to prevent reuse
           sessionStorage.removeItem('room-creator');
 
-          // Use the stored host name to join as the creator
+          // Room creators join their own room
           socket.emit('join-room', { roomId, userName: hostName });
           return;
         } else {
-          // Clean up old data
+          console.log('🗑️ Cleaning up old creator data');
           sessionStorage.removeItem('room-creator');
         }
       } catch (error) {
-        console.error('Error parsing room creator data:', error);
+        console.error('Error parsing creator data:', error);
         sessionStorage.removeItem('room-creator');
       }
     }
 
-    // If we don't have creator data, prompt for name
-    // For demo purposes, we'll use a simple name prompt
-    // In a real app, you'd have proper authentication
-    const userName = prompt('Enter your name:');
-    if (!userName) {
+    // Check if user came from join page (from sessionStorage)
+    const joinData = sessionStorage.getItem('join-data');
+    if (joinData) {
+      try {
+        const { roomId: joinRoomId, userName, timestamp } = JSON.parse(joinData);
+
+        // Check if the data is recent (within 5 minutes) and for the correct room
+        if (joinRoomId === roomId && Date.now() - timestamp < 300000) {
+          // Clear the data to prevent reuse
+          sessionStorage.removeItem('join-data');
+
+          console.log('👤 Joining with stored data:', userName);
+          socket.emit('join-room', { roomId, userName });
+          return;
+        } else {
+          console.log('🗑️ Cleaning up old join data');
+          // Clean up old data
+          sessionStorage.removeItem('join-data');
+        }
+      } catch (error) {
+        console.error('Error parsing join data:', error);
+        sessionStorage.removeItem('join-data');
+      }
+    }
+
+    // If we don't have stored join data, prompt for name
+    // This handles direct URL access
+    console.log('❓ No stored user data, prompting for name');
+    const userName = prompt('Enter your name to join the room:');
+    if (!userName || !userName.trim()) {
+      console.log('❌ No name provided, redirecting to join page');
+      setIsJoining(false);
+      hasAttemptedJoinRef.current = false;
       router.push('/join');
       return;
     }
 
-    socket.emit('join-room', { roomId, userName });
+    console.log('📝 Joining room with prompted name:', userName.trim());
+    socket.emit('join-room', { roomId, userName: userName.trim() });
   }, [socket, isConnected, roomId, router, room, currentUser]);
 
   // Video event handlers for hosts

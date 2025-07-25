@@ -47,6 +47,15 @@ export default function JoinRoomPage() {
     // Listen for room join response
     socket.once('room-joined', () => {
       setIsLoading(false);
+      // Store the join data for the room page
+      sessionStorage.setItem(
+        'join-data',
+        JSON.stringify({
+          roomId: roomId.trim().toUpperCase(),
+          userName: userName.trim(),
+          timestamp: Date.now(),
+        })
+      );
       router.push(`/room/${roomId.trim().toUpperCase()}`);
     });
 

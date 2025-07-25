@@ -35,7 +35,7 @@ export default function CreateRoomPage() {
     // Listen for room creation response
     socket.once('room-created', ({ roomId }) => {
       setIsLoading(false);
-      // Store the host name temporarily for the room page
+      // Store creator info so room page knows not to prompt again
       sessionStorage.setItem(
         'room-creator',
         JSON.stringify({
@@ -44,6 +44,7 @@ export default function CreateRoomPage() {
           timestamp: Date.now(),
         })
       );
+      // Navigate immediately - the room page will handle the room-created event
       router.push(`/room/${roomId}`);
     });
 
