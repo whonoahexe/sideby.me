@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { Server as HTTPServer } from 'http';
 import { initSocketIO } from '@/lib/socket-server';
 

@@ -61,7 +61,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       setIsConnected(false);
     };
 
-    const handleConnectError = (error: any) => {
+    const handleConnectError = (error: Error) => {
       console.error('🚨 Socket connection error:', error);
       setIsConnected(false);
     };
