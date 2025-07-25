@@ -487,7 +487,7 @@ export default function RoomPage() {
           {room.videoUrl && parsedVideo ? (
             <Card>
               <CardContent className="p-6">
-                <div className="aspect-video overflow-hidden rounded-lg bg-black">
+                <div className="relative aspect-video overflow-hidden rounded-lg bg-black">
                   {parsedVideo.type === 'youtube' ? (
                     <YouTubePlayer
                       ref={youtubePlayerRef}
