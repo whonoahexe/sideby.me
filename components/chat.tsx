@@ -71,7 +71,7 @@ export function Chat({ messages, currentUserId, onSendMessage, className }: Chat
             {messages.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
                 <MessageCircle className="mx-auto mb-2 h-8 w-8 opacity-50" />
-                <p>No messages yet. Start the conversation!</p>
+                <p>No messages yet :/ Start the conversation!</p>
               </div>
             ) : (
               messages.map(message => (
@@ -92,10 +92,12 @@ export function Chat({ messages, currentUserId, onSendMessage, className }: Chat
                       message.userId === currentUserId ? 'text-right' : ''
                     }`}
                   >
-                    <div className="flex items-center space-x-2">
-                      {message.userId !== currentUserId && (
-                        <span className="text-sm font-medium">{message.userName}</span>
-                      )}
+                    <div
+                      className={`flex items-center ${message.userId === currentUserId && 'flex-row-reverse gap-2'} space-x-2`}
+                    >
+                      <span className="text-sm font-medium">
+                        {message.userId !== currentUserId ? message.userName : 'you!'}
+                      </span>
                       <span className="text-xs text-muted-foreground">
                         {formatMessageTime(message.timestamp)}
                       </span>
