@@ -516,6 +516,14 @@ export default function RoomPage() {
     };
   }, [currentUser?.isHost, room?.videoUrl, startSyncCheck, stopSyncCheck]);
 
+  const handleVideoControlAttempt = useCallback(() => {
+    if (!currentUser?.isHost) {
+      setShowHostDialog(true);
+      // Also hide the guest banner when they interact to show the detailed modal
+      setShowGuestInfoBanner(false);
+    }
+  }, [currentUser?.isHost]);
+
   // Keyboard shortcut listener for guests
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -548,7 +556,7 @@ export default function RoomPage() {
       document.addEventListener('keydown', handleKeyPress);
       return () => document.removeEventListener('keydown', handleKeyPress);
     }
-  }, [room?.videoUrl, currentUser?.isHost, currentUser]);
+  }, [room?.videoUrl, currentUser?.isHost, currentUser, handleVideoControlAttempt]);
 
   // Video event handlers for hosts
   const handleVideoPlay = useCallback(() => {
@@ -677,14 +685,6 @@ export default function RoomPage() {
     },
     [currentUser, socket, roomId]
   );
-
-  const handleVideoControlAttempt = useCallback(() => {
-    if (!currentUser?.isHost) {
-      setShowHostDialog(true);
-      // Also hide the guest banner when they interact to show the detailed modal
-      setShowGuestInfoBanner(false);
-    }
-  }, [currentUser?.isHost]);
 
   const handleSetVideo = (videoUrl: string) => {
     if (!socket || !currentUser?.isHost) return;
@@ -949,7 +949,7 @@ export default function RoomPage() {
               <ul className="mt-2 space-y-1 text-sm text-blue-700 dark:text-blue-300">
                 <li>• Watch videos in perfect sync with everyone</li>
                 <li>• Use chat to communicate with other viewers</li>
-                <li>• See who's currently watching</li>
+                <li>• See who&apos;s currently watching</li>
                 <li>• Request host promotion from current hosts</li>
               </ul>
             </div>
