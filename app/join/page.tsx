@@ -15,7 +15,7 @@ export default function JoinRoomPage() {
   const [userName, setUserName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const { socket, isConnected } = useSocket();
+  const { socket, isConnected, isInitialized } = useSocket();
   const router = useRouter();
 
   const handleJoinRoom = async (e: React.FormEvent) => {
@@ -140,10 +140,14 @@ export default function JoinRoomPage() {
                 )}
               </Button>
 
-              {!isConnected && (
+              {!isConnected && isInitialized && (
                 <div className="text-center text-sm text-muted-foreground">
                   Connecting to server...
                 </div>
+              )}
+
+              {!isInitialized && (
+                <div className="text-center text-sm text-muted-foreground">Initializing...</div>
               )}
             </div>
           </form>

@@ -12,7 +12,7 @@ export function Navigation() {
     <nav className="border-b border-border bg-card">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center space-x-8">
+          <div className="flex w-full items-center justify-between space-x-8">
             <Link href="/" className="flex items-center space-x-2">
               <Play className="h-6 w-6 text-primary" />
               <span className="text-xl font-bold">Watch.With</span>
