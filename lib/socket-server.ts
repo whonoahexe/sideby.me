@@ -71,7 +71,9 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
         await socket.join(roomId);
 
         // Emit both events for consistency
-        socket.emit('room-created', { roomId, room });
+        // Generate a hostToken for the host (for example, use uuidv4 or another secure method)
+        const hostToken = uuidv4();
+        socket.emit('room-created', { roomId, room, hostToken });
         socket.emit('room-joined', { room, user });
         console.log(`Room ${roomId} created by ${hostName}`);
       } catch (error) {

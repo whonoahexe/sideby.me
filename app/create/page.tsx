@@ -33,7 +33,7 @@ export default function CreateRoomPage() {
     setError('');
 
     // Listen for room creation response
-    socket.once('room-created', ({ roomId }) => {
+    socket.once('room-created', ({ roomId, hostToken }) => {
       setIsLoading(false);
       // Store creator info so room page knows not to prompt again
       sessionStorage.setItem(
@@ -41,6 +41,7 @@ export default function CreateRoomPage() {
         JSON.stringify({
           roomId,
           hostName: hostName.trim(),
+          hostToken, // Store the unique host token
           timestamp: Date.now(),
         })
       );

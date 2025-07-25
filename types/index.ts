@@ -46,9 +46,9 @@ export interface ChatMessage {
 export interface SocketEvents {
   // Room events
   'create-room': (data: { hostName: string }) => void;
-  'join-room': (data: { roomId: string; userName: string }) => void;
+  'join-room': (data: { roomId: string; userName: string; hostToken?: string }) => void;
   'leave-room': (data: { roomId: string }) => void;
-  'room-created': (data: { roomId: string; room: Room }) => void;
+  'room-created': (data: { roomId: string; room: Room; hostToken: string }) => void;
   'room-joined': (data: { room: Room; user: User }) => void;
   'room-error': (data: { error: string }) => void;
   'user-joined': (data: { user: User }) => void;

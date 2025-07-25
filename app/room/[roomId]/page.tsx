@@ -265,7 +265,7 @@ export default function RoomPage() {
     const creatorData = sessionStorage.getItem('room-creator');
     if (creatorData) {
       try {
-        const { roomId: creatorRoomId, hostName, timestamp } = JSON.parse(creatorData);
+        const { roomId: creatorRoomId, hostName, hostToken, timestamp } = JSON.parse(creatorData);
 
         // Check if the data is recent (within 5 minutes) and for the correct room
         if (creatorRoomId === roomId && Date.now() - timestamp < 300000) {
@@ -273,8 +273,8 @@ export default function RoomPage() {
           // Clear the creator data to prevent reuse
           sessionStorage.removeItem('room-creator');
 
-          // Room creators join their own room
-          socket.emit('join-room', { roomId, userName: hostName });
+          // Room creators join their own room with host token
+          socket.emit('join-room', { roomId, userName: hostName, hostToken });
           return;
         } else {
           console.log('🗑️ Cleaning up old creator data');
