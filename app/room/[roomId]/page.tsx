@@ -127,15 +127,15 @@ export default function RoomPage() {
         if (!prev) return null;
         const updatedUsers = prev.users.filter(u => u.id !== userId);
 
-        // If host left, update the new host
-        if (prev.hostId === userId && updatedUsers.length > 0) {
-          const newHost = updatedUsers[0];
-          return {
-            ...prev,
-            hostId: newHost.id,
-            hostName: newHost.name,
-            users: updatedUsers.map(u => (u.id === newHost.id ? { ...u, isHost: true } : u)),
-          };
+        // If the original host left, close the room and kick everyone out
+        if (prev.hostId === userId) {
+          console.log('🚪 Host left the room, closing room...');
+          // Show error message and redirect all remaining users
+          setError('The host has left the room. Redirecting to home page...');
+          setTimeout(() => {
+            router.push('/');
+          }, 3000);
+          return null; // Close the room
         }
 
         return { ...prev, users: updatedUsers };
