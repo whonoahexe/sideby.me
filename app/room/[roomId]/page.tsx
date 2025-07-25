@@ -506,11 +506,16 @@ export default function RoomPage() {
                     />
                   )}
 
-                  {/* Overlay for non-hosts */}
+                  {/* Block video controls for non-hosts */}
                   {!currentUser.isHost && (
                     <div
-                      className="absolute inset-0 z-10 cursor-pointer"
+                      className={`absolute z-10 ${
+                        parsedVideo.type === 'youtube'
+                          ? 'inset-0' // Cover entire YouTube video (controls are everywhere)
+                          : 'inset-x-0 bottom-0 h-12' // Only cover bottom controls for regular video
+                      }`}
                       onClick={handleVideoControlAttempt}
+                      title="Only the host can control video playback"
                     />
                   )}
                 </div>

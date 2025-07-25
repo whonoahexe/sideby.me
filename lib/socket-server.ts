@@ -51,6 +51,7 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
           id: roomId,
           hostId: userId,
           hostName,
+          hostToken: uuidv4(), // Store the host token in the room
           videoType: null,
           videoState: {
             isPlaying: false,
@@ -71,11 +72,9 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
         await socket.join(roomId);
 
         // Emit both events for consistency
-        // Generate a hostToken for the host (for example, use uuidv4 or another secure method)
-        const hostToken = uuidv4();
-        socket.emit('room-created', { roomId, room, hostToken });
+        socket.emit('room-created', { roomId, room, hostToken: room.hostToken });
         socket.emit('room-joined', { room, user });
-        console.log(`Room ${roomId} created by ${hostName}`);
+        console.log(`Room ${roomId} created by ${hostName} with token ${room.hostToken}`);
       } catch (error) {
         console.error('Error creating room:', error);
         socket.emit('room-error', { error: 'Failed to create room' });
@@ -83,7 +82,10 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
     });
 
     // Join room
-    socket.on('join-room', async ({ roomId, userName }) => {
+    socket.on('join-room', async ({ roomId, userName, hostToken }) => {
+      console.log(
+        `🔐 Join request: roomId=${roomId}, userName=${userName}, hostToken=${hostToken ? 'PROVIDED' : 'MISSING'}`
+      );
       try {
         const room = await redisService.getRoom(roomId);
         if (!room) {
@@ -91,10 +93,24 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
           return;
         }
 
-        // Check if this user is already in the room (by name and to prevent duplicates)
+        // Check if this user is already in the room (by name)
         const existingUser = room.users.find(u => u.name === userName);
         if (existingUser) {
-          // User already exists in room, just update their socket data and emit join success
+          // If existing user is the host, verify they have the correct token
+          if (existingUser.isHost) {
+            if (!hostToken || hostToken !== room.hostToken) {
+              console.log(
+                `Host impersonation attempt by ${userName} - existing user but invalid token`
+              );
+              socket.emit('room-error', {
+                error: 'Invalid host credentials. Only the room creator can join as host.',
+              });
+              return;
+            }
+            console.log(`Host ${userName} verified with valid token (existing user)`);
+          }
+
+          // User already exists in room and is authenticated, update their socket data
           socket.data.userId = existingUser.id;
           socket.data.userName = existingUser.name;
           socket.data.roomId = roomId;
@@ -103,15 +119,31 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
           console.log(
             `${userName} rejoined room ${roomId} (existing user, isHost: ${existingUser.isHost})`
           );
-          console.log('Existing user object:', JSON.stringify(existingUser, null, 2));
-          console.log('Room hostName:', room.hostName);
-          console.log('Room hostId:', room.hostId);
           socket.emit('room-joined', { room, user: existingUser });
           return;
         }
 
-        // Check if this user is the room host (by name)
-        const isRoomHost = room.hostName === userName;
+        // Check if this user is trying to be the host
+        const isClaimingHost = room.hostName === userName;
+        let isRoomHost = false;
+
+        console.log(
+          `Join attempt: user="${userName}", isClaimingHost=${isClaimingHost}, hostToken="${hostToken}", roomHostToken="${room.hostToken}"`
+        );
+
+        if (isClaimingHost) {
+          // Verify they have the correct host token
+          if (hostToken && hostToken === room.hostToken) {
+            isRoomHost = true;
+            console.log(`Host ${userName} verified with valid token`);
+          } else {
+            console.log(`Host impersonation attempt by ${userName} - invalid or missing token`);
+            socket.emit('room-error', {
+              error: 'Invalid host credentials. Only the room creator can join as host.',
+            });
+            return;
+          }
+        }
 
         // Create new user
         const userId = uuidv4();

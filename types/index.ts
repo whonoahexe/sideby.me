@@ -9,6 +9,7 @@ export interface Room {
   id: string;
   hostId: string;
   hostName: string;
+  hostToken: string;
   videoUrl?: string;
   videoType: 'youtube' | 'mp4' | null;
   videoState: VideoState;
