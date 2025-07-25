@@ -3,16 +3,25 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Users, Crown, User } from 'lucide-react';
 import { User as UserType } from '@/types';
 
 interface UserListProps {
   users: UserType[];
   currentUserId: string;
+  currentUserIsHost?: boolean;
+  onPromoteUser?: (userId: string) => void;
   className?: string;
 }
 
-export function UserList({ users, currentUserId, className }: UserListProps) {
+export function UserList({
+  users,
+  currentUserId,
+  currentUserIsHost,
+  onPromoteUser,
+  className,
+}: UserListProps) {
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -76,7 +85,23 @@ export function UserList({ users, currentUserId, className }: UserListProps) {
                 </div>
               </div>
 
-              <div className="flex-shrink-0">
+              <div className="flex items-center space-x-2">
+                {/* Promote button for hosts to promote guests */}
+                {currentUserIsHost &&
+                  !user.isHost &&
+                  user.id !== currentUserId &&
+                  onPromoteUser && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onPromoteUser(user.id)}
+                      className="h-6 px-2 text-xs"
+                      title={`Promote ${user.name} to host`}
+                    >
+                      <Crown className="h-3 w-3" />
+                    </Button>
+                  )}
+
                 <div className="h-2 w-2 rounded-full bg-green-500" title="Online" />
               </div>
             </div>

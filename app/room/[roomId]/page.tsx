@@ -41,6 +41,11 @@ export default function RoomPage() {
   const lastSyncTimeRef = useRef<number>(0);
   const syncThresholdRef = useRef<number>(2); // 2 seconds threshold for sync
   const hasAttemptedJoinRef = useRef<boolean>(false);
+  const lastControlActionRef = useRef<{ timestamp: number; type: string; userId: string | null }>({
+    timestamp: 0,
+    type: '',
+    userId: null,
+  });
   const cleanupDataRef = useRef<{
     socket: any;
     isConnected: boolean;
@@ -57,14 +62,24 @@ export default function RoomPage() {
 
   // Sync video playback
   const syncVideo = useCallback(
-    (targetTime: number, isPlaying: boolean | null, timestamp: number) => {
-      if (!room || !currentUser || currentUser.isHost) return;
+    (targetTime: number, isPlaying: boolean | null, timestamp: number, sourceUserId?: string) => {
+      if (!room || !currentUser) return;
+
+      // Don't sync if this user just performed the action (prevent feedback loop)
+      const now = Date.now();
+      const timeSinceLastAction = now - lastControlActionRef.current.timestamp;
+      if (
+        lastControlActionRef.current.userId === currentUser.id &&
+        timeSinceLastAction < 1000 // 1 second buffer
+      ) {
+        console.log('🔄 Skipping sync - user just performed this action');
+        return;
+      }
 
       const player =
         room.videoType === 'youtube' ? youtubePlayerRef.current : videoPlayerRef.current;
       if (!player) return;
 
-      const now = Date.now();
       const timeDiff = (now - timestamp) / 1000;
       const adjustedTime = targetTime + (isPlaying ? timeDiff : 0);
 
@@ -73,6 +88,9 @@ export default function RoomPage() {
       const syncDiff = Math.abs(currentTime - adjustedTime);
 
       if (syncDiff > syncThresholdRef.current) {
+        console.log(
+          `🎬 Syncing video: ${syncDiff.toFixed(2)}s difference, seeking to ${adjustedTime.toFixed(2)}s`
+        );
         player.seekTo(adjustedTime);
         lastSyncTimeRef.current = now;
       }
@@ -84,16 +102,20 @@ export default function RoomPage() {
           const currentState = ytPlayer.getPlayerState();
 
           if (isPlaying && currentState !== YT_STATES.PLAYING) {
+            console.log('▶️ Syncing play state');
             ytPlayer.play();
           } else if (!isPlaying && currentState === YT_STATES.PLAYING) {
+            console.log('⏸️ Syncing pause state');
             ytPlayer.pause();
           }
         } else {
           const videoPlayer = player as VideoPlayerRef;
 
           if (isPlaying && videoPlayer.isPaused()) {
+            console.log('▶️ Syncing play state');
             videoPlayer.play();
           } else if (!isPlaying && !videoPlayer.isPaused()) {
+            console.log('⏸️ Syncing pause state');
             videoPlayer.pause();
           }
         }
@@ -140,11 +162,13 @@ export default function RoomPage() {
         if (!prev) return null;
         const updatedUsers = prev.users.filter(u => u.id !== userId);
 
-        // If the original host left, close the room and kick everyone out
-        if (prev.hostId === userId) {
-          console.log('🚪 Host left the room, closing room...');
+        // Check if any hosts remain after this user leaves
+        const remainingHosts = updatedUsers.filter(u => u.isHost);
+
+        if (remainingHosts.length === 0) {
+          console.log('🚪 All hosts left the room, closing room...');
           // Show error message and redirect all remaining users
-          setError('The host has left the room. Redirecting to home page...');
+          setError('All hosts have left the room. Redirecting to home page...');
           setTimeout(() => {
             router.push('/');
           }, 3000);
@@ -153,6 +177,28 @@ export default function RoomPage() {
 
         return { ...prev, users: updatedUsers };
       });
+    };
+
+    const handleUserPromoted = ({ userId, userName }: { userId: string; userName: string }) => {
+      setRoom(prev => {
+        if (!prev) return null;
+        const updatedUsers = prev.users.map(user =>
+          user.id === userId ? { ...user, isHost: true } : user
+        );
+        return { ...prev, users: updatedUsers };
+      });
+
+      // If the promoted user is the current user, update their state too
+      setCurrentUser(prev => {
+        if (prev && prev.id === userId) {
+          console.log('🎉 You have been promoted to host!');
+          return { ...prev, isHost: true };
+        }
+        return prev;
+      });
+
+      // Show promotion notification
+      console.log(`👑 ${userName} has been promoted to host`);
     };
 
     const handleVideoSet = ({
@@ -228,6 +274,7 @@ export default function RoomPage() {
     socket.on('room-joined', handleRoomJoined);
     socket.on('user-joined', handleUserJoined);
     socket.on('user-left', handleUserLeft);
+    socket.on('user-promoted', handleUserPromoted);
     socket.on('video-set', handleVideoSet);
     socket.on('video-played', handleVideoPlayed);
     socket.on('video-paused', handleVideoPaused);
@@ -240,6 +287,7 @@ export default function RoomPage() {
       socket.off('room-joined', handleRoomJoined);
       socket.off('user-joined', handleUserJoined);
       socket.off('user-left', handleUserLeft);
+      socket.off('user-promoted', handleUserPromoted);
       socket.off('video-set', handleVideoSet);
       socket.off('video-played', handleVideoPlayed);
       socket.off('video-paused', handleVideoPaused);
@@ -371,6 +419,14 @@ export default function RoomPage() {
     if (!player) return;
 
     const currentTime = player.getCurrentTime();
+
+    // Track that this user performed the action
+    lastControlActionRef.current = {
+      timestamp: Date.now(),
+      type: 'play',
+      userId: currentUser.id,
+    };
+
     socket.emit('play-video', { roomId, currentTime });
   }, [room, currentUser, socket, roomId]);
 
@@ -381,6 +437,14 @@ export default function RoomPage() {
     if (!player) return;
 
     const currentTime = player.getCurrentTime();
+
+    // Track that this user performed the action
+    lastControlActionRef.current = {
+      timestamp: Date.now(),
+      type: 'pause',
+      userId: currentUser.id,
+    };
+
     socket.emit('pause-video', { roomId, currentTime });
   }, [room, currentUser, socket, roomId]);
 
@@ -391,6 +455,14 @@ export default function RoomPage() {
     if (!player) return;
 
     const currentTime = player.getCurrentTime();
+
+    // Track that this user performed the action
+    lastControlActionRef.current = {
+      timestamp: Date.now(),
+      type: 'seek',
+      userId: currentUser.id,
+    };
+
     socket.emit('seek-video', { roomId, currentTime });
   }, [room, currentUser, socket, roomId]);
 
@@ -399,8 +471,20 @@ export default function RoomPage() {
       if (!currentUser?.isHost) return;
 
       if (state === YT_STATES.PLAYING) {
+        // Track the action before calling the handler
+        lastControlActionRef.current = {
+          timestamp: Date.now(),
+          type: 'play',
+          userId: currentUser.id,
+        };
         handleVideoPlay();
       } else if (state === YT_STATES.PAUSED) {
+        // Track the action before calling the handler
+        lastControlActionRef.current = {
+          timestamp: Date.now(),
+          type: 'pause',
+          userId: currentUser.id,
+        };
         handleVideoPause();
       }
     },
@@ -421,6 +505,11 @@ export default function RoomPage() {
   const handleSendMessage = (message: string) => {
     if (!socket) return;
     socket.emit('send-message', { roomId, message });
+  };
+
+  const handlePromoteUser = (userId: string) => {
+    if (!socket || !currentUser?.isHost) return;
+    socket.emit('promote-host', { roomId, userId });
   };
 
   const copyRoomId = () => {
@@ -487,7 +576,10 @@ export default function RoomPage() {
                 <span>Room {roomId}</span>
                 {currentUser.isHost && <Badge variant="default">Host</Badge>}
               </CardTitle>
-              <p className="text-sm text-muted-foreground">Hosted by {room.hostName}</p>
+              <p className="text-sm text-muted-foreground">
+                Created by {room.hostName} • {room.users.filter(u => u.isHost).length} host
+                {room.users.filter(u => u.isHost).length !== 1 ? 's' : ''}
+              </p>
             </div>
 
             <div className="flex space-x-2">
@@ -551,7 +643,7 @@ export default function RoomPage() {
                           : 'inset-x-0 bottom-0 h-12' // Only cover bottom controls for regular video
                       }`}
                       onClick={handleVideoControlAttempt}
-                      title="Only the host can control video playback"
+                      title="Only hosts can control video playback"
                     />
                   )}
                 </div>
@@ -587,7 +679,12 @@ export default function RoomPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          <UserList users={room.users} currentUserId={currentUser.id} />
+          <UserList
+            users={room.users}
+            currentUserId={currentUser.id}
+            currentUserIsHost={currentUser.isHost}
+            onPromoteUser={handlePromoteUser}
+          />
 
           <Chat
             messages={messages}
@@ -603,8 +700,8 @@ export default function RoomPage() {
           <DialogHeader>
             <DialogTitle>Host Controls Only</DialogTitle>
             <DialogDescription>
-              Only the host ({room.hostName}) can control video playback. You can watch along and
-              use the chat to communicate.
+              Only hosts can control video playback. You can watch along and use the chat to
+              communicate. Ask a host to promote you if you need video controls.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end">

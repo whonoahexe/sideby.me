@@ -49,11 +49,13 @@ export interface SocketEvents {
   'create-room': (data: { hostName: string }) => void;
   'join-room': (data: { roomId: string; userName: string; hostToken?: string }) => void;
   'leave-room': (data: { roomId: string }) => void;
+  'promote-host': (data: { roomId: string; userId: string }) => void;
   'room-created': (data: { roomId: string; room: Room; hostToken: string }) => void;
   'room-joined': (data: { room: Room; user: User }) => void;
   'room-error': (data: { error: string }) => void;
   'user-joined': (data: { user: User }) => void;
   'user-left': (data: { userId: string }) => void;
+  'user-promoted': (data: { userId: string; userName: string }) => void;
 
   // Video events
   'set-video': (data: { roomId: string; videoUrl: string }) => void;
