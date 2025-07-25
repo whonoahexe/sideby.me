@@ -39,7 +39,6 @@ export default function RoomPage() {
   const youtubePlayerRef = useRef<YouTubePlayerRef>(null);
   const videoPlayerRef = useRef<VideoPlayerRef>(null);
   const lastSyncTimeRef = useRef<number>(0);
-  const syncThresholdRef = useRef<number>(2); // 2 seconds threshold for sync
   const hasAttemptedJoinRef = useRef<boolean>(false);
   const lastControlActionRef = useRef<{ timestamp: number; type: string; userId: string | null }>({
     timestamp: 0,
@@ -49,7 +48,7 @@ export default function RoomPage() {
   const lastPlayerTimeRef = useRef<number>(0);
   const syncCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const cleanupDataRef = useRef<{
-    socket: any;
+    socket: typeof socket;
     isConnected: boolean;
     roomId: string;
     room: Room | null;
@@ -64,7 +63,7 @@ export default function RoomPage() {
 
   // Sync video playback
   const syncVideo = useCallback(
-    (targetTime: number, isPlaying: boolean | null, timestamp: number, sourceUserId?: string) => {
+    (targetTime: number, isPlaying: boolean | null, timestamp: number) => {
       if (!room || !currentUser) return;
 
       // Don't sync if this user just performed the action (prevent feedback loop)
@@ -137,21 +136,23 @@ export default function RoomPage() {
     syncCheckIntervalRef.current = setInterval(() => {
       if (!room || !currentUser?.isHost || !socket) return;
 
-      const player = room.videoType === 'youtube' ? youtubePlayerRef.current : videoPlayerRef.current;
+      const player =
+        room.videoType === 'youtube' ? youtubePlayerRef.current : videoPlayerRef.current;
       if (!player) return;
 
       const currentTime = player.getCurrentTime();
-      const isPlaying = room.videoType === 'youtube' 
-        ? youtubePlayerRef.current?.getPlayerState() === YT_STATES.PLAYING
-        : !videoPlayerRef.current?.isPaused();
+      const isPlaying =
+        room.videoType === 'youtube'
+          ? youtubePlayerRef.current?.getPlayerState() === YT_STATES.PLAYING
+          : !videoPlayerRef.current?.isPaused();
 
       // Send periodic sync to ensure everyone is in sync
       console.log(`🔄 Periodic sync check: ${currentTime.toFixed(2)}s, playing: ${isPlaying}`);
-      socket.emit('sync-check', { 
-        roomId, 
-        currentTime, 
+      socket.emit('sync-check', {
+        roomId,
+        currentTime,
         isPlaying,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     }, 5000); // Check every 5 seconds
   }, [room, currentUser, socket, roomId]);
@@ -354,7 +355,7 @@ export default function RoomPage() {
       socket.off('room-error', handleRoomError);
       socket.off('error', handleSocketError);
     };
-  }, [socket, isConnected, syncVideo]);
+  }, [socket, isConnected, syncVideo, router, currentUser]);
 
   // Join room on mount
   useEffect(() => {
@@ -444,7 +445,7 @@ export default function RoomPage() {
 
     console.log('📝 Joining room with prompted name:', userName.trim());
     socket.emit('join-room', { roomId, userName: userName.trim() });
-  }, [socket, isConnected, roomId, router, room, currentUser]);
+  }, [socket, isConnected, roomId, router, room, currentUser, isJoining]);
 
   // Update cleanup data ref whenever values change
   useEffect(() => {
@@ -469,6 +470,7 @@ export default function RoomPage() {
       // Stop sync check on unmount
       stopSyncCheck();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - effect only runs once
 
   // Start/stop sync check based on host status
