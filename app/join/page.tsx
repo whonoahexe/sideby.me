@@ -150,7 +150,7 @@ export default function JoinRoomPage() {
 
           <div className="mt-6 border-t border-border pt-6">
             <div className="space-y-2 text-center">
-              <p className="text-sm text-muted-foreground">Don't have a room ID?</p>
+              <p className="text-sm text-muted-foreground">Don&apos;t have a room ID?</p>
               <Button variant="link" onClick={() => router.push('/create')} className="h-auto p-0">
                 Create a new room instead
               </Button>

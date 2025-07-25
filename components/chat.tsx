@@ -9,7 +9,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Send, MessageCircle } from 'lucide-react';
 import { ChatMessage } from '@/types';
-import { formatTime } from '@/lib/video-utils';
 
 interface ChatProps {
   messages: ChatMessage[];

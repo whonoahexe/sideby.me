@@ -114,7 +114,7 @@ export default function CreateRoomPage() {
 
           <div className="mt-6 border-t border-border pt-6">
             <div className="space-y-2 text-center">
-              <p className="text-sm text-muted-foreground">As the host, you'll be able to:</p>
+              <p className="text-sm text-muted-foreground">As the host, you&apos;ll be able to:</p>
               <div className="space-y-1 text-sm">
                 <div className="flex items-center justify-center space-x-2">
                   <Play className="h-3 w-3" />

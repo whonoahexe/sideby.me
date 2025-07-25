@@ -1,8 +1,8 @@
-import { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { Server as HTTPServer } from 'http';
 import { initSocketIO } from '@/lib/socket-server';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   // This endpoint initializes Socket.IO on the server
 
   return new Response('Socket.IO server endpoint', {

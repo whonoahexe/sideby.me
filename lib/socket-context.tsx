@@ -104,7 +104,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       // Don't disconnect the socket here - keep it alive for navigation
     };
-  }, []);
+  }, [isInitialized]);
 
   return (
     <SocketContext.Provider value={{ socket, isConnected }}>{children}</SocketContext.Provider>

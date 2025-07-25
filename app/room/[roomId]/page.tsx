@@ -18,8 +18,8 @@ import { VideoPlayer, VideoPlayerRef } from '@/components/video-player';
 import { Chat } from '@/components/chat';
 import { UserList } from '@/components/user-list';
 import { VideoSetup } from '@/components/video-setup';
-import { parseVideoUrl, calculateCurrentTime } from '@/lib/video-utils';
-import { Room, User, ChatMessage, VideoState } from '@/types';
+import { parseVideoUrl } from '@/lib/video-utils';
+import { Room, User, ChatMessage } from '@/types';
 import { Copy, Share2, Users, Video, AlertCircle, ExternalLink } from 'lucide-react';
 
 export default function RoomPage() {
@@ -39,6 +39,53 @@ export default function RoomPage() {
   const videoPlayerRef = useRef<VideoPlayerRef>(null);
   const lastSyncTimeRef = useRef<number>(0);
   const syncThresholdRef = useRef<number>(2); // 2 seconds threshold for sync
+
+  // Sync video playback
+  const syncVideo = useCallback(
+    (targetTime: number, isPlaying: boolean | null, timestamp: number) => {
+      if (!room || !currentUser || currentUser.isHost) return;
+
+      const player =
+        room.videoType === 'youtube' ? youtubePlayerRef.current : videoPlayerRef.current;
+      if (!player) return;
+
+      const now = Date.now();
+      const timeDiff = (now - timestamp) / 1000;
+      const adjustedTime = targetTime + (isPlaying ? timeDiff : 0);
+
+      // Check if we need to sync
+      const currentTime = player.getCurrentTime();
+      const syncDiff = Math.abs(currentTime - adjustedTime);
+
+      if (syncDiff > syncThresholdRef.current) {
+        player.seekTo(adjustedTime);
+        lastSyncTimeRef.current = now;
+      }
+
+      // Handle play/pause state
+      if (isPlaying !== null) {
+        if (room.videoType === 'youtube') {
+          const ytPlayer = player as YouTubePlayerRef;
+          const currentState = ytPlayer.getPlayerState();
+
+          if (isPlaying && currentState !== YT_STATES.PLAYING) {
+            ytPlayer.play();
+          } else if (!isPlaying && currentState === YT_STATES.PLAYING) {
+            ytPlayer.pause();
+          }
+        } else {
+          const videoPlayer = player as VideoPlayerRef;
+
+          if (isPlaying && videoPlayer.isPaused()) {
+            videoPlayer.play();
+          } else if (!isPlaying && !videoPlayer.isPaused()) {
+            videoPlayer.pause();
+          }
+        }
+      }
+    },
+    [room, currentUser]
+  );
 
   // Socket event handlers
   useEffect(() => {
@@ -176,7 +223,7 @@ export default function RoomPage() {
       socket.off('room-error', handleRoomError);
       socket.off('error', handleSocketError);
     };
-  }, [socket, isConnected]);
+  }, [socket, isConnected, syncVideo]);
 
   // Join room on mount
   useEffect(() => {
@@ -220,53 +267,6 @@ export default function RoomPage() {
 
     socket.emit('join-room', { roomId, userName });
   }, [socket, isConnected, roomId, router, room, currentUser]);
-
-  // Sync video playback
-  const syncVideo = useCallback(
-    (targetTime: number, isPlaying: boolean | null, timestamp: number) => {
-      if (!room || !currentUser || currentUser.isHost) return;
-
-      const player =
-        room.videoType === 'youtube' ? youtubePlayerRef.current : videoPlayerRef.current;
-      if (!player) return;
-
-      const now = Date.now();
-      const timeDiff = (now - timestamp) / 1000;
-      const adjustedTime = targetTime + (isPlaying ? timeDiff : 0);
-
-      // Check if we need to sync
-      const currentTime = player.getCurrentTime();
-      const syncDiff = Math.abs(currentTime - adjustedTime);
-
-      if (syncDiff > syncThresholdRef.current) {
-        player.seekTo(adjustedTime);
-        lastSyncTimeRef.current = now;
-      }
-
-      // Handle play/pause state
-      if (isPlaying !== null) {
-        if (room.videoType === 'youtube') {
-          const ytPlayer = player as YouTubePlayerRef;
-          const currentState = ytPlayer.getPlayerState();
-
-          if (isPlaying && currentState !== YT_STATES.PLAYING) {
-            ytPlayer.play();
-          } else if (!isPlaying && currentState === YT_STATES.PLAYING) {
-            ytPlayer.pause();
-          }
-        } else {
-          const videoPlayer = player as VideoPlayerRef;
-
-          if (isPlaying && videoPlayer.isPaused()) {
-            videoPlayer.play();
-          } else if (!isPlaying && !videoPlayer.isPaused()) {
-            videoPlayer.pause();
-          }
-        }
-      }
-    },
-    [room, currentUser]
-  );
 
   // Video event handlers for hosts
   const handleVideoPlay = useCallback(() => {

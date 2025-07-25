@@ -31,15 +31,35 @@ export const YT_STATES = {
 
 declare global {
   interface Window {
-    YT: any;
+    YT: {
+      Player: new (element: string | HTMLElement, config: Record<string, unknown>) => YTPlayer;
+      PlayerState: {
+        UNSTARTED: number;
+        ENDED: number;
+        PLAYING: number;
+        PAUSED: number;
+        BUFFERING: number;
+        CUED: number;
+      };
+    };
     onYouTubeIframeAPIReady: () => void;
   }
+}
+
+interface YTPlayer {
+  playVideo(): void;
+  pauseVideo(): void;
+  seekTo(seconds: number, allowSeekAhead?: boolean): void;
+  getCurrentTime(): number;
+  getDuration(): number;
+  getPlayerState(): number;
+  destroy(): void;
 }
 
 export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
   ({ videoId, onReady, onStateChange, onTimeUpdate, className }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
-    const playerRef = useRef<any>(null);
+    const playerRef = useRef<YTPlayer | null>(null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
     useImperativeHandle(ref, () => ({
@@ -119,11 +139,11 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
             origin: window.location.origin,
           },
           events: {
-            onReady: (event: any) => {
+            onReady: () => {
               onReady?.();
               startTimeTracking();
             },
-            onStateChange: (event: any) => {
+            onStateChange: (event: { data: number; target: YTPlayer }) => {
               onStateChange?.(event.data);
 
               if (event.data === YT_STATES.PLAYING) {

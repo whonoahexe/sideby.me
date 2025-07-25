@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import { Server as IOServer } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import { Socket } from 'socket.io';
@@ -32,7 +31,7 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
     path: '/api/socket/io',
   });
 
-  io.on('connection', (socket: Socket<SocketEvents, SocketEvents, {}, SocketData>) => {
+  io.on('connection', (socket: Socket<SocketEvents, SocketEvents, object, SocketData>) => {
     console.log('User connected:', socket.id);
 
     // Create room
@@ -289,7 +288,7 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
 }
 
 async function handleLeaveRoom(
-  socket: Socket<SocketEvents, SocketEvents, {}, SocketData>,
+  socket: Socket<SocketEvents, SocketEvents, object, SocketData>,
   roomId: string
 ) {
   try {
