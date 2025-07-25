@@ -42,3 +42,7 @@ next-env.d.ts
 
 # ide
 .vscode/
+
+# etc
+README.dev.md
+README.prod.md
