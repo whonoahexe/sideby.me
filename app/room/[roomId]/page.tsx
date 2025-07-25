@@ -46,6 +46,8 @@ export default function RoomPage() {
     type: '',
     userId: null,
   });
+  const lastPlayerTimeRef = useRef<number>(0);
+  const syncCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const cleanupDataRef = useRef<{
     socket: any;
     isConnected: boolean;
@@ -70,7 +72,7 @@ export default function RoomPage() {
       const timeSinceLastAction = now - lastControlActionRef.current.timestamp;
       if (
         lastControlActionRef.current.userId === currentUser.id &&
-        timeSinceLastAction < 1000 // 1 second buffer
+        timeSinceLastAction < 500 // Reduced to 500ms for faster sync
       ) {
         console.log('🔄 Skipping sync - user just performed this action');
         return;
@@ -87,12 +89,14 @@ export default function RoomPage() {
       const currentTime = player.getCurrentTime();
       const syncDiff = Math.abs(currentTime - adjustedTime);
 
-      if (syncDiff > syncThresholdRef.current) {
+      // Reduced threshold for better sync accuracy
+      if (syncDiff > 1.5) {
         console.log(
           `🎬 Syncing video: ${syncDiff.toFixed(2)}s difference, seeking to ${adjustedTime.toFixed(2)}s`
         );
         player.seekTo(adjustedTime);
         lastSyncTimeRef.current = now;
+        lastPlayerTimeRef.current = adjustedTime;
       }
 
       // Handle play/pause state
@@ -123,6 +127,41 @@ export default function RoomPage() {
     },
     [room, currentUser]
   );
+
+  // Periodic sync check for hosts to ensure everyone stays in sync
+  const startSyncCheck = useCallback(() => {
+    if (syncCheckIntervalRef.current) {
+      clearInterval(syncCheckIntervalRef.current);
+    }
+
+    syncCheckIntervalRef.current = setInterval(() => {
+      if (!room || !currentUser?.isHost || !socket) return;
+
+      const player = room.videoType === 'youtube' ? youtubePlayerRef.current : videoPlayerRef.current;
+      if (!player) return;
+
+      const currentTime = player.getCurrentTime();
+      const isPlaying = room.videoType === 'youtube' 
+        ? youtubePlayerRef.current?.getPlayerState() === YT_STATES.PLAYING
+        : !videoPlayerRef.current?.isPaused();
+
+      // Send periodic sync to ensure everyone is in sync
+      console.log(`🔄 Periodic sync check: ${currentTime.toFixed(2)}s, playing: ${isPlaying}`);
+      socket.emit('sync-check', { 
+        roomId, 
+        currentTime, 
+        isPlaying,
+        timestamp: Date.now()
+      });
+    }, 5000); // Check every 5 seconds
+  }, [room, currentUser, socket, roomId]);
+
+  const stopSyncCheck = useCallback(() => {
+    if (syncCheckIntervalRef.current) {
+      clearInterval(syncCheckIntervalRef.current);
+      syncCheckIntervalRef.current = null;
+    }
+  }, []);
 
   // Socket event handlers
   useEffect(() => {
@@ -255,6 +294,23 @@ export default function RoomPage() {
       syncVideo(currentTime, null, timestamp);
     };
 
+    const handleSyncUpdate = ({
+      currentTime,
+      isPlaying,
+      timestamp,
+    }: {
+      currentTime: number;
+      isPlaying: boolean;
+      timestamp: number;
+    }) => {
+      if (currentUser?.isHost) {
+        // Hosts don't sync to sync-updates to avoid conflicts
+        return;
+      }
+      console.log('📡 Received sync update from host');
+      syncVideo(currentTime, isPlaying, timestamp);
+    };
+
     const handleNewMessage = ({ message }: { message: ChatMessage }) => {
       setMessages(prev => [...prev, message]);
     };
@@ -279,6 +335,7 @@ export default function RoomPage() {
     socket.on('video-played', handleVideoPlayed);
     socket.on('video-paused', handleVideoPaused);
     socket.on('video-seeked', handleVideoSeeked);
+    socket.on('sync-update', handleSyncUpdate);
     socket.on('new-message', handleNewMessage);
     socket.on('room-error', handleRoomError);
     socket.on('error', handleSocketError);
@@ -292,6 +349,7 @@ export default function RoomPage() {
       socket.off('video-played', handleVideoPlayed);
       socket.off('video-paused', handleVideoPaused);
       socket.off('video-seeked', handleVideoSeeked);
+      socket.off('sync-update', handleSyncUpdate);
       socket.off('new-message', handleNewMessage);
       socket.off('room-error', handleRoomError);
       socket.off('error', handleSocketError);
@@ -408,8 +466,25 @@ export default function RoomPage() {
         console.log('🚪 Component unmounting, leaving room...');
         socket.emit('leave-room', { roomId });
       }
+      // Stop sync check on unmount
+      stopSyncCheck();
     };
   }, []); // Empty dependency array - effect only runs once
+
+  // Start/stop sync check based on host status
+  useEffect(() => {
+    if (currentUser?.isHost && room?.videoUrl) {
+      console.log('🎯 Starting sync check - user is host');
+      startSyncCheck();
+    } else {
+      console.log('🛑 Stopping sync check - user is not host or no video');
+      stopSyncCheck();
+    }
+
+    return () => {
+      stopSyncCheck();
+    };
+  }, [currentUser?.isHost, room?.videoUrl, startSyncCheck, stopSyncCheck]);
 
   // Video event handlers for hosts
   const handleVideoPlay = useCallback(() => {
@@ -468,27 +543,60 @@ export default function RoomPage() {
 
   const handleYouTubeStateChange = useCallback(
     (state: number) => {
-      if (!currentUser?.isHost) return;
+      if (!currentUser?.isHost || !socket) return;
+
+      const player = youtubePlayerRef.current;
+      if (!player) return;
+
+      const currentTime = player.getCurrentTime();
 
       if (state === YT_STATES.PLAYING) {
-        // Track the action before calling the handler
+        // Check if this is a seek by comparing with last known time
+        const timeDiff = Math.abs(currentTime - lastPlayerTimeRef.current);
+        if (timeDiff > 1) {
+          // Likely a seek happened before play
+          console.log(`🎯 Detected seek to ${currentTime.toFixed(2)}s before play`);
+          lastControlActionRef.current = {
+            timestamp: Date.now(),
+            type: 'seek',
+            userId: currentUser.id,
+          };
+          socket.emit('seek-video', { roomId, currentTime });
+        }
+
+        // Track the play action
         lastControlActionRef.current = {
           timestamp: Date.now(),
           type: 'play',
           userId: currentUser.id,
         };
-        handleVideoPlay();
+        lastPlayerTimeRef.current = currentTime;
+        socket.emit('play-video', { roomId, currentTime });
       } else if (state === YT_STATES.PAUSED) {
-        // Track the action before calling the handler
+        // Track the pause action
         lastControlActionRef.current = {
           timestamp: Date.now(),
           type: 'pause',
           userId: currentUser.id,
         };
-        handleVideoPause();
+        lastPlayerTimeRef.current = currentTime;
+        socket.emit('pause-video', { roomId, currentTime });
+      } else if (state === YT_STATES.BUFFERING) {
+        // Check for potential seek during buffering
+        const timeDiff = Math.abs(currentTime - lastPlayerTimeRef.current);
+        if (timeDiff > 1) {
+          console.log(`🎯 Detected seek to ${currentTime.toFixed(2)}s during buffering`);
+          lastControlActionRef.current = {
+            timestamp: Date.now(),
+            type: 'seek',
+            userId: currentUser.id,
+          };
+          lastPlayerTimeRef.current = currentTime;
+          socket.emit('seek-video', { roomId, currentTime });
+        }
       }
     },
-    [currentUser, handleVideoPlay, handleVideoPause]
+    [currentUser, socket, roomId]
   );
 
   const handleVideoControlAttempt = () => {

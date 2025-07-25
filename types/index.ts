@@ -63,9 +63,11 @@ export interface SocketEvents {
   'play-video': (data: { roomId: string; currentTime: number }) => void;
   'pause-video': (data: { roomId: string; currentTime: number }) => void;
   'seek-video': (data: { roomId: string; currentTime: number }) => void;
+  'sync-check': (data: { roomId: string; currentTime: number; isPlaying: boolean; timestamp: number }) => void;
   'video-played': (data: { currentTime: number; timestamp: number }) => void;
   'video-paused': (data: { currentTime: number; timestamp: number }) => void;
   'video-seeked': (data: { currentTime: number; timestamp: number }) => void;
+  'sync-update': (data: { currentTime: number; isPlaying: boolean; timestamp: number }) => void;
   'sync-video': (data: { videoState: VideoState }) => void;
 
   // Chat events
