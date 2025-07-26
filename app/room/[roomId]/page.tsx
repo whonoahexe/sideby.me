@@ -94,7 +94,6 @@ export default function RoomPage() {
             : videoPlayerRef.current;
       if (!player) return;
 
-      const timeDiff = (now - timestamp) / 1000;
       const adjustedTime = calculateCurrentTime({
         currentTime: targetTime,
         isPlaying: isPlaying ?? false,

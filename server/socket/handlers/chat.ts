@@ -1,0 +1,94 @@
+import { Socket, Server as IOServer } from 'socket.io';
+import { v4 as uuidv4 } from 'uuid';
+import { redisService } from '@/lib/redis';
+import { ChatMessage, SendMessageDataSchema, RoomActionDataSchema } from '@/types';
+import { SocketEvents, SocketData } from '../types';
+import { validateData } from '../utils';
+
+export function registerChatHandlers(
+  socket: Socket<SocketEvents, SocketEvents, object, SocketData>,
+  io: IOServer
+) {
+  // Typing indicators
+  socket.on('typing-start', async data => {
+    try {
+      const validatedData = validateData(RoomActionDataSchema, data, socket);
+      if (!validatedData) return;
+
+      const { roomId } = validatedData;
+
+      if (!socket.data.userId || !socket.data.userName) {
+        socket.emit('error', { error: 'Not authenticated' });
+        return;
+      }
+
+      // Broadcast to all other users in the room that this user is typing
+      socket.to(roomId).emit('user-typing', {
+        userId: socket.data.userId,
+        userName: socket.data.userName,
+      });
+
+      console.log(`${socket.data.userName} started typing in room ${roomId}`);
+    } catch (error) {
+      console.error('Error handling typing start:', error);
+      socket.emit('error', { error: 'Failed to handle typing start' });
+    }
+  });
+
+  socket.on('typing-stop', async data => {
+    try {
+      const validatedData = validateData(RoomActionDataSchema, data, socket);
+      if (!validatedData) return;
+
+      const { roomId } = validatedData;
+
+      if (!socket.data.userId) {
+        socket.emit('error', { error: 'Not authenticated' });
+        return;
+      }
+
+      // Broadcast to all other users in the room that this user stopped typing
+      socket.to(roomId).emit('user-stopped-typing', {
+        userId: socket.data.userId,
+      });
+
+      console.log(`${socket.data.userName} stopped typing in room ${roomId}`);
+    } catch (error) {
+      console.error('Error handling typing stop:', error);
+      socket.emit('error', { error: 'Failed to handle typing stop' });
+    }
+  });
+
+  // Send chat message
+  socket.on('send-message', async data => {
+    try {
+      const validatedData = validateData(SendMessageDataSchema, data, socket);
+      if (!validatedData) return;
+
+      const { roomId, message } = validatedData;
+
+      if (!socket.data.userId || !socket.data.userName) {
+        socket.emit('error', { error: 'Not authenticated' });
+        return;
+      }
+
+      const chatMessage: ChatMessage = {
+        id: uuidv4(),
+        userId: socket.data.userId,
+        userName: socket.data.userName,
+        message: message.trim(),
+        timestamp: new Date(),
+        roomId,
+      };
+
+      await redisService.addChatMessage(roomId, chatMessage);
+
+      io.to(roomId).emit('new-message', { message: chatMessage });
+
+      console.log(`Message sent in room ${roomId} by ${socket.data.userName}`);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      socket.emit('error', { error: 'Failed to send message' });
+    }
+  });
+}
