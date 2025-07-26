@@ -20,6 +20,7 @@ import { Chat } from '@/components/chat';
 import { UserList } from '@/components/user-list';
 import { VideoSetup } from '@/components/video-setup';
 import { parseVideoUrl } from '@/lib/video-utils';
+import { calculateCurrentTime } from '@/lib/video-utils';
 import { Room, User, ChatMessage, TypingUser } from '@/types';
 import { Copy, Share2, Users, Video, AlertCircle, ExternalLink, Check } from 'lucide-react';
 import { toast } from 'sonner';
@@ -94,7 +95,11 @@ export default function RoomPage() {
       if (!player) return;
 
       const timeDiff = (now - timestamp) / 1000;
-      const adjustedTime = targetTime + (isPlaying ? timeDiff : 0);
+      const adjustedTime = calculateCurrentTime({
+        currentTime: targetTime,
+        isPlaying: isPlaying ?? false,
+        lastUpdateTime: timestamp,
+      });
 
       // Check if we need to sync
       const currentTime = player.getCurrentTime();
