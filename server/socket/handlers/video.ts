@@ -1,5 +1,5 @@
 import { Socket, Server as IOServer } from 'socket.io';
-import { redisService } from '@/lib/redis';
+import { redisService } from '@/server/redis';
 import { SetVideoDataSchema, VideoControlDataSchema, SyncCheckDataSchema } from '@/types';
 import { SocketEvents, SocketData } from '../types';
 import { validateData } from '../utils';
@@ -15,7 +15,7 @@ export function registerVideoHandlers(
       if (!validatedData) return;
 
       const { roomId, videoUrl } = validatedData;
-      const room = await redisService.getRoom(roomId);
+      const room = await redisService.rooms.getRoom(roomId);
       if (!room) {
         socket.emit('room-error', { error: 'Room not found' });
         return;
@@ -39,7 +39,7 @@ export function registerVideoHandlers(
         videoType = 'm3u8';
       }
 
-      await redisService.setVideoUrl(roomId, videoUrl, videoType);
+      await redisService.rooms.setVideoUrl(roomId, videoUrl, videoType);
 
       io.to(roomId).emit('video-set', { videoUrl, videoType });
       console.log(`Video set in room ${roomId}: ${videoUrl}`);
@@ -56,7 +56,7 @@ export function registerVideoHandlers(
       if (!validatedData) return;
 
       const { roomId, currentTime } = validatedData;
-      const room = await redisService.getRoom(roomId);
+      const room = await redisService.rooms.getRoom(roomId);
       if (!room) {
         socket.emit('room-error', { error: 'Room not found' });
         return;
@@ -75,7 +75,7 @@ export function registerVideoHandlers(
         lastUpdateTime: Date.now(),
       };
 
-      await redisService.updateVideoState(roomId, videoState);
+      await redisService.rooms.updateVideoState(roomId, videoState);
 
       socket.to(roomId).emit('video-played', {
         currentTime,
@@ -96,7 +96,7 @@ export function registerVideoHandlers(
       if (!validatedData) return;
 
       const { roomId, currentTime } = validatedData;
-      const room = await redisService.getRoom(roomId);
+      const room = await redisService.rooms.getRoom(roomId);
       if (!room) {
         socket.emit('room-error', { error: 'Room not found' });
         return;
@@ -115,7 +115,7 @@ export function registerVideoHandlers(
         lastUpdateTime: Date.now(),
       };
 
-      await redisService.updateVideoState(roomId, videoState);
+      await redisService.rooms.updateVideoState(roomId, videoState);
 
       socket.to(roomId).emit('video-paused', {
         currentTime,
@@ -136,7 +136,7 @@ export function registerVideoHandlers(
       if (!validatedData) return;
 
       const { roomId, currentTime } = validatedData;
-      const room = await redisService.getRoom(roomId);
+      const room = await redisService.rooms.getRoom(roomId);
       if (!room) {
         socket.emit('room-error', { error: 'Room not found' });
         return;
@@ -154,7 +154,7 @@ export function registerVideoHandlers(
         lastUpdateTime: Date.now(),
       };
 
-      await redisService.updateVideoState(roomId, videoState);
+      await redisService.rooms.updateVideoState(roomId, videoState);
 
       socket.to(roomId).emit('video-seeked', {
         currentTime,
@@ -181,7 +181,7 @@ export function registerVideoHandlers(
         return;
       }
 
-      const room = await redisService.getRoom(roomId);
+      const room = await redisService.rooms.getRoom(roomId);
       if (!room) {
         socket.emit('room-error', { error: 'Room not found' });
         return;

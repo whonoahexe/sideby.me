@@ -1,6 +1,6 @@
 import { Socket, Server as IOServer } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
-import { redisService } from '@/lib/redis';
+import { redisService } from '@/server/redis';
 import { ChatMessage, SendMessageDataSchema, RoomActionDataSchema } from '@/types';
 import { SocketEvents, SocketData } from '../types';
 import { validateData } from '../utils';
@@ -81,7 +81,7 @@ export function registerChatHandlers(
         roomId,
       };
 
-      await redisService.addChatMessage(roomId, chatMessage);
+      await redisService.chat.addChatMessage(roomId, chatMessage);
 
       io.to(roomId).emit('new-message', { message: chatMessage });
 

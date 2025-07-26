@@ -1,6 +1,6 @@
 import { Socket, Server as IOServer } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
-import { redisService } from '@/lib/redis';
+import { redisService } from '@/server/redis';
 import { generateRoomId } from '@/lib/video-utils';
 import {
   Room,
@@ -49,7 +49,7 @@ export function registerRoomHandlers(
         createdAt: new Date(),
       };
 
-      await redisService.createRoom(room);
+      await redisService.rooms.createRoom(room);
 
       socket.data.userId = userId;
       socket.data.userName = hostName;
@@ -78,7 +78,7 @@ export function registerRoomHandlers(
         `🔄 Socket ${socket.id} already in room ${data.roomId}, checking if this is the room creator...`
       );
 
-      const room = await redisService.getRoom(data.roomId);
+      const room = await redisService.rooms.getRoom(data.roomId);
       if (room) {
         const existingUser = room.users.find(u => u.name === data?.userName?.trim());
 
@@ -106,7 +106,7 @@ export function registerRoomHandlers(
       if (!validatedData) return;
 
       const { roomId, userName, hostToken } = validatedData;
-      const room = await redisService.getRoom(roomId);
+      const room = await redisService.rooms.getRoom(roomId);
       if (!room) {
         socket.emit('room-error', { error: 'Room not found' });
         return;
@@ -187,12 +187,12 @@ export function registerRoomHandlers(
       // If this is the host rejoining, update the room's hostId
       if (isRoomHost) {
         room.hostId = userId;
-        await redisService.updateRoom(roomId, room);
+        await redisService.rooms.updateRoom(roomId, room);
         console.log(`Host ${userName} rejoining room ${roomId} with new user ID`);
       }
 
-      await redisService.addUserToRoom(roomId, user);
-      const updatedRoom = await redisService.getRoom(roomId);
+      await redisService.rooms.addUserToRoom(roomId, user);
+      const updatedRoom = await redisService.rooms.getRoom(roomId);
 
       socket.data.userId = userId;
       socket.data.userName = userName;
@@ -227,7 +227,7 @@ export function registerRoomHandlers(
         return;
       }
 
-      const room = await redisService.getRoom(roomId);
+      const room = await redisService.rooms.getRoom(roomId);
       if (!room) {
         socket.emit('room-error', { error: 'Room not found' });
         return;
@@ -253,7 +253,7 @@ export function registerRoomHandlers(
       // Update user to host
       const updatedUsers = room.users.map(u => (u.id === userId ? { ...u, isHost: true } : u));
       const updatedRoom = { ...room, users: updatedUsers };
-      await redisService.updateRoom(roomId, updatedRoom);
+      await redisService.rooms.updateRoom(roomId, updatedRoom);
 
       io.to(roomId).emit('user-promoted', { userId, userName: targetUser.name });
 
@@ -273,7 +273,7 @@ export async function handleLeaveRoom(
   try {
     if (!socket.data.userId) return;
 
-    const room = await redisService.getRoom(roomId);
+    const room = await redisService.rooms.getRoom(roomId);
     if (!room) return;
 
     const leavingUser = room.users.find(u => u.id === socket.data.userId);
@@ -297,18 +297,18 @@ export async function handleLeaveRoom(
       });
 
       // Delete the room entirely
-      await redisService.deleteRoom(roomId);
+      await redisService.rooms.deleteRoom(roomId);
 
       console.log(`Room ${roomId} has been closed`);
     } else {
       // Update room with remaining users
       if (updatedUsers.length === 0) {
         // No users left at all, delete the room
-        await redisService.deleteRoom(roomId);
+        await redisService.rooms.deleteRoom(roomId);
       } else {
         // Update room with remaining users
         const updatedRoom = { ...room, users: updatedUsers };
-        await redisService.updateRoom(roomId, updatedRoom);
+        await redisService.rooms.updateRoom(roomId, updatedRoom);
 
         // Notify remaining users that this user left
         socket.to(roomId).emit('user-left', { userId: socket.data.userId });

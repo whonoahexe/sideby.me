@@ -1,75 +1,16 @@
-import Redis from 'ioredis';
-import { Room, User, ChatMessage, VideoState } from '@/types';
+import { Room, User, VideoState } from '@/types';
+import { redis } from '../client';
 
-// Redis client setup with Upstash support
-const createRedisClient = () => {
-  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+export class RoomRepository {
+  private static instance: RoomRepository;
 
-  console.log('Initializing Redis connection...');
-
-  // For Upstash Redis, we need to configure TLS properly
-  if (redisUrl.includes('upstash.io')) {
-    console.log('Detected Upstash Redis, configuring TLS...');
-    const url = new URL(redisUrl);
-    return new Redis({
-      host: url.hostname,
-      port: parseInt(url.port) || 6379,
-      username: url.username || 'default',
-      password: url.password,
-      tls: {
-        rejectUnauthorized: false,
-      },
-      maxRetriesPerRequest: 3,
-      enableReadyCheck: false,
-      lazyConnect: true,
-      keepAlive: 30000,
-      connectTimeout: 10000,
-      commandTimeout: 5000,
-    });
-  }
-
-  // For local Redis
-  console.log('Using local Redis configuration...');
-  return new Redis(redisUrl, {
-    lazyConnect: true,
-    keepAlive: 30000,
-  });
-};
-
-const redis = createRedisClient();
-
-// Add error handling for connection issues
-redis.on('error', error => {
-  console.error('Redis connection error:', error);
-});
-
-redis.on('connect', () => {
-  console.log('Redis connected successfully');
-});
-
-redis.on('ready', () => {
-  console.log('Redis ready for commands');
-});
-
-redis.on('close', () => {
-  console.log('Redis connection closed');
-});
-
-redis.on('reconnecting', () => {
-  console.log('Redis reconnecting...');
-});
-
-export class RedisService {
-  private static instance: RedisService;
-
-  static getInstance(): RedisService {
-    if (!RedisService.instance) {
-      RedisService.instance = new RedisService();
+  static getInstance(): RoomRepository {
+    if (!RoomRepository.instance) {
+      RoomRepository.instance = new RoomRepository();
     }
-    return RedisService.instance;
+    return RoomRepository.instance;
   }
 
-  // Room operations
   async createRoom(room: Room): Promise<void> {
     await redis.setex(`room:${room.id}`, 86400, JSON.stringify(room)); // 24 hours TTL
     await redis.sadd('active-rooms', room.id);
@@ -103,7 +44,6 @@ export class RedisService {
     return (await redis.exists(`room:${roomId}`)) === 1;
   }
 
-  // User operations in rooms
   async addUserToRoom(roomId: string, user: User): Promise<void> {
     const room = await this.getRoom(roomId);
     if (!room) throw new Error('Room not found');
@@ -136,7 +76,6 @@ export class RedisService {
     }
   }
 
-  // Video state operations
   async updateVideoState(roomId: string, videoState: VideoState): Promise<void> {
     const room = await this.getRoom(roomId);
     if (!room) throw new Error('Room not found');
@@ -166,26 +105,6 @@ export class RedisService {
     await this.updateRoom(roomId, room);
   }
 
-  // Chat operations
-  async addChatMessage(roomId: string, message: ChatMessage): Promise<void> {
-    const key = `chat:${roomId}`;
-    await redis.lpush(key, JSON.stringify(message));
-    await redis.ltrim(key, 0, 19); // Keep only last 20 messages
-    await redis.expire(key, 86400); // 24 hours TTL
-  }
-
-  async getChatMessages(roomId: string, limit: number = 20): Promise<ChatMessage[]> {
-    const messages = await redis.lrange(`chat:${roomId}`, 0, limit - 1);
-    return messages
-      .map(msg => {
-        const parsed = JSON.parse(msg) as ChatMessage;
-        parsed.timestamp = new Date(parsed.timestamp);
-        return parsed;
-      })
-      .reverse(); // Reverse to get chronological order
-  }
-
-  // Cleanup operations
   async cleanup(): Promise<void> {
     // This method can be called periodically to clean up expired rooms
     const activeRooms = await redis.smembers('active-rooms');
@@ -198,5 +117,3 @@ export class RedisService {
     }
   }
 }
-
-export const redisService = RedisService.getInstance();
