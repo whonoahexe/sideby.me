@@ -20,7 +20,7 @@ import { Chat } from '@/components/chat';
 import { UserList } from '@/components/user-list';
 import { VideoSetup } from '@/components/video-setup';
 import { parseVideoUrl } from '@/lib/video-utils';
-import { Room, User, ChatMessage } from '@/types';
+import { Room, User, ChatMessage, TypingUser } from '@/types';
 import { Copy, Share2, Users, Video, AlertCircle, ExternalLink } from 'lucide-react';
 
 export default function RoomPage() {
@@ -31,6 +31,7 @@ export default function RoomPage() {
   const [room, setRoom] = useState<Room | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [error, setError] = useState('');
   const [showHostDialog, setShowHostDialog] = useState(false);
   const [showGuestInfoBanner, setShowGuestInfoBanner] = useState(false);
@@ -219,6 +220,9 @@ export default function RoomPage() {
     };
 
     const handleUserLeft = ({ userId }: { userId: string }) => {
+      // Remove user from typing list when they leave
+      setTypingUsers(prev => prev.filter(user => user.userId !== userId));
+
       setRoom(prev => {
         if (!prev) return null;
         const updatedUsers = prev.users.filter(u => u.id !== userId);
@@ -344,6 +348,24 @@ export default function RoomPage() {
       setMessages(prev => [...prev, message]);
     };
 
+    const handleUserTyping = ({ userId, userName }: { userId: string; userName: string }) => {
+      if (userId === currentUser?.id) return; // Don't show own typing
+
+      setTypingUsers(prev => {
+        const existing = prev.find(user => user.userId === userId);
+        if (existing) {
+          return prev.map(user =>
+            user.userId === userId ? { ...user, timestamp: Date.now() } : user
+          );
+        }
+        return [...prev, { userId, userName, timestamp: Date.now() }];
+      });
+    };
+
+    const handleUserStoppedTyping = ({ userId }: { userId: string }) => {
+      setTypingUsers(prev => prev.filter(user => user.userId !== userId));
+    };
+
     const handleRoomError = ({ error }: { error: string }) => {
       console.error('🚨 Room error:', error);
       setError(error);
@@ -366,6 +388,8 @@ export default function RoomPage() {
     socket.on('video-seeked', handleVideoSeeked);
     socket.on('sync-update', handleSyncUpdate);
     socket.on('new-message', handleNewMessage);
+    socket.on('user-typing', handleUserTyping);
+    socket.on('user-stopped-typing', handleUserStoppedTyping);
     socket.on('room-error', handleRoomError);
     socket.on('error', handleSocketError);
 
@@ -380,6 +404,8 @@ export default function RoomPage() {
       socket.off('video-seeked', handleVideoSeeked);
       socket.off('sync-update', handleSyncUpdate);
       socket.off('new-message', handleNewMessage);
+      socket.off('user-typing', handleUserTyping);
+      socket.off('user-stopped-typing', handleUserStoppedTyping);
       socket.off('room-error', handleRoomError);
       socket.off('error', handleSocketError);
     };
@@ -696,6 +722,16 @@ export default function RoomPage() {
     socket.emit('send-message', { roomId, message });
   };
 
+  const handleTypingStart = () => {
+    if (!socket) return;
+    socket.emit('typing-start', { roomId });
+  };
+
+  const handleTypingStop = () => {
+    if (!socket) return;
+    socket.emit('typing-stop', { roomId });
+  };
+
   const handlePromoteUser = (userId: string) => {
     if (!socket || !currentUser?.isHost) return;
     socket.emit('promote-host', { roomId, userId });
@@ -926,6 +962,9 @@ export default function RoomPage() {
             messages={messages}
             currentUserId={currentUser.id}
             onSendMessage={handleSendMessage}
+            onTypingStart={handleTypingStart}
+            onTypingStop={handleTypingStop}
+            typingUsers={typingUsers}
           />
         </div>
       </div>

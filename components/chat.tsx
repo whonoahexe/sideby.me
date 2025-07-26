@@ -8,24 +8,80 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Send, MessageCircle } from 'lucide-react';
-import { ChatMessage } from '@/types';
+import { ChatMessage, TypingUser } from '@/types';
 
 interface ChatProps {
   messages: ChatMessage[];
   currentUserId: string;
   onSendMessage: (message: string) => void;
+  onTypingStart?: () => void;
+  onTypingStop?: () => void;
+  typingUsers?: TypingUser[];
   className?: string;
 }
 
-export function Chat({ messages, currentUserId, onSendMessage, className }: ChatProps) {
+export function Chat({
+  messages,
+  currentUserId,
+  onSendMessage,
+  onTypingStart,
+  onTypingStop,
+  typingUsers = [],
+  className,
+}: ChatProps) {
   const [inputMessage, setInputMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive or typing users change
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, typingUsers]);
+
+  // Handle typing indicators
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInputMessage(value);
+
+    // Start typing indicator
+    if (value.trim() && !isTyping) {
+      setIsTyping(true);
+      onTypingStart?.();
+    }
+
+    // Reset typing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Stop typing after 1 second of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      if (isTyping) {
+        setIsTyping(false);
+        onTypingStop?.();
+      }
+    }, 1000);
+
+    // Stop typing immediately if input is empty
+    if (!value.trim() && isTyping) {
+      setIsTyping(false);
+      onTypingStop?.();
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    }
+  };
+
+  // Cleanup typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +89,15 @@ export function Chat({ messages, currentUserId, onSendMessage, className }: Chat
     if (inputMessage.trim()) {
       onSendMessage(inputMessage.trim());
       setInputMessage('');
+
+      // Stop typing indicator when message is sent
+      if (isTyping) {
+        setIsTyping(false);
+        onTypingStop?.();
+      }
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
     }
   };
 
@@ -67,7 +132,7 @@ export function Chat({ messages, currentUserId, onSendMessage, className }: Chat
 
       <CardContent className="p-0">
         <ScrollArea className="h-96 px-4" ref={scrollAreaRef}>
-          <div className="space-y-4 pb-4">
+          <div className="min-w-0 space-y-4 pb-4">
             {messages.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
                 <MessageCircle className="mx-auto mb-2 h-8 w-8 opacity-50" />
@@ -77,7 +142,7 @@ export function Chat({ messages, currentUserId, onSendMessage, className }: Chat
               messages.map(message => (
                 <div
                   key={message.id}
-                  className={`flex space-x-3 ${
+                  className={`flex min-w-0 space-x-3 ${
                     message.userId === currentUserId ? 'flex-row-reverse space-x-reverse' : ''
                   }`}
                 >
@@ -88,7 +153,7 @@ export function Chat({ messages, currentUserId, onSendMessage, className }: Chat
                   </Avatar>
 
                   <div
-                    className={`flex-1 space-y-1 ${
+                    className={`min-w-0 flex-1 space-y-1 ${
                       message.userId === currentUserId ? 'text-right' : ''
                     }`}
                   >
@@ -104,11 +169,12 @@ export function Chat({ messages, currentUserId, onSendMessage, className }: Chat
                     </div>
 
                     <div
-                      className={`inline-block max-w-xs break-words rounded-lg px-3 py-2 text-sm ${
+                      className={`inline-block max-w-full break-words rounded-lg px-3 py-2 text-sm ${
                         message.userId === currentUserId
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-muted'
                       }`}
+                      style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
                     >
                       {message.message}
                     </div>
@@ -116,6 +182,36 @@ export function Chat({ messages, currentUserId, onSendMessage, className }: Chat
                 </div>
               ))
             )}
+
+            {/* Typing Indicators */}
+            {typingUsers.length > 0 && (
+              <div className="flex space-x-3">
+                <Avatar className="h-8 w-8 flex-shrink-0">
+                  <AvatarFallback className="text-xs">
+                    {typingUsers.length === 1 ? getInitials(typingUsers[0].userName) : '...'}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      {typingUsers.length === 1
+                        ? `${typingUsers[0].userName} is typing`
+                        : `${typingUsers.length} people are typing`}
+                    </span>
+                  </div>
+
+                  <div className="inline-block rounded-lg bg-muted px-3 py-2">
+                    <div className="flex space-x-1">
+                      <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:0ms]" />
+                      <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:150ms]" />
+                      <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:300ms]" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div ref={bottomRef} />
           </div>
         </ScrollArea>
@@ -125,7 +221,7 @@ export function Chat({ messages, currentUserId, onSendMessage, className }: Chat
             <Input
               placeholder="Type a message..."
               value={inputMessage}
-              onChange={e => setInputMessage(e.target.value)}
+              onChange={handleInputChange}
               className="flex-1"
               maxLength={500}
             />

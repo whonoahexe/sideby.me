@@ -44,6 +44,12 @@ export interface ChatMessage {
   roomId: string;
 }
 
+export interface TypingUser {
+  userId: string;
+  userName: string;
+  timestamp: number;
+}
+
 export interface SocketEvents {
   // Room events
   'create-room': (data: { hostName: string }) => void;
@@ -79,6 +85,10 @@ export interface SocketEvents {
   'send-message': (data: { roomId: string; message: string }) => void;
   'message-sent': (data: { message: ChatMessage }) => void;
   'new-message': (data: { message: ChatMessage }) => void;
+  'typing-start': (data: { roomId: string }) => void;
+  'typing-stop': (data: { roomId: string }) => void;
+  'user-typing': (data: { userId: string; userName: string }) => void;
+  'user-stopped-typing': (data: { userId: string }) => void;
 
   // General events
   error: (data: { error: string }) => void;
