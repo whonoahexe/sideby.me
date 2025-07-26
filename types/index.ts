@@ -1,5 +1,5 @@
 // Re-export everything from schemas for convenience
-export * from '@/lib/schemas';
+export * from './schemas';
 
 // Import only the types needed for SocketEvents interface
 import type {
@@ -23,7 +23,7 @@ import type {
   TypingEventResponse,
   ErrorResponse,
   VideoState,
-} from '@/lib/schemas';
+} from './schemas';
 
 export interface SocketEvents {
   // Room events
