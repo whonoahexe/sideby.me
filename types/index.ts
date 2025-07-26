@@ -1,70 +1,8 @@
-// Export Zod-inferred types from schemas
-export type {
-  User,
-  Room,
-  ChatMessage,
-  TypingUser,
-  VideoState,
-  VideoType,
-  CreateRoomData,
-  JoinRoomData,
-  SetVideoData,
-  VideoControlData,
-  PromoteHostData,
-  SendMessageData,
-  SyncCheckData,
-  RoomActionData,
-  RoomCreatedResponse,
-  RoomJoinedResponse,
-  UserJoinedResponse,
-  UserLeftResponse,
-  UserPromotedResponse,
-  VideoSetResponse,
-  VideoEventResponse,
-  SyncUpdateResponse,
-  NewMessageResponse,
-  TypingEventResponse,
-  ErrorResponse,
-} from '@/lib/schemas';
+// Re-export everything from schemas for convenience
+export * from '@/lib/schemas';
 
-// Export schemas for validation
-export {
-  UserSchema,
-  RoomSchema,
-  ChatMessageSchema,
-  TypingUserSchema,
-  VideoStateSchema,
-  VideoTypeSchema,
-  UserNameSchema,
-  RoomIdSchema,
-  VideoUrlSchema,
-  CreateRoomDataSchema,
-  JoinRoomDataSchema,
-  SetVideoDataSchema,
-  VideoControlDataSchema,
-  PromoteHostDataSchema,
-  SendMessageDataSchema,
-  SyncCheckDataSchema,
-  RoomActionDataSchema,
-  RoomCreatedResponseSchema,
-  RoomJoinedResponseSchema,
-  UserJoinedResponseSchema,
-  UserLeftResponseSchema,
-  UserPromotedResponseSchema,
-  VideoSetResponseSchema,
-  VideoEventResponseSchema,
-  SyncUpdateResponseSchema,
-  NewMessageResponseSchema,
-  TypingEventResponseSchema,
-  ErrorResponseSchema,
-} from '@/lib/schemas';
-
-// Import types for use in SocketEvents
+// Import only the types needed for SocketEvents interface
 import type {
-  User,
-  Room,
-  ChatMessage,
-  VideoState,
   CreateRoomData,
   JoinRoomData,
   SetVideoData,
@@ -84,6 +22,7 @@ import type {
   NewMessageResponse,
   TypingEventResponse,
   ErrorResponse,
+  VideoState,
 } from '@/lib/schemas';
 
 export interface SocketEvents {
