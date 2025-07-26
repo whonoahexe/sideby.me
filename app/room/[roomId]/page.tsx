@@ -824,7 +824,7 @@ export default function RoomPage() {
       {/* Sync Error */}
       {syncError && (
         <Card className="border-destructive">
-          <CardContent className="pt-6">
+          <CardContent>
             <div className="flex items-center space-x-2 text-destructive">
               <AlertCircle className="h-4 w-4" />
               <span className="text-sm">{syncError}</span>
