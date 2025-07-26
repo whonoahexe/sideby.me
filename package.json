@@ -7,7 +7,7 @@
     "dev:js": "node server.js",
     "dev:redis": "docker-compose up -d && npm run dev",
     "build": "next build",
-    "start": "NODE_ENV=production tsx server.ts",
+    "start": "tsx server.ts",
     "lint": "next lint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -27,6 +27,7 @@
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@types/hls.js": "^0.13.3",
+    "@types/node": "^20",
     "@types/uuid": "^10.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -43,12 +44,13 @@
     "socket.io-client": "^4.8.1",
     "sonner": "^2.0.6",
     "tailwind-merge": "^3.3.1",
+    "tsx": "^4.20.0",
+    "typescript": "^5",
     "uuid": "^11.1.0",
     "zod": "^4.0.10"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
@@ -57,7 +59,6 @@
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.6.14",
     "tailwindcss": "^3.4.17",
-    "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5"
+    "tailwindcss-animate": "^1.0.7"
   }
 }
