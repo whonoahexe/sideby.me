@@ -3,13 +3,48 @@ import { Server as HTTPServer } from 'http';
 import { Socket } from 'socket.io';
 import { redisService } from '@/lib/redis';
 import { generateRoomId } from '@/lib/video-utils';
-import { Room, User, ChatMessage, SocketEvents } from '@/types';
+import {
+  Room,
+  User,
+  ChatMessage,
+  SocketEvents,
+  CreateRoomDataSchema,
+  JoinRoomDataSchema,
+  SetVideoDataSchema,
+  VideoControlDataSchema,
+  SendMessageDataSchema,
+  SyncCheckDataSchema,
+  RoomActionDataSchema,
+} from '@/types';
 import { v4 as uuidv4 } from 'uuid';
+import { z } from 'zod';
 
 interface SocketData {
   userId: string;
   userName: string;
   roomId?: string;
+}
+
+// Helper function for validating data with Zod schemas
+function validateData<T>(
+  schema: z.ZodSchema<T>,
+  data: unknown,
+  socket: Socket<SocketEvents, SocketEvents, object, SocketData>
+): T | null {
+  try {
+    return schema.parse(data);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      console.error('❌ Validation error:', error.issues);
+      socket.emit('room-error', {
+        error: `Invalid data: ${error.issues.map(issue => issue.message).join(', ')}`,
+      });
+    } else {
+      console.error('❌ Unexpected validation error:', error);
+      socket.emit('room-error', { error: 'Invalid data provided' });
+    }
+    return null;
+  }
 }
 
 let io: IOServer | undefined;
@@ -35,39 +70,18 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
     console.log('User connected:', socket.id);
 
     // Create room
-    socket.on('create-room', async ({ hostName }) => {
+    socket.on('create-room', async data => {
       try {
-        // Validate hostName format
-        if (!hostName || typeof hostName !== 'string') {
-          socket.emit('room-error', { error: 'Invalid name provided' });
-          return;
-        }
+        const validatedData = validateData(CreateRoomDataSchema, data, socket);
+        if (!validatedData) return;
 
-        const trimmedName = hostName.trim();
-        if (trimmedName.length < 2) {
-          socket.emit('room-error', { error: 'Name must be at least 2 characters long' });
-          return;
-        }
-
-        if (trimmedName.length > 50) {
-          socket.emit('room-error', { error: 'Name must be 50 characters or less' });
-          return;
-        }
-
-        if (!/^[a-zA-Z0-9\s\-_.!?]+$/.test(trimmedName)) {
-          socket.emit('room-error', {
-            error:
-              'Name can only contain letters, numbers, spaces, and basic punctuation (- _ . ! ?)',
-          });
-          return;
-        }
-
+        const { hostName } = validatedData;
         const roomId = generateRoomId();
         const userId = uuidv4();
 
         const user: User = {
           id: userId,
-          name: trimmedName,
+          name: hostName,
           isHost: true,
           joinedAt: new Date(),
         };
@@ -75,7 +89,7 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
         const room: Room = {
           id: roomId,
           hostId: userId,
-          hostName: trimmedName,
+          hostName: hostName,
           hostToken: uuidv4(), // Store the host token in the room
           videoType: null,
           videoState: {
@@ -91,7 +105,7 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
         await redisService.createRoom(room);
 
         socket.data.userId = userId;
-        socket.data.userName = trimmedName;
+        socket.data.userName = hostName;
         socket.data.roomId = roomId;
 
         await socket.join(roomId);
@@ -99,7 +113,7 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
         // Emit both events for consistency
         socket.emit('room-created', { roomId, room, hostToken: room.hostToken });
         socket.emit('room-joined', { room, user });
-        console.log(`Room ${roomId} created by ${trimmedName} with token ${room.hostToken}`);
+        console.log(`Room ${roomId} created by ${hostName} with token ${room.hostToken}`);
       } catch (error) {
         console.error('Error creating room:', error);
         socket.emit('room-error', { error: 'Failed to create room' });
@@ -107,34 +121,36 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
     });
 
     // Join room
-    socket.on('join-room', async ({ roomId, userName, hostToken }) => {
+    socket.on('join-room', async data => {
       console.log(
-        `🔐 Join request: roomId=${roomId}, userName=${userName}, hostToken=${hostToken ? 'PROVIDED' : 'MISSING'}, socketId=${socket.id}`
+        `🔐 Join request: roomId=${data?.roomId}, userName=${data?.userName}, hostToken=${data?.hostToken ? 'PROVIDED' : 'MISSING'}, socketId=${socket.id}`
       );
 
       // Check if this exact socket is already in this room
-      if (socket.rooms.has(roomId)) {
+      if (data?.roomId && socket.rooms.has(data.roomId)) {
         console.log(
-          `🔄 Socket ${socket.id} already in room ${roomId}, checking if this is the room creator...`
+          `🔄 Socket ${socket.id} already in room ${data.roomId}, checking if this is the room creator...`
         );
 
         // If socket is already in room, this might be the room creator or a guest who already joined
         // Check if they have valid credentials for this room
-        const room = await redisService.getRoom(roomId);
+        const room = await redisService.getRoom(data.roomId);
         if (room) {
-          const existingUser = room.users.find(u => u.name === userName?.trim());
+          const existingUser = room.users.find(u => u.name === data?.userName?.trim());
 
           if (existingUser) {
             // If this is the host with valid token, emit join success
-            if (existingUser.isHost && hostToken === room.hostToken) {
-              console.log(`✅ Room creator ${userName} already in room, emitting join success`);
+            if (existingUser.isHost && data?.hostToken === room.hostToken) {
+              console.log(
+                `✅ Room creator ${data.userName} already in room, emitting join success`
+              );
               socket.emit('room-joined', { room, user: existingUser });
               return;
             }
 
             // If this is a guest who already joined, also emit join success
             if (!existingUser.isHost) {
-              console.log(`✅ Guest ${userName} already in room, emitting join success`);
+              console.log(`✅ Guest ${data.userName} already in room, emitting join success`);
               socket.emit('room-joined', { room, user: existingUser });
               return;
             }
@@ -147,31 +163,10 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
       }
 
       try {
-        // Validate userName format
-        if (!userName || typeof userName !== 'string') {
-          socket.emit('room-error', { error: 'Invalid name provided' });
-          return;
-        }
+        const validatedData = validateData(JoinRoomDataSchema, data, socket);
+        if (!validatedData) return;
 
-        const trimmedName = userName.trim();
-        if (trimmedName.length < 2) {
-          socket.emit('room-error', { error: 'Name must be at least 2 characters long' });
-          return;
-        }
-
-        if (trimmedName.length > 50) {
-          socket.emit('room-error', { error: 'Name must be 50 characters or less' });
-          return;
-        }
-
-        if (!/^[a-zA-Z0-9\s\-_.!?]+$/.test(trimmedName)) {
-          socket.emit('room-error', {
-            error:
-              'Name can only contain letters, numbers, spaces, and basic punctuation (- _ . ! ?)',
-          });
-          return;
-        }
-
+        const { roomId, userName, hostToken } = validatedData;
         const room = await redisService.getRoom(roomId);
         if (!room) {
           socket.emit('room-error', { error: 'Room not found' });
@@ -179,20 +174,20 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
         }
 
         // Check if this user is already in the room (by name)
-        const existingUser = room.users.find(u => u.name === trimmedName);
+        const existingUser = room.users.find(u => u.name === userName);
         if (existingUser) {
           // If existing user is the host, verify they have the correct token
           if (existingUser.isHost) {
             if (!hostToken || hostToken !== room.hostToken) {
               console.log(
-                `Host impersonation attempt by ${trimmedName} - existing user but invalid token`
+                `Host impersonation attempt by ${userName} - existing user but invalid token`
               );
               socket.emit('room-error', {
                 error: 'Invalid host credentials. Only the room creator can join as host.',
               });
               return;
             }
-            console.log(`Host ${trimmedName} verified with valid token (existing user)`);
+            console.log(`Host ${userName} verified with valid token (existing user)`);
 
             // User already exists in room and is authenticated, update their socket data
             socket.data.userId = existingUser.id;
@@ -201,35 +196,35 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
 
             await socket.join(roomId);
             console.log(
-              `${trimmedName} rejoined room ${roomId} (existing user, isHost: ${existingUser.isHost})`
+              `${userName} rejoined room ${roomId} (existing user, isHost: ${existingUser.isHost})`
             );
             socket.emit('room-joined', { room, user: existingUser });
             return;
           } else {
             // Guest trying to join with name of existing user (not allowed)
-            console.log(`Duplicate name attempt by ${trimmedName} - name already taken by guest`);
+            console.log(`Duplicate name attempt by ${userName} - name already taken by guest`);
             socket.emit('room-error', {
-              error: `The name "${trimmedName}" is already taken in this room. Please choose a different name.`,
+              error: `The name "${userName}" is already taken in this room. Please choose a different name.`,
             });
             return;
           }
         }
 
         // Check if this user is trying to be the host
-        const isClaimingHost = room.hostName === trimmedName;
+        const isClaimingHost = room.hostName === userName;
         let isRoomHost = false;
 
         console.log(
-          `Join attempt: user="${trimmedName}", isClaimingHost=${isClaimingHost}, hostToken="${hostToken}", roomHostToken="${room.hostToken}"`
+          `Join attempt: user="${userName}", isClaimingHost=${isClaimingHost}, hostToken="${hostToken}", roomHostToken="${room.hostToken}"`
         );
 
         if (isClaimingHost) {
           // Verify they have the correct host token
           if (hostToken && hostToken === room.hostToken) {
             isRoomHost = true;
-            console.log(`Host ${trimmedName} verified with valid token`);
+            console.log(`Host ${userName} verified with valid token`);
           } else {
-            console.log(`Host impersonation attempt by ${trimmedName} - invalid or missing token`);
+            console.log(`Host impersonation attempt by ${userName} - invalid or missing token`);
             socket.emit('room-error', {
               error: 'Invalid host credentials. Only the room creator can join as host.',
             });
@@ -237,10 +232,10 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
           }
         } else {
           // Not claiming to be host, but check if name conflicts with host name
-          if (room.hostName === trimmedName) {
-            console.log(`Guest attempting to use host name: ${trimmedName}`);
+          if (room.hostName === userName) {
+            console.log(`Guest attempting to use host name: ${userName}`);
             socket.emit('room-error', {
-              error: `The name "${trimmedName}" is reserved for the room host. Please choose a different name.`,
+              error: `The name "${userName}" is reserved for the room host. Please choose a different name.`,
             });
             return;
           }
@@ -250,7 +245,7 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
         const userId = uuidv4();
         const user: User = {
           id: userId,
-          name: trimmedName,
+          name: userName,
           isHost: isRoomHost,
           joinedAt: new Date(),
         };
@@ -259,14 +254,14 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
         if (isRoomHost) {
           room.hostId = userId;
           await redisService.updateRoom(roomId, room);
-          console.log(`Host ${trimmedName} rejoining room ${roomId} with new user ID`);
+          console.log(`Host ${userName} rejoining room ${roomId} with new user ID`);
         }
 
         await redisService.addUserToRoom(roomId, user);
         const updatedRoom = await redisService.getRoom(roomId);
 
         socket.data.userId = userId;
-        socket.data.userName = trimmedName;
+        socket.data.userName = userName;
         socket.data.roomId = roomId;
 
         await socket.join(roomId);
@@ -274,7 +269,7 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
         socket.emit('room-joined', { room: updatedRoom!, user });
         socket.to(roomId).emit('user-joined', { user });
 
-        console.log(`${trimmedName} joined room ${roomId} as ${isRoomHost ? 'host' : 'guest'}`);
+        console.log(`${userName} joined room ${roomId} as ${isRoomHost ? 'host' : 'guest'}`);
       } catch (error) {
         console.error('Error joining room:', error);
         socket.emit('room-error', { error: 'Failed to join room' });
@@ -282,13 +277,21 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
     });
 
     // Leave room
-    socket.on('leave-room', async ({ roomId }) => {
+    socket.on('leave-room', async data => {
+      const validatedData = validateData(RoomActionDataSchema, data, socket);
+      if (!validatedData) return;
+
+      const { roomId } = validatedData;
       await handleLeaveRoom(socket, roomId);
     });
 
     // Set video URL
-    socket.on('set-video', async ({ roomId, videoUrl }) => {
+    socket.on('set-video', async data => {
       try {
+        const validatedData = validateData(SetVideoDataSchema, data, socket);
+        if (!validatedData) return;
+
+        const { roomId, videoUrl } = validatedData;
         const room = await redisService.getRoom(roomId);
         if (!room) {
           socket.emit('room-error', { error: 'Room not found' });
@@ -324,8 +327,12 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
     });
 
     // Play video
-    socket.on('play-video', async ({ roomId, currentTime }) => {
+    socket.on('play-video', async data => {
       try {
+        const validatedData = validateData(VideoControlDataSchema, data, socket);
+        if (!validatedData) return;
+
+        const { roomId, currentTime } = validatedData;
         const room = await redisService.getRoom(roomId);
         if (!room) {
           socket.emit('room-error', { error: 'Room not found' });
@@ -360,8 +367,12 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
     });
 
     // Pause video
-    socket.on('pause-video', async ({ roomId, currentTime }) => {
+    socket.on('pause-video', async data => {
       try {
+        const validatedData = validateData(VideoControlDataSchema, data, socket);
+        if (!validatedData) return;
+
+        const { roomId, currentTime } = validatedData;
         const room = await redisService.getRoom(roomId);
         if (!room) {
           socket.emit('room-error', { error: 'Room not found' });
@@ -396,8 +407,12 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
     });
 
     // Seek video
-    socket.on('seek-video', async ({ roomId, currentTime }) => {
+    socket.on('seek-video', async data => {
       try {
+        const validatedData = validateData(VideoControlDataSchema, data, socket);
+        if (!validatedData) return;
+
+        const { roomId, currentTime } = validatedData;
         const room = await redisService.getRoom(roomId);
         if (!room) {
           socket.emit('room-error', { error: 'Room not found' });
@@ -476,8 +491,13 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
     });
 
     // Sync check for hosts
-    socket.on('sync-check', async ({ roomId, currentTime, isPlaying, timestamp }) => {
+    socket.on('sync-check', async data => {
       try {
+        const validatedData = validateData(SyncCheckDataSchema, data, socket);
+        if (!validatedData) return;
+
+        const { roomId, currentTime, isPlaying, timestamp } = validatedData;
+
         if (!socket.data.userId) {
           socket.emit('error', { error: 'Not authenticated' });
           return;
@@ -508,8 +528,13 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
     });
 
     // Typing indicators
-    socket.on('typing-start', async ({ roomId }) => {
+    socket.on('typing-start', async data => {
       try {
+        const validatedData = validateData(RoomActionDataSchema, data, socket);
+        if (!validatedData) return;
+
+        const { roomId } = validatedData;
+
         if (!socket.data.userId || !socket.data.userName) {
           socket.emit('error', { error: 'Not authenticated' });
           return;
@@ -528,8 +553,13 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
       }
     });
 
-    socket.on('typing-stop', async ({ roomId }) => {
+    socket.on('typing-stop', async data => {
       try {
+        const validatedData = validateData(RoomActionDataSchema, data, socket);
+        if (!validatedData) return;
+
+        const { roomId } = validatedData;
+
         if (!socket.data.userId) {
           socket.emit('error', { error: 'Not authenticated' });
           return;
@@ -548,8 +578,13 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
     });
 
     // Send chat message
-    socket.on('send-message', async ({ roomId, message }) => {
+    socket.on('send-message', async data => {
       try {
+        const validatedData = validateData(SendMessageDataSchema, data, socket);
+        if (!validatedData) return;
+
+        const { roomId, message } = validatedData;
+
         if (!socket.data.userId || !socket.data.userName) {
           socket.emit('error', { error: 'Not authenticated' });
           return;
@@ -576,7 +611,11 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
     });
 
     // Leave room
-    socket.on('leave-room', async ({ roomId }) => {
+    socket.on('leave-room', async data => {
+      const validatedData = validateData(RoomActionDataSchema, data, socket);
+      if (!validatedData) return;
+
+      const { roomId } = validatedData;
       await handleLeaveRoom(socket, roomId, true); // true indicates manual leave
     });
 

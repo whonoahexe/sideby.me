@@ -6,8 +6,8 @@
 
 - [x] Improve typing indicator behavior, it should go off after a while if the user stops typing and come back when they resume
 - [x] Allow key controls for guests while typing, such as j, l, k, m, f, or arrow keys, right now they can't use these keys because they don't have permission to control the video
-- [ ] Ensure unique names for hosts and guests
-- [ ] Implement Zod for type inference wherever possible?
+- [x] Ensure unique names for hosts and guests
+- [x] Implement Zod for type inference wherever possible?
 - [ ] Optimize controls dialogue for mobile because it is too long and can be clicked behind (sometimes)
 - [ ] A feature to change videos in between sessions
 - [ ] Enable chat overlay in fullscreen
