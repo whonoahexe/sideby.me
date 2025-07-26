@@ -557,6 +557,16 @@ export default function RoomPage() {
       // Only handle shortcuts if there's a video and user is not a host
       if (!room?.videoUrl || currentUser?.isHost) return;
 
+      // Don't block shortcuts if user is typing in an input field
+      const target = event.target as HTMLElement;
+      const isTypingInInput =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.contentEditable === 'true' ||
+        target.getAttribute('role') === 'textbox';
+
+      if (isTypingInInput) return;
+
       // Common video shortcuts that guests might try
       const videoShortcuts = [
         ' ',
