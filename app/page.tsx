@@ -9,7 +9,7 @@ export default function HomePage() {
   return (
     <div className="space-y-16">
       {/* Hero Section */}
-      <section className="space-y-6 py-12 text-center">
+      <section className="mt-12 space-y-6 py-12 text-center">
         <div className="space-y-3">
           <h1 className="text-4xl font-bold tracking-tight md:text-6xl">
             Watch Videos
@@ -120,7 +120,7 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Support for YouTube videos and direct MP4 links. Just paste the URL and start
+                Support for YouTube videos and direct video links. Just paste the URL and start
                 watching.
               </CardDescription>
             </CardContent>
@@ -143,7 +143,7 @@ export default function HomePage() {
       </section>
 
       {/* How it works */}
-      <section className="space-y-8">
+      <section className="space-y-8 pb-12">
         <div className="space-y-3 text-center">
           <h2 className="text-3xl font-bold">How it works</h2>
           <p className="text-muted-foreground">Get started in just three simple steps</p>
@@ -166,7 +166,7 @@ export default function HomePage() {
             </div>
             <h3 className="text-xl font-semibold">Add Video</h3>
             <p className="text-muted-foreground">
-              Paste a YouTube or MP4 video URL to start watching together
+              {`Paste a YouTube or supported video URL (e.g. MP4, M3U8) to start watching together`}
             </p>
           </div>
 

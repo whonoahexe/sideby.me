@@ -21,7 +21,7 @@ import { UserList } from '@/components/user-list';
 import { VideoSetup } from '@/components/video-setup';
 import { parseVideoUrl } from '@/lib/video-utils';
 import { Room, User, ChatMessage, TypingUser } from '@/types';
-import { Copy, Share2, Users, Video, AlertCircle, ExternalLink } from 'lucide-react';
+import { Copy, Share2, Users, Video, AlertCircle, ExternalLink, Check } from 'lucide-react';
 
 export default function RoomPage() {
   const params = useParams();
@@ -37,6 +37,7 @@ export default function RoomPage() {
   const [showGuestInfoBanner, setShowGuestInfoBanner] = useState(false);
   const [syncError, setSyncError] = useState('');
   const [isJoining, setIsJoining] = useState(false);
+  const [showCopied, setShowCopied] = useState(false);
 
   const { socket, isConnected } = useSocket();
   const youtubePlayerRef = useRef<YouTubePlayerRef>(null);
@@ -739,6 +740,8 @@ export default function RoomPage() {
 
   const copyRoomId = () => {
     navigator.clipboard.writeText(roomId);
+    setShowCopied(true);
+    setTimeout(() => setShowCopied(false), 2000);
   };
 
   const shareRoom = () => {
@@ -794,11 +797,11 @@ export default function RoomPage() {
       {/* Room Header */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
             <div className="space-y-1">
-              <CardTitle className="flex items-center space-x-2">
-                <Users className="h-5 w-5" />
-                <span>Room {roomId}</span>
+              <CardTitle className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <Users className="h-5 w-5 flex-shrink-0" />
+                <span className="break-all sm:break-normal">Room {roomId}</span>
                 {currentUser.isHost && <Badge variant="default">Host</Badge>}
               </CardTitle>
               <p className="text-sm text-muted-foreground">
@@ -807,10 +810,19 @@ export default function RoomPage() {
               </p>
             </div>
 
-            <div className="flex space-x-2">
-              <Button variant="outline" size="sm" onClick={copyRoomId}>
-                <Copy className="mr-2 h-4 w-4" />
-                Copy ID
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={copyRoomId}
+                className="relative overflow-hidden"
+              >
+                {showCopied ? (
+                  <Check className="mr-2 h-4 w-4" />
+                ) : (
+                  <Copy className="mr-2 h-4 w-4" />
+                )}
+                {showCopied ? 'Copied!' : 'Copy ID'}
               </Button>
               <Button variant="outline" size="sm" onClick={shareRoom}>
                 <Share2 className="mr-2 h-4 w-4" />
