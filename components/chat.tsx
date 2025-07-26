@@ -31,14 +31,32 @@ export function Chat({
 }: ChatProps) {
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [previousMessageCount, setPreviousMessageCount] = useState(0);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-scroll to bottom when new messages arrive or typing users change
+  // Auto-scroll to bottom only when new messages arrive (not on initial load or typing changes)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, typingUsers]);
+    // Only scroll if we have new messages (not initial load)
+    if (messages.length > 0 && messages.length > previousMessageCount) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    setPreviousMessageCount(messages.length);
+  }, [messages, previousMessageCount]);
+
+  // Scroll to bottom when typing users change (but only within the chat container)
+  useEffect(() => {
+    if (typingUsers.length > 0) {
+      // Use a more gentle scroll that doesn't affect the main page
+      if (scrollAreaRef.current) {
+        const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        if (scrollContainer) {
+          scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        }
+      }
+    }
+  }, [typingUsers]);
 
   // Handle typing indicators
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
