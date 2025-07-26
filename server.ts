@@ -1,7 +1,6 @@
 import { createServer } from 'http';
 import { parse } from 'url';
 import next from 'next';
-import { Server } from 'socket.io';
 import { initSocketIO } from './lib/socket-server';
 
 const dev = process.env.NODE_ENV !== 'production';
@@ -24,7 +23,7 @@ app.prepare().then(() => {
   });
 
   // Initialize Socket.IO with the TypeScript implementation
-  const io = initSocketIO(httpServer);
+  initSocketIO(httpServer);
 
   httpServer
     .once('error', err => {
