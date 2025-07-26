@@ -112,6 +112,40 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
         `🔐 Join request: roomId=${roomId}, userName=${userName}, hostToken=${hostToken ? 'PROVIDED' : 'MISSING'}, socketId=${socket.id}`
       );
 
+      // Check if this exact socket is already in this room
+      if (socket.rooms.has(roomId)) {
+        console.log(
+          `🔄 Socket ${socket.id} already in room ${roomId}, checking if this is the room creator...`
+        );
+
+        // If socket is already in room, this might be the room creator or a guest who already joined
+        // Check if they have valid credentials for this room
+        const room = await redisService.getRoom(roomId);
+        if (room) {
+          const existingUser = room.users.find(u => u.name === userName?.trim());
+
+          if (existingUser) {
+            // If this is the host with valid token, emit join success
+            if (existingUser.isHost && hostToken === room.hostToken) {
+              console.log(`✅ Room creator ${userName} already in room, emitting join success`);
+              socket.emit('room-joined', { room, user: existingUser });
+              return;
+            }
+
+            // If this is a guest who already joined, also emit join success
+            if (!existingUser.isHost) {
+              console.log(`✅ Guest ${userName} already in room, emitting join success`);
+              socket.emit('room-joined', { room, user: existingUser });
+              return;
+            }
+          }
+        }
+
+        // Otherwise, ignore the duplicate attempt
+        console.log(`🔄 Ignoring duplicate join attempt for unknown user`);
+        return;
+      }
+
       try {
         // Validate userName format
         if (!userName || typeof userName !== 'string') {

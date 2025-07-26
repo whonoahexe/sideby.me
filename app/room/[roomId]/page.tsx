@@ -370,6 +370,14 @@ export default function RoomPage() {
 
     const handleRoomError = ({ error }: { error: string }) => {
       console.error('🚨 Room error:', error);
+
+      // If we're already in a room (successful join), don't reset flags
+      // This prevents duplicate join attempts after a successful join
+      if (room && currentUser) {
+        console.log('🛡️ Ignoring room error - already successfully in room');
+        return;
+      }
+
       setError(error);
       setIsJoining(false);
       hasAttemptedJoinRef.current = false; // Reset so user can try again
@@ -430,6 +438,13 @@ export default function RoomPage() {
     // Prevent multiple join attempts (especially important for React Strict Mode)
     if (isJoining || hasAttemptedJoinRef.current) {
       console.log('⏳ Join already in progress or attempted, skipping');
+      return;
+    }
+
+    // Check if socket is already in this room (additional safety check)
+    if ((socket as any).rooms?.has(roomId)) {
+      console.log('🏠 Socket already in room, skipping join');
+      hasAttemptedJoinRef.current = true;
       return;
     }
 
