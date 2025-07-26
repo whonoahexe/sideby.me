@@ -24,6 +24,22 @@ export default function CreateRoomPage() {
       return;
     }
 
+    if (hostName.trim().length < 2) {
+      setError('Name must be at least 2 characters long');
+      return;
+    }
+
+    if (hostName.trim().length > 50) {
+      setError('Name must be 50 characters or less');
+      return;
+    }
+
+    // Check for invalid characters (allow letters, numbers, spaces, basic punctuation)
+    if (!/^[a-zA-Z0-9\s\-_.!?]+$/.test(hostName.trim())) {
+      setError('Name can only contain letters, numbers, spaces, and basic punctuation (- _ . ! ?)');
+      return;
+    }
+
     if (!socket || !isConnected) {
       setError('Not connected to server. Please try again.');
       return;

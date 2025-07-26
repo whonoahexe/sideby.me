@@ -31,6 +31,22 @@ export default function JoinRoomPage() {
       return;
     }
 
+    if (userName.trim().length < 2) {
+      setError('Name must be at least 2 characters long');
+      return;
+    }
+
+    if (userName.trim().length > 50) {
+      setError('Name must be 50 characters or less');
+      return;
+    }
+
+    // Check for invalid characters (allow letters, numbers, spaces, basic punctuation)
+    if (!/^[a-zA-Z0-9\s\-_.!?]+$/.test(userName.trim())) {
+      setError('Name can only contain letters, numbers, spaces, and basic punctuation (- _ . ! ?)');
+      return;
+    }
+
     if (!isValidRoomId(roomId.trim().toUpperCase())) {
       setError('Please enter a valid 6-character room ID');
       return;

@@ -498,8 +498,36 @@ export default function RoomPage() {
       return;
     }
 
-    console.log('📝 Joining room with prompted name:', userName.trim());
-    socket.emit('join-room', { roomId, userName: userName.trim() });
+    // Validate name format
+    const trimmedName = userName.trim();
+    if (trimmedName.length < 2) {
+      alert('Name must be at least 2 characters long. Please try again.');
+      setIsJoining(false);
+      hasAttemptedJoinRef.current = false;
+      router.push('/join');
+      return;
+    }
+
+    if (trimmedName.length > 50) {
+      alert('Name must be 50 characters or less. Please try again.');
+      setIsJoining(false);
+      hasAttemptedJoinRef.current = false;
+      router.push('/join');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9\s\-_.!?]+$/.test(trimmedName)) {
+      alert(
+        'Name can only contain letters, numbers, spaces, and basic punctuation (- _ . ! ?). Please try again.'
+      );
+      setIsJoining(false);
+      hasAttemptedJoinRef.current = false;
+      router.push('/join');
+      return;
+    }
+
+    console.log('📝 Joining room with prompted name:', trimmedName);
+    socket.emit('join-room', { roomId, userName: trimmedName });
   }, [socket, isConnected, roomId, router, room, currentUser, isJoining]);
 
   // Update cleanup data ref whenever values change
