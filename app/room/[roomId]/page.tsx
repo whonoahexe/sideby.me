@@ -22,6 +22,7 @@ import { VideoSetup } from '@/components/video-setup';
 import { parseVideoUrl } from '@/lib/video-utils';
 import { Room, User, ChatMessage, TypingUser } from '@/types';
 import { Copy, Share2, Users, Video, AlertCircle, ExternalLink, Check } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function RoomPage() {
   const params = useParams();
@@ -53,6 +54,7 @@ export default function RoomPage() {
   });
   const lastPlayerTimeRef = useRef<number>(0);
   const syncCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const hasShownClosureToastRef = useRef<boolean>(false);
   const cleanupDataRef = useRef<{
     socket: typeof socket;
     isConnected: boolean;
@@ -229,19 +231,7 @@ export default function RoomPage() {
         if (!prev) return null;
         const updatedUsers = prev.users.filter(u => u.id !== userId);
 
-        // Check if any hosts remain after this user leaves
-        const remainingHosts = updatedUsers.filter(u => u.isHost);
-
-        if (remainingHosts.length === 0) {
-          console.log('🚪 All hosts left the room, closing room...');
-          // Show error message and redirect all remaining users
-          setError('All hosts have left the room. Redirecting to home page...');
-          setTimeout(() => {
-            router.push('/');
-          }, 3000);
-          return null; // Close the room
-        }
-
+        // Just update the room state - let the server handle room closure logic
         return { ...prev, users: updatedUsers };
       });
     };
@@ -370,6 +360,30 @@ export default function RoomPage() {
 
     const handleRoomError = ({ error }: { error: string }) => {
       console.error('🚨 Room error:', error);
+
+      // Check if this is a room closure message - redirect regardless of current state
+      if (error.includes('All hosts have left') || error.includes('Redirecting to home page')) {
+        console.log('🚪 Room closed by host departure, redirecting to home...');
+
+        // Prevent duplicate toasts
+        if (hasShownClosureToastRef.current) {
+          console.log('🛡️ Closure toast already shown, skipping duplicate');
+          return;
+        }
+        hasShownClosureToastRef.current = true;
+
+        // Show toast notification
+        toast.error('Room Closed', {
+          description: 'All hosts have left the room. You will be redirected to the home page.',
+          duration: 4000,
+        });
+
+        // Redirect after a short delay to allow toast to show
+        setTimeout(() => {
+          router.push('/');
+        }, 1500);
+        return;
+      }
 
       // If we're already in a room (successful join), don't reset flags
       // This prevents duplicate join attempts after a successful join

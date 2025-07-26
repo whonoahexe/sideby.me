@@ -3,6 +3,8 @@ import { Space_Grotesk, Space_Mono } from 'next/font/google';
 import './globals.css';
 import { Navigation } from '@/components/navigation';
 import { SocketProvider } from '@/lib/socket-context';
+import { Toaster } from '@/components/ui/sonner';
+import { ThemeProvider } from '@/components/theme-provider';
 
 const spaceGrotesk = Space_Grotesk({
   variable: '--font-space-grotesk',
@@ -29,12 +31,15 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${spaceGrotesk.variable} ${spaceMono.variable} antialiased`}>
-        <SocketProvider>
-          <div className="min-h-screen bg-background bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-background to-background">
-            <Navigation />
-            <main className="container mx-auto px-4 py-6">{children}</main>
-          </div>
-        </SocketProvider>
+        <ThemeProvider>
+          <SocketProvider>
+            <div className="min-h-screen bg-background bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-background to-background">
+              <Navigation />
+              <main className="container mx-auto px-4 py-6">{children}</main>
+            </div>
+            <Toaster richColors />
+          </SocketProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
