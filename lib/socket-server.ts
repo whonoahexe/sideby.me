@@ -109,8 +109,9 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
     // Join room
     socket.on('join-room', async ({ roomId, userName, hostToken }) => {
       console.log(
-        `🔐 Join request: roomId=${roomId}, userName=${userName}, hostToken=${hostToken ? 'PROVIDED' : 'MISSING'}`
+        `🔐 Join request: roomId=${roomId}, userName=${userName}, hostToken=${hostToken ? 'PROVIDED' : 'MISSING'}, socketId=${socket.id}`
       );
+
       try {
         // Validate userName format
         if (!userName || typeof userName !== 'string') {

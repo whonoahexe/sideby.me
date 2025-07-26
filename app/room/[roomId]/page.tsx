@@ -38,6 +38,7 @@ export default function RoomPage() {
   const [syncError, setSyncError] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
+  const [lastJoinAttempt, setLastJoinAttempt] = useState<number>(0);
 
   const { socket, isConnected } = useSocket();
   const youtubePlayerRef = useRef<YouTubePlayerRef>(null);
@@ -372,6 +373,7 @@ export default function RoomPage() {
       setError(error);
       setIsJoining(false);
       hasAttemptedJoinRef.current = false; // Reset so user can try again
+      setLastJoinAttempt(0); // Reset join attempt debounce
     };
 
     const handleSocketError = ({ error }: { error: string }) => {
@@ -431,9 +433,18 @@ export default function RoomPage() {
       return;
     }
 
+    // Prevent rapid successive join attempts (debounce)
+    const now = Date.now();
+    if (now - lastJoinAttempt < 2000) {
+      // 2 second cooldown
+      console.log('🕒 Too soon since last join attempt, skipping');
+      return;
+    }
+
     // Start the join process
     console.log('🚀 Starting room join process...');
     setIsJoining(true);
+    setLastJoinAttempt(now);
     hasAttemptedJoinRef.current = true;
 
     // Check if this user is the room creator first
@@ -528,7 +539,7 @@ export default function RoomPage() {
 
     console.log('📝 Joining room with prompted name:', trimmedName);
     socket.emit('join-room', { roomId, userName: trimmedName });
-  }, [socket, isConnected, roomId, router, room, currentUser, isJoining]);
+  }, [socket, isConnected, roomId, router, room, currentUser, isJoining, lastJoinAttempt]);
 
   // Update cleanup data ref whenever values change
   useEffect(() => {

@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSocket } from '@/hooks/use-socket';
-import { isValidRoomId } from '@/lib/video-utils';
 import { Users, Hash } from 'lucide-react';
+import { JoinRoomDataSchema, RoomIdSchema, UserNameSchema } from '@/types';
+import { z } from 'zod';
 
 export default function JoinRoomPage() {
   const [roomId, setRoomId] = useState('');
@@ -20,71 +21,66 @@ export default function JoinRoomPage() {
 
   const handleJoinRoom = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!roomId.trim()) {
-      setError('Please enter a room ID');
-      return;
-    }
-
-    if (!userName.trim()) {
-      setError('Please enter your name');
-      return;
-    }
-
-    if (userName.trim().length < 2) {
-      setError('Name must be at least 2 characters long');
-      return;
-    }
-
-    if (userName.trim().length > 50) {
-      setError('Name must be 50 characters or less');
-      return;
-    }
-
-    // Check for invalid characters (allow letters, numbers, spaces, basic punctuation)
-    if (!/^[a-zA-Z0-9\s\-_.!?]+$/.test(userName.trim())) {
-      setError('Name can only contain letters, numbers, spaces, and basic punctuation (- _ . ! ?)');
-      return;
-    }
-
-    if (!isValidRoomId(roomId.trim().toUpperCase())) {
-      setError('Please enter a valid 6-character room ID');
-      return;
-    }
-
-    if (!socket || !isConnected) {
-      setError('Not connected to server. Please try again.');
-      return;
-    }
-
-    setIsLoading(true);
     setError('');
 
-    // Listen for room join response
-    socket.once('room-joined', () => {
-      setIsLoading(false);
-      // Store the join data for the room page
-      sessionStorage.setItem(
-        'join-data',
-        JSON.stringify({
-          roomId: roomId.trim().toUpperCase(),
-          userName: userName.trim(),
-          timestamp: Date.now(),
-        })
-      );
-      router.push(`/room/${roomId.trim().toUpperCase()}`);
-    });
+    try {
+      // Validate with Zod schemas
+      const roomIdResult = RoomIdSchema.safeParse(roomId.trim().toUpperCase());
+      if (!roomIdResult.success) {
+        setError(roomIdResult.error.issues[0].message);
+        return;
+      }
 
-    socket.once('room-error', ({ error }) => {
-      setIsLoading(false);
-      setError(error);
-    });
+      const userNameResult = UserNameSchema.safeParse(userName.trim());
+      if (!userNameResult.success) {
+        setError(userNameResult.error.issues[0].message);
+        return;
+      }
 
-    // Join the room
-    socket.emit('join-room', {
-      roomId: roomId.trim().toUpperCase(),
-      userName: userName.trim(),
-    });
+      const joinData = {
+        roomId: roomIdResult.data,
+        userName: userNameResult.data,
+      };
+
+      // Validate the complete join data
+      const validatedData = JoinRoomDataSchema.parse(joinData);
+
+      if (!socket || !isConnected) {
+        setError('Not connected to server. Please try again.');
+        return;
+      }
+
+      setIsLoading(true);
+
+      // Listen for room join response
+      socket.once('room-joined', () => {
+        setIsLoading(false);
+        // Store the join data for the room page
+        sessionStorage.setItem(
+          'join-data',
+          JSON.stringify({
+            roomId: validatedData.roomId,
+            userName: validatedData.userName,
+            timestamp: Date.now(),
+          })
+        );
+        router.push(`/room/${validatedData.roomId}`);
+      });
+
+      socket.once('room-error', ({ error }) => {
+        setIsLoading(false);
+        setError(error);
+      });
+
+      // Join the room
+      socket.emit('join-room', validatedData);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        setError(error.issues[0].message);
+      } else {
+        setError('Invalid input. Please check your entries.');
+      }
+    }
   };
 
   const handleRoomIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {

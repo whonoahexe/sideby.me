@@ -1,96 +1,127 @@
-export interface User {
-  id: string;
-  name: string;
-  isHost: boolean;
-  joinedAt: Date;
-}
+// Export Zod-inferred types from schemas
+export type {
+  User,
+  Room,
+  ChatMessage,
+  TypingUser,
+  VideoState,
+  VideoType,
+  CreateRoomData,
+  JoinRoomData,
+  SetVideoData,
+  VideoControlData,
+  PromoteHostData,
+  SendMessageData,
+  SyncCheckData,
+  RoomActionData,
+  RoomCreatedResponse,
+  RoomJoinedResponse,
+  UserJoinedResponse,
+  UserLeftResponse,
+  UserPromotedResponse,
+  VideoSetResponse,
+  VideoEventResponse,
+  SyncUpdateResponse,
+  NewMessageResponse,
+  TypingEventResponse,
+  ErrorResponse,
+} from '@/lib/schemas';
 
-export interface Room {
-  id: string;
-  hostId: string;
-  hostName: string;
-  hostToken: string;
-  videoUrl?: string;
-  videoType: 'youtube' | 'mp4' | 'm3u8' | null;
-  videoState: VideoState;
-  users: User[];
-  createdAt: Date;
-}
+// Export schemas for validation
+export {
+  UserSchema,
+  RoomSchema,
+  ChatMessageSchema,
+  TypingUserSchema,
+  VideoStateSchema,
+  VideoTypeSchema,
+  UserNameSchema,
+  RoomIdSchema,
+  VideoUrlSchema,
+  CreateRoomDataSchema,
+  JoinRoomDataSchema,
+  SetVideoDataSchema,
+  VideoControlDataSchema,
+  PromoteHostDataSchema,
+  SendMessageDataSchema,
+  SyncCheckDataSchema,
+  RoomActionDataSchema,
+  RoomCreatedResponseSchema,
+  RoomJoinedResponseSchema,
+  UserJoinedResponseSchema,
+  UserLeftResponseSchema,
+  UserPromotedResponseSchema,
+  VideoSetResponseSchema,
+  VideoEventResponseSchema,
+  SyncUpdateResponseSchema,
+  NewMessageResponseSchema,
+  TypingEventResponseSchema,
+  ErrorResponseSchema,
+} from '@/lib/schemas';
 
-export interface CreateRoomData {
-  hostName: string;
-}
-
-export interface JoinRoomData {
-  roomId: string;
-  userName: string;
-}
-
-export type VideoType = 'youtube' | 'mp4' | 'm3u8' | null;
-
-export interface VideoState {
-  isPlaying: boolean;
-  currentTime: number;
-  duration: number;
-  lastUpdateTime: number;
-}
-
-export interface ChatMessage {
-  id: string;
-  userId: string;
-  userName: string;
-  message: string;
-  timestamp: Date;
-  roomId: string;
-}
-
-export interface TypingUser {
-  userId: string;
-  userName: string;
-  timestamp: number;
-}
+// Import types for use in SocketEvents
+import type {
+  User,
+  Room,
+  ChatMessage,
+  VideoState,
+  CreateRoomData,
+  JoinRoomData,
+  SetVideoData,
+  VideoControlData,
+  PromoteHostData,
+  SendMessageData,
+  SyncCheckData,
+  RoomActionData,
+  RoomCreatedResponse,
+  RoomJoinedResponse,
+  UserJoinedResponse,
+  UserLeftResponse,
+  UserPromotedResponse,
+  VideoSetResponse,
+  VideoEventResponse,
+  SyncUpdateResponse,
+  NewMessageResponse,
+  TypingEventResponse,
+  ErrorResponse,
+} from '@/lib/schemas';
 
 export interface SocketEvents {
   // Room events
-  'create-room': (data: { hostName: string }) => void;
-  'join-room': (data: { roomId: string; userName: string; hostToken?: string }) => void;
-  'leave-room': (data: { roomId: string }) => void;
-  'promote-host': (data: { roomId: string; userId: string }) => void;
-  'room-created': (data: { roomId: string; room: Room; hostToken: string }) => void;
-  'room-joined': (data: { room: Room; user: User }) => void;
-  'room-error': (data: { error: string }) => void;
-  'user-joined': (data: { user: User }) => void;
-  'user-left': (data: { userId: string }) => void;
-  'user-promoted': (data: { userId: string; userName: string }) => void;
+  'create-room': (data: CreateRoomData) => void;
+  'join-room': (data: JoinRoomData) => void;
+  'leave-room': (data: RoomActionData) => void;
+  'promote-host': (data: PromoteHostData) => void;
+  'room-created': (data: RoomCreatedResponse) => void;
+  'room-joined': (data: RoomJoinedResponse) => void;
+  'room-error': (data: ErrorResponse) => void;
+  'user-joined': (data: UserJoinedResponse) => void;
+  'user-left': (data: UserLeftResponse) => void;
+  'user-promoted': (data: UserPromotedResponse) => void;
 
   // Video events
-  'set-video': (data: { roomId: string; videoUrl: string }) => void;
-  'video-set': (data: { videoUrl: string; videoType: 'youtube' | 'mp4' }) => void;
-  'play-video': (data: { roomId: string; currentTime: number }) => void;
-  'pause-video': (data: { roomId: string; currentTime: number }) => void;
-  'seek-video': (data: { roomId: string; currentTime: number }) => void;
-  'sync-check': (data: {
-    roomId: string;
-    currentTime: number;
-    isPlaying: boolean;
-    timestamp: number;
-  }) => void;
-  'video-played': (data: { currentTime: number; timestamp: number }) => void;
-  'video-paused': (data: { currentTime: number; timestamp: number }) => void;
-  'video-seeked': (data: { currentTime: number; timestamp: number }) => void;
-  'sync-update': (data: { currentTime: number; isPlaying: boolean; timestamp: number }) => void;
+  'set-video': (data: SetVideoData) => void;
+  'video-set': (data: VideoSetResponse) => void;
+  'play-video': (data: VideoControlData) => void;
+  'pause-video': (data: VideoControlData) => void;
+  'seek-video': (data: VideoControlData) => void;
+  'sync-check': (data: SyncCheckData) => void;
+  'video-played': (data: VideoEventResponse) => void;
+  'video-paused': (data: VideoEventResponse) => void;
+  'video-seeked': (data: VideoEventResponse) => void;
+  'sync-update': (data: SyncUpdateResponse) => void;
   'sync-video': (data: { videoState: VideoState }) => void;
 
   // Chat events
-  'send-message': (data: { roomId: string; message: string }) => void;
-  'message-sent': (data: { message: ChatMessage }) => void;
-  'new-message': (data: { message: ChatMessage }) => void;
-  'typing-start': (data: { roomId: string }) => void;
-  'typing-stop': (data: { roomId: string }) => void;
-  'user-typing': (data: { userId: string; userName: string }) => void;
-  'user-stopped-typing': (data: { userId: string }) => void;
+  'send-message': (data: SendMessageData) => void;
+  'message-sent': (data: NewMessageResponse) => void;
+  'new-message': (data: NewMessageResponse) => void;
+  'typing-start': (data: RoomActionData) => void;
+  'typing-stop': (data: RoomActionData) => void;
+  'user-typing': (data: TypingEventResponse) => void;
+  'user-stopped-typing': (data: UserLeftResponse) => void;
 
   // General events
-  error: (data: { error: string }) => void;
+  error: (data: ErrorResponse) => void;
   disconnect: () => void;
 }
