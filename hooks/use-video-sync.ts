@@ -160,12 +160,17 @@ export function useVideoSync({
 
   // Video control handlers for hosts
   const handleVideoPlay = useCallback(() => {
+    console.log('handleVideoPlay called', { hasRoom: !!room, isHost: currentUser?.isHost, hasSocket: !!socket });
     if (!room || !currentUser?.isHost || !socket) return;
 
     const player = getCurrentPlayer();
-    if (!player) return;
+    if (!player) {
+      console.log('No player found');
+      return;
+    }
 
     const currentTime = player.getCurrentTime();
+    console.log('Emitting play-video', { roomId, currentTime });
 
     lastControlActionRef.current = {
       timestamp: Date.now(),

@@ -197,6 +197,7 @@ export function VideoPlayerContainer({
             onPlay={onPlay}
             onPause={onPause}
             onSeeked={onSeeked}
+            isHost={isHost}
             className="h-full w-full"
           />
         );

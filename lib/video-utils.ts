@@ -2,6 +2,7 @@ import { VideoType } from '@/types';
 
 export function parseVideoUrl(url: string): { type: VideoType; embedUrl: string } | null {
   try {
+    console.log('Parsing video URL:', url);
     const urlObj = new URL(url);
 
     // YouTube URLs
@@ -15,31 +16,39 @@ export function parseVideoUrl(url: string): { type: VideoType; embedUrl: string 
       }
 
       if (videoId) {
-        return {
-          type: 'youtube',
+        const result = {
+          type: 'youtube' as VideoType,
           embedUrl: `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${window.location.origin}`,
         };
+        console.log('Parsed as YouTube:', result);
+        return result;
       }
     }
 
     // Direct video URLs (MP4, WebM, etc.)
     if (url.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i)) {
-      return {
-        type: 'mp4',
+      const result = {
+        type: 'mp4' as VideoType,
         embedUrl: url,
       };
+      console.log('Parsed as MP4:', result);
+      return result;
     }
 
     // M3U8 HLS streams
     if (url.match(/\.(m3u8)(\?.*)?$/i) || url.includes('/live/') || url.includes('.m3u8')) {
-      return {
-        type: 'm3u8',
+      const result = {
+        type: 'm3u8' as VideoType,
         embedUrl: url,
       };
+      console.log('Parsed as M3U8:', result);
+      return result;
     }
 
+    console.log('URL did not match any known video formats');
     return null;
-  } catch {
+  } catch (error) {
+    console.error('Error parsing video URL:', error);
     return null;
   }
 }
