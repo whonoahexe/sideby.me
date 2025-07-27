@@ -44,5 +44,4 @@ next-env.d.ts
 .vscode/
 
 # etc
-README.dev.md
-README.prod.md
+.github/

@@ -1,94 +1,26 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useSocket } from '@/hooks/use-socket';
+import { useJoinRoom } from '@/hooks/use-join-room';
 import { Users, Hash } from 'lucide-react';
-import { JoinRoomDataSchema, RoomIdSchema, UserNameSchema } from '@/types';
-import { z } from 'zod';
 
 export default function JoinRoomPage() {
-  const [roomId, setRoomId] = useState('');
-  const [userName, setUserName] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { socket, isConnected, isInitialized } = useSocket();
   const router = useRouter();
-
-  const handleJoinRoom = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    try {
-      // Validate with Zod schemas
-      const roomIdResult = RoomIdSchema.safeParse(roomId.trim().toUpperCase());
-      if (!roomIdResult.success) {
-        setError(roomIdResult.error.issues[0].message);
-        return;
-      }
-
-      const userNameResult = UserNameSchema.safeParse(userName.trim());
-      if (!userNameResult.success) {
-        setError(userNameResult.error.issues[0].message);
-        return;
-      }
-
-      const joinData = {
-        roomId: roomIdResult.data,
-        userName: userNameResult.data,
-      };
-
-      // Validate the complete join data
-      const validatedData = JoinRoomDataSchema.parse(joinData);
-
-      if (!socket || !isConnected) {
-        setError('Not connected to server. Please try again.');
-        return;
-      }
-
-      setIsLoading(true);
-
-      // Listen for room join response
-      socket.once('room-joined', () => {
-        setIsLoading(false);
-        // Store the join data for the room page
-        sessionStorage.setItem(
-          'join-data',
-          JSON.stringify({
-            roomId: validatedData.roomId,
-            userName: validatedData.userName,
-            timestamp: Date.now(),
-          })
-        );
-        router.push(`/room/${validatedData.roomId}`);
-      });
-
-      socket.once('room-error', ({ error }) => {
-        setIsLoading(false);
-        setError(error);
-      });
-
-      // Join the room
-      socket.emit('join-room', validatedData);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        setError(error.issues[0].message);
-      } else {
-        setError('Invalid input. Please check your entries.');
-      }
-    }
-  };
-
-  const handleRoomIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (value.length <= 6) {
-      setRoomId(value);
-    }
-  };
+  const {
+    roomId,
+    userName,
+    setUserName,
+    isLoading,
+    error,
+    isConnected,
+    isInitialized,
+    handleJoinRoom,
+    handleRoomIdChange,
+  } = useJoinRoom();
 
   return (
     <div className="mx-auto mt-16 max-w-md">

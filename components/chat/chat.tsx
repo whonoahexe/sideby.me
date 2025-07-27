@@ -50,7 +50,9 @@ export function Chat({
     if (typingUsers.length > 0) {
       // Use a more gentle scroll that doesn't affect the main page
       if (scrollAreaRef.current) {
-        const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        const scrollContainer = scrollAreaRef.current.querySelector(
+          '[data-radix-scroll-area-viewport]'
+        );
         if (scrollContainer) {
           scrollContainer.scrollTop = scrollContainer.scrollHeight;
         }
