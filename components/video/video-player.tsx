@@ -103,7 +103,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
         programmaticActionRef.current = false;
       };
 
-      const handleError = (e: Event) => {
+      const handleError = () => {
         console.error('Video error:', video.error);
         console.error('Error details:', {
           code: video.error?.code,
@@ -139,7 +139,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
         video.removeEventListener('canplay', handleCanPlay);
         video.removeEventListener('loadstart', handleLoadStart);
       };
-    }, [onReady, onPlay, onPause, onTimeUpdate, onSeeked]);
+    }, [onReady, onPlay, onPause, onTimeUpdate, onSeeked, isHost]);
 
     return (
       <video

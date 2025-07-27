@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Maximize, Volume2, VolumeX, Play, Pause, SkipBack, SkipForward, Loader2 } from 'lucide-react';
+import { Maximize, Volume2, VolumeX, Play, Pause, SkipBack, SkipForward, Loader2, MessageCircle } from 'lucide-react';
 
 interface VideoControlsProps {
   videoRef: React.RefObject<HTMLVideoElement> | null;
@@ -11,6 +11,7 @@ interface VideoControlsProps {
   onPlay?: () => void;
   onPause?: () => void;
   onSeek?: (time: number) => void;
+  onShowChatOverlay?: () => void;
   className?: string;
 }
 
@@ -21,6 +22,7 @@ export function VideoControls({
   onPlay,
   onPause,
   onSeek,
+  onShowChatOverlay,
   className,
 }: VideoControlsProps) {
   const [isMuted, setIsMuted] = useState(false);
@@ -29,7 +31,6 @@ export function VideoControls({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [isClient, setIsClient] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const sliderRef = useRef<HTMLDivElement>(null);
   const programmaticActionRef = useRef(false);
@@ -37,7 +38,6 @@ export function VideoControls({
 
   // Handle client-side hydration and initial control visibility
   useEffect(() => {
-    setIsClient(true);
     setShowControls(true); // Ensure controls are visible after hydration
 
     // Start the auto-hide timer on mount
@@ -53,11 +53,11 @@ export function VideoControls({
     const handleFullscreenChange = () => {
       const isCurrentlyFullscreen = !!(
         document.fullscreenElement ||
-        (document as any).webkitFullscreenElement ||
-        (document as any).msFullscreenElement
+        (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement ||
+        (document as Document & { msFullscreenElement?: Element }).msFullscreenElement
       );
       setIsFullscreen(isCurrentlyFullscreen);
-      
+
       // Show controls when entering/exiting fullscreen
       if (isCurrentlyFullscreen !== isFullscreen) {
         showControlsWithAutoHide();
@@ -139,40 +139,42 @@ export function VideoControls({
     // Check if we're currently in fullscreen mode
     const isCurrentlyFullscreen = !!(
       document.fullscreenElement ||
-      (document as any).webkitFullscreenElement ||
-      (document as any).msFullscreenElement
+      (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement ||
+      (document as Document & { msFullscreenElement?: Element }).msFullscreenElement
     );
 
     if (isCurrentlyFullscreen) {
       // Exit fullscreen
       if (document.exitFullscreen) {
         document.exitFullscreen();
-      } else if ((document as any).webkitExitFullscreen) {
-        (document as any).webkitExitFullscreen();
-      } else if ((document as any).msExitFullscreen) {
-        (document as any).msExitFullscreen();
+      } else if ((document as Document & { webkitExitFullscreen?: () => void }).webkitExitFullscreen) {
+        (document as Document & { webkitExitFullscreen: () => void }).webkitExitFullscreen();
+      } else if ((document as Document & { msExitFullscreen?: () => void }).msExitFullscreen) {
+        (document as Document & { msExitFullscreen: () => void }).msExitFullscreen();
       }
     } else {
       // Enter fullscreen
       // Get the video container (parent element) instead of the video element
       const videoContainer = videoRef?.current?.closest('[data-video-container]') as HTMLElement;
-      
+
       if (videoContainer) {
         if (videoContainer.requestFullscreen) {
           videoContainer.requestFullscreen();
-        } else if ((videoContainer as any).webkitRequestFullscreen) {
-          (videoContainer as any).webkitRequestFullscreen();
-        } else if ((videoContainer as any).msRequestFullscreen) {
-          (videoContainer as any).msRequestFullscreen();
+        } else if ((videoContainer as HTMLElement & { webkitRequestFullscreen?: () => void }).webkitRequestFullscreen) {
+          (videoContainer as HTMLElement & { webkitRequestFullscreen: () => void }).webkitRequestFullscreen();
+        } else if ((videoContainer as HTMLElement & { msRequestFullscreen?: () => void }).msRequestFullscreen) {
+          (videoContainer as HTMLElement & { msRequestFullscreen: () => void }).msRequestFullscreen();
         }
       } else if (videoRef?.current) {
         // Fallback to video element if container not found
         if (videoRef.current.requestFullscreen) {
           videoRef.current.requestFullscreen();
-        } else if ((videoRef.current as any).webkitRequestFullscreen) {
-          (videoRef.current as any).webkitRequestFullscreen();
-        } else if ((videoRef.current as any).msRequestFullscreen) {
-          (videoRef.current as any).msRequestFullscreen();
+        } else if (
+          (videoRef.current as HTMLVideoElement & { webkitRequestFullscreen?: () => void }).webkitRequestFullscreen
+        ) {
+          (videoRef.current as HTMLVideoElement & { webkitRequestFullscreen: () => void }).webkitRequestFullscreen();
+        } else if ((videoRef.current as HTMLVideoElement & { msRequestFullscreen?: () => void }).msRequestFullscreen) {
+          (videoRef.current as HTMLVideoElement & { msRequestFullscreen: () => void }).msRequestFullscreen();
         }
       }
     }
@@ -222,7 +224,13 @@ export function VideoControls({
     handleSliderMove(e);
 
     const handleMouseMove = (e: MouseEvent) => {
-      handleSliderMove(e as any);
+      // Create a synthetic event-like object for handleSliderMove
+      const syntheticEvent = {
+        clientX: e.clientX,
+        currentTarget: sliderRef.current,
+        preventDefault: () => e.preventDefault(),
+      } as React.MouseEvent<HTMLDivElement>;
+      handleSliderMove(syntheticEvent);
     };
 
     const handleMouseUp = () => {
@@ -317,14 +325,14 @@ export function VideoControls({
       {/* Controls overlay */}
       <div
         className={`absolute inset-x-0 bottom-0 transition-opacity duration-200 ${
-          isFullscreen 
-            ? 'bg-gradient-to-t from-black/90 to-transparent p-6' 
+          isFullscreen
+            ? 'bg-gradient-to-t from-black/90 to-transparent p-6'
             : 'bg-gradient-to-t from-black/70 to-transparent p-4'
         } ${showControls ? 'opacity-100' : 'opacity-0'}`}
       >
         {/* Host seek bar */}
         {isHost && (
-          <div className={isFullscreen ? "mb-6" : "mb-4"}>
+          <div className={isFullscreen ? 'mb-6' : 'mb-4'}>
             <div
               ref={sliderRef}
               className={`seek-slider group relative cursor-pointer rounded-full bg-white/20 transition-all hover:bg-white/30 ${
@@ -348,9 +356,9 @@ export function VideoControls({
             </div>
 
             {/* Time display */}
-            <div className={`mt-2 flex justify-between font-mono text-white/90 ${
-              isFullscreen ? 'text-sm' : 'text-xs'
-            }`}>
+            <div
+              className={`mt-2 flex justify-between font-mono text-white/90 ${isFullscreen ? 'text-sm' : 'text-xs'}`}
+            >
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
             </div>
@@ -365,42 +373,46 @@ export function VideoControls({
               <>
                 <Button
                   variant="secondary"
-                  size={isFullscreen ? "default" : "sm"}
+                  size={isFullscreen ? 'default' : 'sm'}
                   onClick={handleSeekBackward}
                   className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-white/20 bg-black/60 p-0 text-white transition-all duration-200 hover:border-primary/50 hover:bg-primary hover:text-primary-foreground`}
                   title="Seek backward 10s"
                 >
-                  <SkipBack className={isFullscreen ? "h-5 w-5" : "h-4 w-4"} />
+                  <SkipBack className={isFullscreen ? 'h-5 w-5' : 'h-4 w-4'} />
                 </Button>
 
                 <Button
                   variant="secondary"
-                  size={isFullscreen ? "default" : "sm"}
+                  size={isFullscreen ? 'default' : 'sm'}
                   onClick={handlePlayPause}
                   className={`${isFullscreen ? 'h-12 w-12' : 'h-10 w-10'} bg-primary p-0 text-primary-foreground shadow-lg transition-all duration-200 hover:scale-105 hover:bg-primary/80 hover:shadow-primary/25`}
                   title={isPlaying ? 'Pause' : 'Play'}
                 >
-                  {isPlaying ? <Pause className={isFullscreen ? "h-6 w-6" : "h-5 w-5"} /> : <Play className={isFullscreen ? "h-6 w-6" : "h-5 w-5"} />}
+                  {isPlaying ? (
+                    <Pause className={isFullscreen ? 'h-6 w-6' : 'h-5 w-5'} />
+                  ) : (
+                    <Play className={isFullscreen ? 'h-6 w-6' : 'h-5 w-5'} />
+                  )}
                 </Button>
 
                 <Button
                   variant="secondary"
-                  size={isFullscreen ? "default" : "sm"}
+                  size={isFullscreen ? 'default' : 'sm'}
                   onClick={handleSeekForward}
                   className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-white/20 bg-black/60 p-0 text-white transition-all duration-200 hover:border-primary/50 hover:bg-primary hover:text-primary-foreground`}
                   title="Seek forward 10s"
                 >
-                  <SkipForward className={isFullscreen ? "h-5 w-5" : "h-4 w-4"} />
+                  <SkipForward className={isFullscreen ? 'h-5 w-5' : 'h-4 w-4'} />
                 </Button>
               </>
             )}
           </div>
 
-          {/* Common controls (mute and fullscreen) */}
+          {/* Common controls (mute, chat, and fullscreen) */}
           <div className="flex items-center space-x-2">
             <Button
               variant="secondary"
-              size={isFullscreen ? "default" : "sm"}
+              size={isFullscreen ? 'default' : 'sm'}
               onClick={handleMuteToggle}
               className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-white/20 p-0 transition-all duration-200 ${
                 isMuted
@@ -409,17 +421,34 @@ export function VideoControls({
               }`}
               title={isMuted ? 'Unmute' : 'Mute'}
             >
-              {isMuted ? <VolumeX className={isFullscreen ? "h-5 w-5" : "h-4 w-4"} /> : <Volume2 className={isFullscreen ? "h-5 w-5" : "h-4 w-4"} />}
+              {isMuted ? (
+                <VolumeX className={isFullscreen ? 'h-5 w-5' : 'h-4 w-4'} />
+              ) : (
+                <Volume2 className={isFullscreen ? 'h-5 w-5' : 'h-4 w-4'} />
+              )}
             </Button>
+
+            {/* Chat button - only show in fullscreen */}
+            {isFullscreen && onShowChatOverlay && (
+              <Button
+                variant="secondary"
+                size="default"
+                onClick={onShowChatOverlay}
+                className="h-11 w-11 border border-white/20 bg-black/60 p-0 text-white transition-all duration-200 hover:border-primary/50 hover:bg-primary hover:text-primary-foreground"
+                title="Show chat"
+              >
+                <MessageCircle className="h-5 w-5" />
+              </Button>
+            )}
 
             <Button
               variant="secondary"
-              size={isFullscreen ? "default" : "sm"}
+              size={isFullscreen ? 'default' : 'sm'}
               onClick={handleFullscreen}
               className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-white/20 bg-black/60 p-0 text-white transition-all duration-200 hover:border-primary/50 hover:bg-primary hover:text-primary-foreground`}
-              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
             >
-              <Maximize className={isFullscreen ? "h-5 w-5" : "h-4 w-4"} />
+              <Maximize className={isFullscreen ? 'h-5 w-5' : 'h-4 w-4'} />
             </Button>
           </div>
         </div>

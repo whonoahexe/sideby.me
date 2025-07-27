@@ -1,6 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { YouTubePlayer, YouTubePlayerRef } from '@/components/video/youtube-player';
+import { YouTubePlayerOverlay } from '@/components/video/youtube-player-overlay';
 import { VideoPlayer, VideoPlayerRef } from '@/components/video/video-player';
 import { HLSPlayer, HLSPlayerRef } from '@/components/video/hls-player';
 import { VideoControls } from '@/components/video/video-controls';
@@ -31,6 +32,7 @@ interface VideoPlayerContainerProps {
   onYouTubeStateChange: (state: number) => void;
   onControlAttempt: () => void;
   onVideoChange?: (url: string) => void;
+  onShowChatOverlay?: () => void;
   youtubePlayerRef: React.RefObject<YouTubePlayerRef | null>;
   videoPlayerRef: React.RefObject<VideoPlayerRef | null>;
   hlsPlayerRef: React.RefObject<HLSPlayerRef | null>;
@@ -47,6 +49,7 @@ export function VideoPlayerContainer({
   onYouTubeStateChange,
   onControlAttempt,
   onVideoChange,
+  onShowChatOverlay,
   youtubePlayerRef,
   videoPlayerRef,
   hlsPlayerRef,
@@ -78,7 +81,8 @@ export function VideoPlayerContainer({
     const interval = setInterval(checkVideoRef, 100);
 
     return () => clearInterval(interval);
-  }, [videoType, videoPlayerRef.current, hlsPlayerRef.current]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoType]);
 
   // Get video element ref for guest controls
   const getVideoElementRef = () => {
@@ -256,12 +260,13 @@ export function VideoPlayerContainer({
               isLoading={isLoading}
               onPlay={onPlay}
               onPause={onPause}
-              onSeek={time => {
+              onSeek={() => {
                 // Only hosts can seek, so only call onSeeked for hosts
                 if (isHost) {
                   onSeeked();
                 }
               }}
+              onShowChatOverlay={onShowChatOverlay}
               className="z-20"
             />
           )}
@@ -274,6 +279,9 @@ export function VideoPlayerContainer({
               title="Only hosts can control video playback"
             />
           )}
+
+          {/* YouTube player overlay for chat button in fullscreen */}
+          {videoType === 'youtube' && <YouTubePlayerOverlay onShowChatOverlay={onShowChatOverlay} />}
         </div>
 
         <div className="mt-4 flex items-center justify-between">
