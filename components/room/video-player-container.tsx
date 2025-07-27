@@ -1,7 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { YouTubePlayer, YouTubePlayerRef } from '@/components/video/youtube-player';
-import { YouTubePlayerOverlay } from '@/components/video/youtube-player-overlay';
 import { VideoPlayer, VideoPlayerRef } from '@/components/video/video-player';
 import { HLSPlayer, HLSPlayerRef } from '@/components/video/hls-player';
 import { VideoControls } from '@/components/video/video-controls';
@@ -279,9 +278,6 @@ export function VideoPlayerContainer({
               title="Only hosts can control video playback"
             />
           )}
-
-          {/* YouTube player overlay for chat button in fullscreen */}
-          {videoType === 'youtube' && <YouTubePlayerOverlay onShowChatOverlay={onShowChatOverlay} />}
         </div>
 
         <div className="mt-4 flex items-center justify-between">
