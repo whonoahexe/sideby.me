@@ -211,8 +211,15 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
     };
 
     const handleSocketError = ({ error }: { error: string }) => {
-      setSyncError(error);
-      setTimeout(() => setSyncError(''), 5000);
+      // Check if this is a video-related error
+      if (error.toLowerCase().includes('video')) {
+        toast.error('Video Error', {
+          description: error,
+        });
+      } else {
+        setSyncError(error);
+        setTimeout(() => setSyncError(''), 5000);
+      }
     };
 
     socket.on('room-joined', handleRoomJoined);

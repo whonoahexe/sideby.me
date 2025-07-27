@@ -3,7 +3,21 @@ import { Button } from '@/components/ui/button';
 import { YouTubePlayer, YouTubePlayerRef } from '@/components/video/youtube-player';
 import { VideoPlayer, VideoPlayerRef } from '@/components/video/video-player';
 import { HLSPlayer, HLSPlayerRef } from '@/components/video/hls-player';
-import { Video, ExternalLink } from 'lucide-react';
+import { Video, ExternalLink, Edit3, AlertTriangle } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useState, useEffect } from 'react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { parseVideoUrl } from '@/lib/video-utils';
+import { toast } from 'sonner';
 
 interface VideoPlayerContainerProps {
   videoUrl: string;
@@ -15,6 +29,7 @@ interface VideoPlayerContainerProps {
   onSeeked: () => void;
   onYouTubeStateChange: (state: number) => void;
   onControlAttempt: () => void;
+  onVideoChange?: (url: string) => void;
   youtubePlayerRef: React.RefObject<YouTubePlayerRef | null>;
   videoPlayerRef: React.RefObject<VideoPlayerRef | null>;
   hlsPlayerRef: React.RefObject<HLSPlayerRef | null>;
@@ -30,10 +45,17 @@ export function VideoPlayerContainer({
   onSeeked,
   onYouTubeStateChange,
   onControlAttempt,
+  onVideoChange,
   youtubePlayerRef,
   videoPlayerRef,
   hlsPlayerRef,
 }: VideoPlayerContainerProps) {
+  const [isChangeDialogOpen, setIsChangeDialogOpen] = useState(false);
+  const [newUrl, setNewUrl] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [pendingUrl, setPendingUrl] = useState('');
   const getVideoTypeName = () => {
     switch (videoType) {
       case 'youtube':
@@ -44,6 +66,106 @@ export function VideoPlayerContainer({
         return 'Video File';
     }
   };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!newUrl.trim()) {
+      setError('Please enter a video URL');
+      return;
+    }
+
+    const parsed = parseVideoUrl(newUrl.trim());
+    if (!parsed) {
+      setError('Please enter a valid YouTube, MP4, or M3U8 video URL');
+      return;
+    }
+
+    setPendingUrl(newUrl.trim());
+    setShowConfirmation(true);
+  };
+
+  const handleChangeVideoClick = () => {
+    if (!newUrl.trim()) {
+      setError('Please enter a video URL');
+      return;
+    }
+
+    const parsed = parseVideoUrl(newUrl.trim());
+    if (!parsed) {
+      setError('Please enter a valid YouTube, MP4, or M3U8 video URL');
+      return;
+    }
+
+    setPendingUrl(newUrl.trim());
+    setShowConfirmation(true);
+  };
+
+  const executeVideoChange = () => {
+    if (!onVideoChange) return;
+
+    setIsLoading(true);
+    setError('');
+
+    onVideoChange(pendingUrl);
+
+    setTimeout(() => {
+      toast.success('Video changed successfully!', {
+        description: `Now playing: ${getVideoTypeDisplayName(pendingUrl)}`,
+      });
+
+      setNewUrl('');
+      setIsLoading(false);
+      setIsChangeDialogOpen(false);
+      setShowConfirmation(false);
+      setPendingUrl('');
+    }, 500);
+  };
+
+  const handleConfirmChange = () => {
+    executeVideoChange();
+  };
+
+  const handleCancelChange = () => {
+    setShowConfirmation(false);
+    setPendingUrl('');
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsChangeDialogOpen(open);
+    if (!open) {
+      // Reset form when dialog closes
+      setNewUrl('');
+      setError('');
+      setShowConfirmation(false);
+      setPendingUrl('');
+    }
+  };
+
+  const getVideoTypeDisplayName = (url: string) => {
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      return 'YouTube';
+    }
+    return 'Video File';
+  };
+
+  // Add scroll lock behavior like host-control-dialog
+  useEffect(() => {
+    if (isChangeDialogOpen) {
+      // Get current scrollbar width
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      // Temporarily add padding to prevent layout shift
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    } else {
+      // Remove padding when modal closes
+      document.body.style.paddingRight = '';
+    }
+
+    return () => {
+      // Cleanup on unmount
+      document.body.style.paddingRight = '';
+    };
+  }, [isChangeDialogOpen]);
 
   const renderPlayer = () => {
     switch (videoType) {
@@ -106,9 +228,84 @@ export function VideoPlayerContainer({
             <Video className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{getVideoTypeName()}</span>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => window.open(videoUrl, '_blank')}>
-            <ExternalLink className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center space-x-2">
+            {isHost && onVideoChange && (
+              <Dialog open={isChangeDialogOpen} onOpenChange={handleDialogOpenChange}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <Edit3 className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="fixed left-[50%] top-[50%] max-h-[85vh] w-[95vw] max-w-md translate-x-[-50%] translate-y-[-50%] gap-0 p-0 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
+                  <DialogHeader className="px-6 pb-4 pt-6">
+                    <DialogTitle className="flex items-center space-x-2 text-base sm:text-lg">
+                      <Edit3 className="h-5 w-5 text-primary" />
+                      <span>Change Video</span>
+                    </DialogTitle>
+                    <DialogDescription className="text-sm">
+                      Enter a new YouTube, MP4, or M3U8 (HLS) video URL to change what everyone is watching.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <ScrollArea className="flex-1 px-6">
+                    <div className="space-y-4 py-4">
+                      {!showConfirmation ? (
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="newVideoUrl">Video URL</Label>
+                            <Input
+                              id="newVideoUrl"
+                              placeholder="Enter YouTube, MP4, or M3U8 URL"
+                              value={newUrl}
+                              onChange={e => setNewUrl(e.target.value)}
+                            />
+                          </div>
+
+                          {error && (
+                            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+                          )}
+                        </form>
+                      ) : (
+                        <div className="rounded-lg bg-amber-50 p-3 dark:bg-amber-950 sm:p-4">
+                          <h4 className="flex items-center gap-2 text-sm font-medium text-amber-900 dark:text-amber-100 sm:text-base">
+                            <AlertTriangle className="h-4 w-4" />
+                            Confirm Video Change
+                          </h4>
+                          <p className="mt-2 text-xs text-amber-700 dark:text-amber-300 sm:text-sm">
+                            This will change the video for everyone in the room. The current video playback will stop
+                            and the new video will be loaded.
+                          </p>
+                          <div className="mt-3 rounded bg-amber-100 p-2 text-xs text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                            <strong>New video:</strong> {pendingUrl}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+
+                  <div className="flex justify-end gap-3 border-t bg-gray-50 p-6 pt-4 dark:bg-black">
+                    {!showConfirmation ? (
+                      <Button onClick={handleChangeVideoClick} size="sm" disabled={isLoading}>
+                        {isLoading ? 'Setting Video...' : 'Change Video'}
+                      </Button>
+                    ) : (
+                      <>
+                        <Button onClick={handleCancelChange} variant="outline" size="sm" disabled={isLoading}>
+                          Cancel
+                        </Button>
+                        <Button onClick={handleConfirmChange} size="sm" disabled={isLoading}>
+                          {isLoading ? 'Changing...' : 'Confirm Change'}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => window.open(videoUrl, '_blank')}>
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -9,7 +9,7 @@
 - [x] Ensure unique names for hosts and guests
 - [x] Implement Zod for type inference wherever possible?
 - [x] Optimize controls dialogue for mobile because it is too long and can be clicked behind (sometimes)
-- [ ] A feature to change videos in between sessions
+- [x] A feature to change videos in between sessions
 - [ ] Enable chat overlay in fullscreen
 - [ ] Implement notification sound for messages?
 - [ ] Develop native player (far future)

@@ -193,6 +193,7 @@ export default function RoomPage() {
               onSeeked={handleVideoSeek}
               onYouTubeStateChange={handleYouTubeStateChange}
               onControlAttempt={handleVideoControlAttempt}
+              onVideoChange={handleSetVideo}
               youtubePlayerRef={youtubePlayerRef}
               videoPlayerRef={videoPlayerRef}
               hlsPlayerRef={hlsPlayerRef}
