@@ -9,6 +9,7 @@ export interface HLSPlayerRef {
   seekTo: (time: number) => void;
   isPaused: () => boolean;
   getDuration: () => number;
+  getVideoElement: () => HTMLVideoElement | null;
 }
 
 interface HLSPlayerProps {
@@ -19,17 +20,20 @@ interface HLSPlayerProps {
   onLoadedMetadata?: () => void;
   onTimeUpdate?: () => void;
   className?: string;
+  isHost?: boolean;
 }
 
 const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(
-  ({ src, onPlay, onPause, onSeeked, onLoadedMetadata, onTimeUpdate, className = '' }, ref) => {
+  ({ src, onPlay, onPause, onSeeked, onLoadedMetadata, onTimeUpdate, className = '', isHost = false }, ref) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const hlsRef = useRef<{ destroy: () => void } | null>(null);
+    const programmaticActionRef = useRef(false);
 
     useImperativeHandle(ref, () => ({
       play: async () => {
         if (videoRef.current) {
           try {
+            programmaticActionRef.current = true;
             await videoRef.current.play();
           } catch (error) {
             console.error('Error playing HLS video:', error);
@@ -38,6 +42,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(
       },
       pause: () => {
         if (videoRef.current) {
+          programmaticActionRef.current = true;
           videoRef.current.pause();
         }
       },
@@ -46,6 +51,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(
       },
       seekTo: (time: number) => {
         if (videoRef.current) {
+          programmaticActionRef.current = true;
           videoRef.current.currentTime = time;
         }
       },
@@ -54,6 +60,9 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(
       },
       getDuration: () => {
         return videoRef.current?.duration || 0;
+      },
+      getVideoElement: () => {
+        return videoRef.current;
       },
     }));
 
@@ -129,18 +138,33 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(
     }, [src]);
 
     const handlePlay = () => {
-      console.log('🎬 HLS video started playing');
-      onPlay?.();
+      console.log('🎬 HLS video started playing', { programmatic: programmaticActionRef.current, isHost });
+      // Only emit if this is a user action (not programmatic) and user is host
+      if (!programmaticActionRef.current && isHost) {
+        onPlay?.();
+      }
+      programmaticActionRef.current = false;
     };
 
     const handlePause = () => {
-      console.log('⏸️ HLS video paused');
-      onPause?.();
+      console.log('⏸️ HLS video paused', { programmatic: programmaticActionRef.current, isHost });
+      // Only emit if this is a user action (not programmatic) and user is host
+      if (!programmaticActionRef.current && isHost) {
+        onPause?.();
+      }
+      programmaticActionRef.current = false;
     };
 
     const handleSeeked = () => {
-      console.log('🎯 HLS video seeked to:', videoRef.current?.currentTime);
-      onSeeked?.();
+      console.log('🎯 HLS video seeked to:', videoRef.current?.currentTime, {
+        programmatic: programmaticActionRef.current,
+        isHost,
+      });
+      // Only emit if this is a user action (not programmatic) and user is host
+      if (!programmaticActionRef.current && isHost) {
+        onSeeked?.();
+      }
+      programmaticActionRef.current = false;
     };
 
     const handleLoadedMetadata = () => {
@@ -156,7 +180,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(
       <video
         ref={videoRef}
         className={`${className}`}
-        controls
+        controls={isHost}
         onPlay={handlePlay}
         onPause={handlePause}
         onSeeked={handleSeeked}
@@ -164,6 +188,8 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(
         onTimeUpdate={handleTimeUpdate}
         playsInline
         preload="metadata"
+        controlsList={isHost ? undefined : 'nodownload noremoteplayback'}
+        disablePictureInPicture={!isHost}
       />
     );
   }

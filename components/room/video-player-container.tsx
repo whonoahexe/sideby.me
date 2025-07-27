@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { YouTubePlayer, YouTubePlayerRef } from '@/components/video/youtube-player';
 import { VideoPlayer, VideoPlayerRef } from '@/components/video/video-player';
 import { HLSPlayer, HLSPlayerRef } from '@/components/video/hls-player';
+import { GuestVideoControls } from '@/components/video/guest-video-controls';
 import { Video, ExternalLink, Edit3, AlertTriangle } from 'lucide-react';
 import {
   Dialog,
@@ -56,6 +57,19 @@ export function VideoPlayerContainer({
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [pendingUrl, setPendingUrl] = useState('');
+
+  // Get video element ref for guest controls
+  const getVideoElementRef = () => {
+    if (videoType === 'mp4' && videoPlayerRef.current) {
+      const videoElement = videoPlayerRef.current.getVideoElement();
+      return videoElement ? { current: videoElement } : null;
+    }
+    if (videoType === 'm3u8' && hlsPlayerRef.current) {
+      const videoElement = hlsPlayerRef.current.getVideoElement();
+      return videoElement ? { current: videoElement } : null;
+    }
+    return null;
+  };
   const getVideoTypeName = () => {
     switch (videoType) {
       case 'youtube':
@@ -186,6 +200,7 @@ export function VideoPlayerContainer({
             onPlay={onPlay}
             onPause={onPause}
             onSeeked={onSeeked}
+            isHost={isHost}
             className="h-full w-full"
           />
         );
@@ -210,14 +225,15 @@ export function VideoPlayerContainer({
         <div className="relative aspect-video overflow-hidden rounded-lg bg-black">
           {renderPlayer()}
 
-          {/* Block video controls for non-hosts */}
-          {!isHost && (
+          {/* Guest controls for non-hosts (non-YouTube videos only) */}
+          {!isHost && videoType !== 'youtube' && (
+            <GuestVideoControls videoRef={getVideoElementRef()} className="z-20" />
+          )}
+
+          {/* Block video controls for non-hosts on YouTube */}
+          {!isHost && videoType === 'youtube' && (
             <div
-              className={`absolute z-10 ${
-                videoType === 'youtube'
-                  ? 'inset-0' // Cover entire YouTube video (controls are everywhere)
-                  : 'inset-x-0 bottom-0 h-12' // Only cover bottom controls for regular video and HLS
-              }`}
+              className="absolute inset-0 z-10"
               onClick={onControlAttempt}
               title="Only hosts can control video playback"
             />

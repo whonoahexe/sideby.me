@@ -20,6 +20,7 @@ export interface VideoPlayerRef {
   getCurrentTime: () => number;
   getDuration: () => number;
   isPaused: () => boolean;
+  getVideoElement: () => HTMLVideoElement | null;
 }
 
 export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
@@ -54,6 +55,9 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
       },
       isPaused: () => {
         return videoRef.current?.paused ?? true;
+      },
+      getVideoElement: () => {
+        return videoRef.current;
       },
     }));
 
@@ -138,7 +142,16 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
     }, [onReady, onPlay, onPause, onTimeUpdate, onSeeked]);
 
     return (
-      <video ref={videoRef} src={src} controls className={className} preload="metadata" playsInline>
+      <video
+        ref={videoRef}
+        src={src}
+        controls={isHost}
+        className={className}
+        preload="metadata"
+        playsInline
+        controlsList={isHost ? undefined : 'nodownload noremoteplayback'}
+        disablePictureInPicture={!isHost}
+      >
         Your browser does not support the video tag.
       </video>
     );
