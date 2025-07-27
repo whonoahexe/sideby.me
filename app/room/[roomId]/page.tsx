@@ -13,12 +13,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useSocket } from '@/hooks/use-socket';
-import { YouTubePlayer, YouTubePlayerRef, YT_STATES } from '@/components/youtube-player';
-import { VideoPlayer, VideoPlayerRef } from '@/components/video-player';
-import { HLSPlayer, HLSPlayerRef } from '@/components/hls-player';
-import { Chat } from '@/components/chat';
-import { UserList } from '@/components/user-list';
-import { VideoSetup } from '@/components/video-setup';
+import { YouTubePlayer, YouTubePlayerRef, YT_STATES } from '@/components/video/youtube-player';
+import { VideoPlayer, VideoPlayerRef } from '@/components/video/video-player';
+import { HLSPlayer, HLSPlayerRef } from '@/components/video/hls-player';
+import { VideoSetup } from '@/components/video/video-setup';
+import { Chat } from '@/components/chat/chat';
+import { UserList } from '@/components/room/user-list';
 import { parseVideoUrl } from '@/lib/video-utils';
 import { calculateCurrentTime } from '@/lib/video-utils';
 import { Room, User, ChatMessage, TypingUser } from '@/types';
