@@ -32,6 +32,7 @@ interface UseRoomReturn {
   handleSendMessage: (message: string) => void;
   handleTypingStart: () => void;
   handleTypingStop: () => void;
+  markMessagesAsRead: () => void;
   copyRoomId: () => void;
   shareRoom: () => void;
 }
@@ -157,7 +158,12 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
     };
 
     const handleNewMessage = ({ message }: { message: ChatMessage }) => {
-      setMessages(prev => [...prev, message]);
+      // Mark messages as read if they're from the current user, unread otherwise
+      const messageWithReadStatus = {
+        ...message,
+        isRead: message.userId === currentUser?.id || false
+      };
+      setMessages(prev => [...prev, messageWithReadStatus]);
     };
 
     const handleUserTyping = ({ userId, userName }: { userId: string; userName: string }) => {
@@ -411,6 +417,12 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
     }
   }, [roomId]);
 
+  const markMessagesAsRead = useCallback(() => {
+    setMessages(prev => 
+      prev.map(message => ({ ...message, isRead: true }))
+    );
+  }, []);
+
   return {
     // State
     room,
@@ -432,6 +444,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
     handleSendMessage,
     handleTypingStart,
     handleTypingStop,
+    markMessagesAsRead,
     copyRoomId,
     shareRoom,
   };

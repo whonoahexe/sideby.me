@@ -76,6 +76,7 @@ export function registerChatHandlers(socket: Socket<SocketEvents, SocketEvents, 
         message: message.trim(),
         timestamp: new Date(),
         roomId,
+        isRead: false,
       };
 
       await redisService.chat.addChatMessage(roomId, chatMessage);

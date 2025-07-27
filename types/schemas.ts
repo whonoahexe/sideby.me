@@ -38,6 +38,7 @@ export const ChatMessageSchema = z.object({
   message: z.string().min(1, 'Message cannot be empty').max(1000, 'Message too long'),
   timestamp: z.date(),
   roomId: RoomIdSchema,
+  isRead: z.boolean().default(false),
 });
 
 export const TypingUserSchema = z.object({

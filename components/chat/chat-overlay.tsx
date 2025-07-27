@@ -22,6 +22,7 @@ interface ChatOverlayProps {
   isMinimized: boolean;
   onToggleMinimize: () => void;
   onClose: () => void;
+  onMarkMessagesAsRead?: () => void;
 }
 
 export function ChatOverlay({
@@ -35,6 +36,7 @@ export function ChatOverlay({
   isMinimized,
   onToggleMinimize,
   onClose,
+  onMarkMessagesAsRead,
 }: ChatOverlayProps) {
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -44,10 +46,21 @@ export function ChatOverlay({
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Calculate unread messages (messages not sent by current user and not read)
+  const unreadMessages = messages.filter(msg => msg.userId !== currentUserId && !msg.isRead);
+  const unreadCount = unreadMessages.length;
+
   // Handle client-side rendering
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Mark messages as read when chat is visible and not minimized
+  useEffect(() => {
+    if (isVisible && !isMinimized && unreadCount > 0) {
+      onMarkMessagesAsRead?.();
+    }
+  }, [isVisible, isMinimized, unreadCount, onMarkMessagesAsRead]);
 
   // Notification sound hook
   const { enabled: soundEnabled, toggleEnabled: toggleSound, playNotification } = useNotificationSound();
@@ -67,12 +80,14 @@ export function ChatOverlay({
     if (messages.length > 0 && messages.length > previousMessageCount && !isMinimized) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
 
-      // Play notification sound for new messages from other users
+      // Play notification sound for new unread messages from other users
       if (previousMessageCount > 0) {
         const newMessages = messages.slice(previousMessageCount);
-        const hasNewMessageFromOther = newMessages.some(msg => msg.userId !== currentUserId);
+        const hasNewUnreadMessageFromOther = newMessages.some(msg => 
+          msg.userId !== currentUserId && !msg.isRead
+        );
 
-        if (hasNewMessageFromOther) {
+        if (hasNewUnreadMessageFromOther) {
           playNotification();
         }
       }
@@ -172,13 +187,13 @@ export function ChatOverlay({
   // Get the fullscreen element - this is key for proper portal rendering
   const fullscreenElement =
     document.fullscreenElement ||
-    (document as any).webkitFullscreenElement ||
-    (document as any).mozFullScreenElement ||
-    (document as any).msFullscreenElement;
+    (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement ||
+    (document as Document & { mozFullScreenElement?: Element }).mozFullScreenElement ||
+    (document as Document & { msFullscreenElement?: Element }).msFullscreenElement;
 
   const overlayContent = (
     <div
-      className={`fixed right-6 top-6 z-[2147483647] border border-border bg-background/95 shadow-lg backdrop-blur-sm transition-all duration-300 ease-out ${
+      className={`fixed right-6 top-6 z-[2147483647] border border-border bg-background/95 shadow-lg backdrop-blur-sm ${
         isMinimized ? 'h-12 w-12 rounded-full' : 'h-96 w-80 rounded-lg'
       }`}
     >
@@ -192,12 +207,12 @@ export function ChatOverlay({
             className="relative h-8 w-8 p-0 hover:bg-background/50"
           >
             <MessageCircle className="h-4 w-4" />
-            {messages.length > 0 && (
+            {unreadCount > 0 && (
               <Badge
                 variant="destructive"
                 className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full p-0 text-xs"
               >
-                {messages.length > 99 ? '99+' : messages.length}
+                {unreadCount > 99 ? '99+' : unreadCount}
               </Badge>
             )}
           </Button>
@@ -209,9 +224,9 @@ export function ChatOverlay({
             <div className="flex items-center gap-2">
               <MessageCircle className="h-4 w-4" />
               <span className="text-sm font-medium">Chat</span>
-              {messages.length > 0 && (
-                <Badge variant="secondary" className="text-xs">
-                  {messages.length}
+              {unreadCount > 0 && (
+                <Badge variant="destructive" className="text-xs">
+                  {unreadCount}
                 </Badge>
               )}
             </div>

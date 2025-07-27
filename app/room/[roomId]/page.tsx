@@ -48,6 +48,7 @@ export default function RoomPage() {
     handleSendMessage,
     handleTypingStart,
     handleTypingStop,
+    markMessagesAsRead,
     copyRoomId,
     shareRoom,
   } = useRoom({ roomId });
@@ -258,6 +259,7 @@ export default function RoomPage() {
         isMinimized={isChatMinimized}
         onToggleMinimize={toggleChatMinimize}
         onClose={closeChatOverlay}
+        onMarkMessagesAsRead={markMessagesAsRead}
       />
     </div>
   );
