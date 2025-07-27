@@ -13,12 +13,7 @@ import { VideoSetup } from '@/components/video/video-setup';
 import { Chat } from '@/components/chat/chat';
 import { UserList } from '@/components/room/user-list';
 import { RoomHeader } from '@/components/room/room-header';
-import {
-  ErrorDisplay,
-  LoadingDisplay,
-  SyncError,
-  GuestInfoBanner,
-} from '@/components/room/room-status';
+import { ErrorDisplay, LoadingDisplay, SyncError, GuestInfoBanner } from '@/components/room/room-status';
 import { VideoPlayerContainer } from '@/components/room/video-player-container';
 import { HostControlDialog } from '@/components/room/host-control-dialog';
 import { parseVideoUrl } from '@/lib/video-utils';
@@ -93,33 +88,15 @@ export default function RoomPage() {
   useEffect(() => {
     if (!socket) return;
 
-    const handleVideoPlayed = ({
-      currentTime,
-      timestamp,
-    }: {
-      currentTime: number;
-      timestamp: number;
-    }) => {
+    const handleVideoPlayed = ({ currentTime, timestamp }: { currentTime: number; timestamp: number }) => {
       syncVideo(currentTime, true, timestamp);
     };
 
-    const handleVideoPaused = ({
-      currentTime,
-      timestamp,
-    }: {
-      currentTime: number;
-      timestamp: number;
-    }) => {
+    const handleVideoPaused = ({ currentTime, timestamp }: { currentTime: number; timestamp: number }) => {
       syncVideo(currentTime, false, timestamp);
     };
 
-    const handleVideoSeeked = ({
-      currentTime,
-      timestamp,
-    }: {
-      currentTime: number;
-      timestamp: number;
-    }) => {
+    const handleVideoSeeked = ({ currentTime, timestamp }: { currentTime: number; timestamp: number }) => {
       syncVideo(currentTime, null, timestamp);
     };
 
@@ -198,10 +175,7 @@ export default function RoomPage() {
 
       {/* Guest Info Banner */}
       {showGuestInfoBanner && !currentUser.isHost && room.videoUrl && (
-        <GuestInfoBanner
-          onLearnMore={() => setShowHostDialog(true)}
-          onDismiss={() => setShowGuestInfoBanner(false)}
-        />
+        <GuestInfoBanner onLearnMore={() => setShowHostDialog(true)} onDismiss={() => setShowGuestInfoBanner(false)} />
       )}
 
       <div className="grid gap-6 lg:grid-cols-4">

@@ -5,10 +5,7 @@ import { ChatMessage, SendMessageDataSchema, RoomActionDataSchema } from '@/type
 import { SocketEvents, SocketData } from '../types';
 import { validateData } from '../utils';
 
-export function registerChatHandlers(
-  socket: Socket<SocketEvents, SocketEvents, object, SocketData>,
-  io: IOServer
-) {
+export function registerChatHandlers(socket: Socket<SocketEvents, SocketEvents, object, SocketData>, io: IOServer) {
   // Typing indicators
   socket.on('typing-start', async data => {
     try {

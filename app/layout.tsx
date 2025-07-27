@@ -19,8 +19,7 @@ const spaceMono = Space_Mono({
 
 export const metadata: Metadata = {
   title: '.noah - watch party hell yeah!',
-  description:
-    'browser share & video streaming sucks, a custom solution for watching videos together?',
+  description: 'browser share & video streaming sucks, a custom solution for watching videos together?',
 };
 
 export default function RootLayout({

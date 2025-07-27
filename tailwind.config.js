@@ -17,20 +17,8 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        sans: [
-          'Space Grotesk',
-          'var(--font-space-grotesk)',
-          'ui-sans-serif',
-          'system-ui',
-          'sans-serif',
-        ],
-        mono: [
-          'Space Mono',
-          'var(--font-space-mono)',
-          'ui-monospace',
-          'SFMono-Regular',
-          'monospace',
-        ],
+        sans: ['Space Grotesk', 'var(--font-space-grotesk)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['Space Mono', 'var(--font-space-mono)', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       colors: {
         border: 'hsl(var(--border))',

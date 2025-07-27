@@ -118,9 +118,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
     const handleUserPromoted = ({ userId, userName }: { userId: string; userName: string }) => {
       setRoom(prev => {
         if (!prev) return null;
-        const updatedUsers = prev.users.map(user =>
-          user.id === userId ? { ...user, isHost: true } : user
-        );
+        const updatedUsers = prev.users.map(user => (user.id === userId ? { ...user, isHost: true } : user));
         return { ...prev, users: updatedUsers };
       });
 
@@ -135,13 +133,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
       console.log(`👑 ${userName} has been promoted to host`);
     };
 
-    const handleVideoSet = ({
-      videoUrl,
-      videoType,
-    }: {
-      videoUrl: string;
-      videoType: 'youtube' | 'mp4' | 'm3u8';
-    }) => {
+    const handleVideoSet = ({ videoUrl, videoType }: { videoUrl: string; videoType: 'youtube' | 'mp4' | 'm3u8' }) => {
       setRoom(prev =>
         prev
           ? {
@@ -174,9 +166,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
       setTypingUsers(prev => {
         const existing = prev.find(user => user.userId === userId);
         if (existing) {
-          return prev.map(user =>
-            user.userId === userId ? { ...user, timestamp: Date.now() } : user
-          );
+          return prev.map(user => (user.userId === userId ? { ...user, timestamp: Date.now() } : user));
         }
         return [...prev, { userId, userName, timestamp: Date.now() }];
       });
@@ -335,9 +325,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
     }
 
     if (!/^[a-zA-Z0-9\s\-_.!?]+$/.test(trimmedName)) {
-      alert(
-        'Name can only contain letters, numbers, spaces, and basic punctuation (- _ . ! ?). Please try again.'
-      );
+      alert('Name can only contain letters, numbers, spaces, and basic punctuation (- _ . ! ?). Please try again.');
       setIsJoining(false);
       hasAttemptedJoinRef.current = false;
       router.push('/join');

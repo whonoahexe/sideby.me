@@ -2,20 +2,11 @@ import { Socket, Server as IOServer } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 import { redisService } from '@/server/redis';
 import { generateRoomId } from '@/lib/video-utils';
-import {
-  Room,
-  User,
-  CreateRoomDataSchema,
-  JoinRoomDataSchema,
-  RoomActionDataSchema,
-} from '@/types';
+import { Room, User, CreateRoomDataSchema, JoinRoomDataSchema, RoomActionDataSchema } from '@/types';
 import { SocketEvents, SocketData } from '../types';
 import { validateData } from '../utils';
 
-export function registerRoomHandlers(
-  socket: Socket<SocketEvents, SocketEvents, object, SocketData>,
-  io: IOServer
-) {
+export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, object, SocketData>, io: IOServer) {
   // Create room
   socket.on('create-room', async data => {
     try {
@@ -74,9 +65,7 @@ export function registerRoomHandlers(
 
     // Check if this exact socket is already in this room
     if (data?.roomId && socket.rooms.has(data.roomId)) {
-      console.log(
-        `🔄 Socket ${socket.id} already in room ${data.roomId}, checking if this is the room creator...`
-      );
+      console.log(`🔄 Socket ${socket.id} already in room ${data.roomId}, checking if this is the room creator...`);
 
       const room = await redisService.rooms.getRoom(data.roomId);
       if (room) {
@@ -117,9 +106,7 @@ export function registerRoomHandlers(
       if (existingUser) {
         if (existingUser.isHost) {
           if (!hostToken || hostToken !== room.hostToken) {
-            console.log(
-              `Host impersonation attempt by ${userName} - existing user but invalid token`
-            );
+            console.log(`Host impersonation attempt by ${userName} - existing user but invalid token`);
             socket.emit('room-error', {
               error: 'Invalid host credentials. Only the room creator can join as host.',
             });
@@ -132,9 +119,7 @@ export function registerRoomHandlers(
           socket.data.roomId = roomId;
 
           await socket.join(roomId);
-          console.log(
-            `${userName} rejoined room ${roomId} (existing user, isHost: ${existingUser.isHost})`
-          );
+          console.log(`${userName} rejoined room ${roomId} (existing user, isHost: ${existingUser.isHost})`);
           socket.emit('room-joined', { room, user: existingUser });
           return;
         } else {

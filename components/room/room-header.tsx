@@ -40,12 +40,7 @@ export function RoomHeader({
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onCopyRoomId}
-              className="relative overflow-hidden"
-            >
+            <Button variant="outline" size="sm" onClick={onCopyRoomId} className="relative overflow-hidden">
               {showCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
               {showCopied ? 'Copied!' : 'Copy ID'}
             </Button>

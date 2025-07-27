@@ -86,9 +86,7 @@ export function useVideoSync({
       const syncDiff = Math.abs(currentTime - adjustedTime);
 
       if (syncDiff > 1.5) {
-        console.log(
-          `🎬 Syncing video: ${syncDiff.toFixed(2)}s difference, seeking to ${adjustedTime.toFixed(2)}s`
-        );
+        console.log(`🎬 Syncing video: ${syncDiff.toFixed(2)}s difference, seeking to ${adjustedTime.toFixed(2)}s`);
         player.seekTo(adjustedTime);
         lastSyncTimeRef.current = now;
         lastPlayerTimeRef.current = adjustedTime;
@@ -151,16 +149,7 @@ export function useVideoSync({
         timestamp: Date.now(),
       });
     }, 5000);
-  }, [
-    room,
-    currentUser,
-    socket,
-    roomId,
-    getCurrentPlayer,
-    youtubePlayerRef,
-    hlsPlayerRef,
-    videoPlayerRef,
-  ]);
+  }, [room, currentUser, socket, roomId, getCurrentPlayer, youtubePlayerRef, hlsPlayerRef, videoPlayerRef]);
 
   const stopSyncCheck = useCallback(() => {
     if (syncCheckIntervalRef.current) {

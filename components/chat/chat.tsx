@@ -50,9 +50,7 @@ export function Chat({
     if (typingUsers.length > 0) {
       // Use a more gentle scroll that doesn't affect the main page
       if (scrollAreaRef.current) {
-        const scrollContainer = scrollAreaRef.current.querySelector(
-          '[data-radix-scroll-area-viewport]'
-        );
+        const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
         if (scrollContainer) {
           scrollContainer.scrollTop = scrollContainer.scrollHeight;
         }
@@ -167,32 +165,22 @@ export function Chat({
                   }`}
                 >
                   <Avatar className="h-8 w-8 flex-shrink-0">
-                    <AvatarFallback className="text-xs">
-                      {getInitials(message.userName)}
-                    </AvatarFallback>
+                    <AvatarFallback className="text-xs">{getInitials(message.userName)}</AvatarFallback>
                   </Avatar>
 
-                  <div
-                    className={`min-w-0 flex-1 space-y-1 ${
-                      message.userId === currentUserId ? 'text-right' : ''
-                    }`}
-                  >
+                  <div className={`min-w-0 flex-1 space-y-1 ${message.userId === currentUserId ? 'text-right' : ''}`}>
                     <div
                       className={`flex items-center ${message.userId === currentUserId && 'flex-row-reverse gap-2'} space-x-2`}
                     >
                       <span className="text-sm font-medium">
                         {message.userId !== currentUserId ? message.userName : 'you!'}
                       </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatMessageTime(message.timestamp)}
-                      </span>
+                      <span className="text-xs text-muted-foreground">{formatMessageTime(message.timestamp)}</span>
                     </div>
 
                     <div
                       className={`inline-block max-w-full break-words rounded-lg px-3 py-2 text-sm ${
-                        message.userId === currentUserId
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted'
+                        message.userId === currentUserId ? 'bg-primary text-primary-foreground' : 'bg-muted'
                       }`}
                       style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
                     >

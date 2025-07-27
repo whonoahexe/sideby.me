@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Video } from 'lucide-react';
 
@@ -24,9 +18,7 @@ export function HostControlDialog({ open, onOpenChange }: HostControlDialogProps
             <Video className="h-5 w-5 text-blue-500" />
             <span>Video Control Information</span>
           </DialogTitle>
-          <DialogDescription>
-            Learn about video controls and permissions in Watch.with rooms.
-          </DialogDescription>
+          <DialogDescription>Learn about video controls and permissions in Watch.with rooms.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -53,16 +45,13 @@ export function HostControlDialog({ open, onOpenChange }: HostControlDialogProps
           <div className="rounded-lg bg-amber-50 p-4 dark:bg-amber-950">
             <h4 className="font-medium text-amber-900 dark:text-amber-100">Need Controls?</h4>
             <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
-              Ask any current host to promote you using the crown button (👑) next to your name in
-              the user list.
+              Ask any current host to promote you using the crown button (👑) next to your name in the user list.
             </p>
           </div>
 
           <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
             <h4 className="font-medium text-gray-900 dark:text-gray-100">Keyboard Shortcuts</h4>
-            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-              These shortcuts work for hosts only:
-            </p>
+            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">These shortcuts work for hosts only:</p>
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-700 dark:text-gray-300">
               <div>• Space/K - Play/Pause</div>
               <div>• ←/→ - Seek ±10s</div>

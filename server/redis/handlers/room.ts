@@ -84,11 +84,7 @@ export class RoomRepository {
     await this.updateRoom(roomId, room);
   }
 
-  async setVideoUrl(
-    roomId: string,
-    videoUrl: string,
-    videoType: 'youtube' | 'mp4' | 'm3u8'
-  ): Promise<void> {
+  async setVideoUrl(roomId: string, videoUrl: string, videoType: 'youtube' | 'mp4' | 'm3u8'): Promise<void> {
     const room = await this.getRoom(roomId);
     if (!room) throw new Error('Room not found');
 

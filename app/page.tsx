@@ -48,9 +48,7 @@ export default function HomePage() {
       <section className="space-y-8">
         <div className="space-y-3 text-center">
           <h2 className="text-3xl font-bold">Everything you need</h2>
-          <p className="text-muted-foreground">
-            {`Simple, fast, and reliable video watching experience (hopefylly)`}
-          </p>
+          <p className="text-muted-foreground">{`Simple, fast, and reliable video watching experience (hopefylly)`}</p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -63,8 +61,7 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Perfect synchronization across all devices. Play, pause, and seek together in
-                real-time.
+                Perfect synchronization across all devices. Play, pause, and seek together in real-time.
               </CardDescription>
             </CardContent>
           </Card>
@@ -120,8 +117,7 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Support for YouTube videos and direct video links. Just paste the URL and start
-                watching.
+                Support for YouTube videos and direct video links. Just paste the URL and start watching.
               </CardDescription>
             </CardContent>
           </Card>
@@ -155,9 +151,7 @@ export default function HomePage() {
               <span className="text-2xl font-bold text-primary">1</span>
             </div>
             <h3 className="text-xl font-semibold">Create or Join</h3>
-            <p className="text-muted-foreground">
-              Create a new room or join an existing one with a room ID
-            </p>
+            <p className="text-muted-foreground">Create a new room or join an existing one with a room ID</p>
           </div>
 
           <div className="space-y-4 text-center">
@@ -175,9 +169,7 @@ export default function HomePage() {
               <span className="text-2xl font-bold text-primary">3</span>
             </div>
             <h3 className="text-xl font-semibold">Enjoy Together</h3>
-            <p className="text-muted-foreground">
-              Watch in perfect sync while chatting with your friends
-            </p>
+            <p className="text-muted-foreground">Watch in perfect sync while chatting with your friends</p>
           </div>
         </div>
       </section>

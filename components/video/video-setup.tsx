@@ -95,8 +95,7 @@ export function VideoSetup({ onVideoSet, isHost, hasVideo, videoUrl }: VideoSetu
                   <DialogHeader>
                     <DialogTitle>Change Video</DialogTitle>
                     <DialogDescription>
-                      Enter a new YouTube, MP4, or M3U8 (HLS) video URL to change what everyone is
-                      watching.
+                      Enter a new YouTube, MP4, or M3U8 (HLS) video URL to change what everyone is watching.
                     </DialogDescription>
                   </DialogHeader>
                   <VideoUrlForm url={url} setUrl={setUrl} error={error} onSubmit={handleSubmit} />
@@ -115,9 +114,7 @@ export function VideoSetup({ onVideoSet, isHost, hasVideo, videoUrl }: VideoSetu
         <CardHeader className="text-center">
           <Video className="mx-auto mb-2 h-12 w-12 text-muted-foreground" />
           <CardTitle>Waiting for Video</CardTitle>
-          <CardDescription>
-            The host will set up a video for everyone to watch together.
-          </CardDescription>
+          <CardDescription>The host will set up a video for everyone to watch together.</CardDescription>
         </CardHeader>
       </Card>
     );
@@ -130,9 +127,7 @@ export function VideoSetup({ onVideoSet, isHost, hasVideo, videoUrl }: VideoSetu
           <Video className="h-5 w-5" />
           <span>Set Up Video</span>
         </CardTitle>
-        <CardDescription>
-          Add a YouTube, MP4, or M3U8 (HLS) video URL to start watching together
-        </CardDescription>
+        <CardDescription>Add a YouTube, MP4, or M3U8 (HLS) video URL to start watching together</CardDescription>
       </CardHeader>
       <CardContent>
         <VideoUrlForm url={url} setUrl={setUrl} error={error} onSubmit={handleSubmit} />
@@ -182,9 +177,7 @@ function VideoUrlForm({
         />
       </div>
 
-      {error && (
-        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
-      )}
+      {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
 
       <Button type="submit" className="w-full">
         Set Video

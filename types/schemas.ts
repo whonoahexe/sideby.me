@@ -5,10 +5,7 @@ export const UserNameSchema = z
   .string()
   .min(2, 'Name must be at least 2 characters long')
   .max(50, 'Name must be 50 characters or less')
-  .regex(
-    /^[a-zA-Z0-9\s\-_.!?]+$/,
-    'Name can only contain letters, numbers, spaces, and basic punctuation (- _ . ! ?)'
-  );
+  .regex(/^[a-zA-Z0-9\s\-_.!?]+$/, 'Name can only contain letters, numbers, spaces, and basic punctuation (- _ . ! ?)');
 
 export const RoomIdSchema = z
   .string()

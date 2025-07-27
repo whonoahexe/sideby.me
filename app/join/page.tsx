@@ -30,9 +30,7 @@ export default function JoinRoomPage() {
             <Users className="h-8 w-8 text-primary" />
           </div>
           <CardTitle className="text-2xl">Join Room</CardTitle>
-          <CardDescription>
-            Enter a room ID to join friends and watch videos together
-          </CardDescription>
+          <CardDescription>Enter a room ID to join friends and watch videos together</CardDescription>
         </CardHeader>
 
         <CardContent>
@@ -51,9 +49,7 @@ export default function JoinRoomPage() {
                   maxLength={6}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                6-character room code (letters and numbers)
-              </p>
+              <p className="text-xs text-muted-foreground">6-character room code (letters and numbers)</p>
             </div>
 
             <div className="space-y-2">
@@ -68,18 +64,10 @@ export default function JoinRoomPage() {
               />
             </div>
 
-            {error && (
-              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                {error}
-              </div>
-            )}
+            {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
 
             <div className="space-y-3">
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading || !isConnected || !roomId || !userName}
-              >
+              <Button type="submit" className="w-full" disabled={isLoading || !isConnected || !roomId || !userName}>
                 {isLoading ? (
                   <>
                     <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-current" />
@@ -94,14 +82,10 @@ export default function JoinRoomPage() {
               </Button>
 
               {!isConnected && isInitialized && (
-                <div className="text-center text-sm text-muted-foreground">
-                  Connecting to server...
-                </div>
+                <div className="text-center text-sm text-muted-foreground">Connecting to server...</div>
               )}
 
-              {!isInitialized && (
-                <div className="text-center text-sm text-muted-foreground">Initializing...</div>
-              )}
+              {!isInitialized && <div className="text-center text-sm text-muted-foreground">Initializing...</div>}
             </div>
           </form>
 

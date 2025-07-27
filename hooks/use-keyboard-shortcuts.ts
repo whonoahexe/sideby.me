@@ -8,11 +8,7 @@ interface UseKeyboardShortcutsOptions {
   onControlAttempt: () => void;
 }
 
-export function useKeyboardShortcuts({
-  hasVideo,
-  isHost,
-  onControlAttempt,
-}: UseKeyboardShortcutsOptions) {
+export function useKeyboardShortcuts({ hasVideo, isHost, onControlAttempt }: UseKeyboardShortcutsOptions) {
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       // Only handle shortcuts if there's a video and user is not a host
@@ -29,18 +25,7 @@ export function useKeyboardShortcuts({
       if (isTypingInInput) return;
 
       // Common video shortcuts that guests might try
-      const videoShortcuts = [
-        ' ',
-        'k',
-        'ArrowLeft',
-        'ArrowRight',
-        'ArrowUp',
-        'ArrowDown',
-        'j',
-        'l',
-        'f',
-        'm',
-      ];
+      const videoShortcuts = [' ', 'k', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'j', 'l', 'f', 'm'];
 
       if (videoShortcuts.includes(event.key)) {
         // Prevent default behavior and show dialog

@@ -94,14 +94,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
     }, [onReady, onPlay, onPause, onTimeUpdate, onSeeked]);
 
     return (
-      <video
-        ref={videoRef}
-        src={src}
-        controls
-        className={className}
-        crossOrigin="anonymous"
-        preload="metadata"
-      >
+      <video ref={videoRef} src={src} controls className={className} crossOrigin="anonymous" preload="metadata">
         Your browser does not support the video tag.
       </video>
     );

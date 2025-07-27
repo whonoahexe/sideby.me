@@ -81,11 +81,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     };
   }, []); // Empty dependency array - run once
 
-  return (
-    <SocketContext.Provider value={{ socket, isConnected, isInitialized }}>
-      {children}
-    </SocketContext.Provider>
-  );
+  return <SocketContext.Provider value={{ socket, isConnected, isInitialized }}>{children}</SocketContext.Provider>;
 };
 
 // Legacy cleanup function for compatibility

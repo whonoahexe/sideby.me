@@ -8,8 +8,7 @@ import { useCreateRoom } from '@/hooks/use-create-room';
 import { Play, Users } from 'lucide-react';
 
 export default function CreateRoomPage() {
-  const { hostName, setHostName, isLoading, error, isConnected, isInitialized, handleCreateRoom } =
-    useCreateRoom();
+  const { hostName, setHostName, isLoading, error, isConnected, isInitialized, handleCreateRoom } = useCreateRoom();
 
   return (
     <div className="mx-auto mt-16 max-w-md">
@@ -19,9 +18,7 @@ export default function CreateRoomPage() {
             <Play className="h-8 w-8 text-primary" />
           </div>
           <CardTitle className="text-2xl">Create Room</CardTitle>
-          <CardDescription>
-            Start a new room and invite friends to watch videos together
-          </CardDescription>
+          <CardDescription>Start a new room and invite friends to watch videos together</CardDescription>
         </CardHeader>
 
         <CardContent>
@@ -38,11 +35,7 @@ export default function CreateRoomPage() {
               />
             </div>
 
-            {error && (
-              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                {error}
-              </div>
-            )}
+            {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
 
             <div className="space-y-3">
               <Button type="submit" className="w-full" disabled={isLoading || !isConnected}>
@@ -60,14 +53,10 @@ export default function CreateRoomPage() {
               </Button>
 
               {!isConnected && isInitialized && (
-                <div className="text-center text-sm text-muted-foreground">
-                  Connecting to server...
-                </div>
+                <div className="text-center text-sm text-muted-foreground">Connecting to server...</div>
               )}
 
-              {!isInitialized && (
-                <div className="text-center text-sm text-muted-foreground">Initializing...</div>
-              )}
+              {!isInitialized && <div className="text-center text-sm text-muted-foreground">Initializing...</div>}
             </div>
           </form>
 

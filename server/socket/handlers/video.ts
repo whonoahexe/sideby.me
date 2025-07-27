@@ -4,10 +4,7 @@ import { SetVideoDataSchema, VideoControlDataSchema, SyncCheckDataSchema } from 
 import { SocketEvents, SocketData } from '../types';
 import { validateData } from '../utils';
 
-export function registerVideoHandlers(
-  socket: Socket<SocketEvents, SocketEvents, object, SocketData>,
-  io: IOServer
-) {
+export function registerVideoHandlers(socket: Socket<SocketEvents, SocketEvents, object, SocketData>, io: IOServer) {
   // Set video URL
   socket.on('set-video', async data => {
     try {
@@ -31,11 +28,7 @@ export function registerVideoHandlers(
       let videoType: 'youtube' | 'mp4' | 'm3u8' = 'mp4';
       if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
         videoType = 'youtube';
-      } else if (
-        videoUrl.match(/\.(m3u8)(\?.*)?$/i) ||
-        videoUrl.includes('/live/') ||
-        videoUrl.includes('.m3u8')
-      ) {
+      } else if (videoUrl.match(/\.(m3u8)(\?.*)?$/i) || videoUrl.includes('/live/') || videoUrl.includes('.m3u8')) {
         videoType = 'm3u8';
       }
 
@@ -196,9 +189,7 @@ export function registerVideoHandlers(
       // Broadcast sync update to all other users
       socket.to(roomId).emit('sync-update', { currentTime, isPlaying, timestamp });
 
-      console.log(
-        `Sync check sent in room ${roomId}: ${currentTime.toFixed(2)}s, playing: ${isPlaying}`
-      );
+      console.log(`Sync check sent in room ${roomId}: ${currentTime.toFixed(2)}s, playing: ${isPlaying}`);
     } catch (error) {
       console.error('Error sending sync check:', error);
       socket.emit('error', { error: 'Failed to send sync check' });
