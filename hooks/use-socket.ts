@@ -1,6 +1,6 @@
 'use client';
 
-import { useSocket as useSocketContext } from '@/lib/socket-context';
+import { useSocket as useSocketContext } from '@/contexts/socket';
 
 export function useSocket() {
   return useSocketContext();

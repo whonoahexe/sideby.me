@@ -438,7 +438,7 @@ export default function RoomPage() {
       socket.off('room-error', handleRoomError);
       socket.off('error', handleSocketError);
     };
-  }, [socket, isConnected, syncVideo, router, currentUser]);
+  }, [socket, isConnected, syncVideo, router, currentUser, room]);
 
   // Join room on mount
   useEffect(() => {
@@ -460,7 +460,7 @@ export default function RoomPage() {
     }
 
     // Check if socket is already in this room (additional safety check)
-    if ((socket as any).rooms?.has(roomId)) {
+    if ((socket as unknown as { rooms?: Set<string> }).rooms?.has(roomId)) {
       console.log('🏠 Socket already in room, skipping join');
       hasAttemptedJoinRef.current = true;
       return;

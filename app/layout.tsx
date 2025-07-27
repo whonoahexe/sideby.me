@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Space_Grotesk, Space_Mono } from 'next/font/google';
 import './globals.css';
 import { Navigation } from '@/components/navigation';
-import { SocketProvider } from '@/lib/socket-context';
+import { SocketProvider } from '@/contexts/socket';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/components/theme-provider';
 
