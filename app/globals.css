@@ -151,3 +151,98 @@ a {
     margin-right: 0 !important;
   }
 }
+
+/* Fullscreen video container styles */
+@layer base {
+  /* Ensure video container fills fullscreen properly */
+  [data-video-container]:fullscreen {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* WebKit fullscreen support */
+  [data-video-container]:-webkit-full-screen {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* MS fullscreen support */
+  [data-video-container]:-ms-fullscreen {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Ensure video element scales properly in fullscreen */
+  [data-video-container]:fullscreen video,
+  [data-video-container]:-webkit-full-screen video,
+  [data-video-container]:-ms-fullscreen video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain;
+  }
+
+  /* Hide default video controls in all cases */
+  video::-webkit-media-controls {
+    display: none !important;
+  }
+
+  video::-webkit-media-controls-enclosure {
+    display: none !important;
+  }
+
+  video::-webkit-media-controls-panel {
+    display: none !important;
+  }
+
+  video::-webkit-media-controls-play-button {
+    display: none !important;
+  }
+
+  video::-webkit-media-controls-timeline {
+    display: none !important;
+  }
+
+  video::-webkit-media-controls-current-time-display {
+    display: none !important;
+  }
+
+  video::-webkit-media-controls-time-remaining-display {
+    display: none !important;
+  }
+
+  video::-webkit-media-controls-mute-button {
+    display: none !important;
+  }
+
+  video::-webkit-media-controls-volume-slider {
+    display: none !important;
+  }
+
+  video::-webkit-media-controls-fullscreen-button {
+    display: none !important;
+  }
+}

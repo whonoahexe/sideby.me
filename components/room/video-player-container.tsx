@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { YouTubePlayer, YouTubePlayerRef } from '@/components/video/youtube-player';
 import { VideoPlayer, VideoPlayerRef } from '@/components/video/video-player';
 import { HLSPlayer, HLSPlayerRef } from '@/components/video/hls-player';
-import { GuestVideoControls } from '@/components/video/guest-video-controls';
+import { VideoControls } from '@/components/video/video-controls';
 import { Video, ExternalLink, Edit3, AlertTriangle } from 'lucide-react';
 import {
   Dialog,
@@ -57,6 +57,28 @@ export function VideoPlayerContainer({
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [pendingUrl, setPendingUrl] = useState('');
+  const [videoRefReady, setVideoRefReady] = useState(false);
+
+  // Check if video ref is ready
+  useEffect(() => {
+    const checkVideoRef = () => {
+      if (videoType === 'mp4' && videoPlayerRef.current) {
+        setVideoRefReady(true);
+      } else if (videoType === 'm3u8' && hlsPlayerRef.current) {
+        setVideoRefReady(true);
+      } else {
+        setVideoRefReady(false);
+      }
+    };
+
+    // Check immediately
+    checkVideoRef();
+
+    // Set up interval to check periodically
+    const interval = setInterval(checkVideoRef, 100);
+
+    return () => clearInterval(interval);
+  }, [videoType, videoPlayerRef.current, hlsPlayerRef.current]);
 
   // Get video element ref for guest controls
   const getVideoElementRef = () => {
@@ -70,6 +92,7 @@ export function VideoPlayerContainer({
     }
     return null;
   };
+
   const getVideoTypeName = () => {
     switch (videoType) {
       case 'youtube':
@@ -222,12 +245,25 @@ export function VideoPlayerContainer({
   return (
     <Card>
       <CardContent className="p-6">
-        <div className="relative aspect-video overflow-hidden rounded-lg bg-black">
+        <div className="relative aspect-video overflow-hidden rounded-lg bg-black" data-video-container>
           {renderPlayer()}
 
-          {/* Guest controls for non-hosts (non-YouTube videos only) */}
-          {!isHost && videoType !== 'youtube' && (
-            <GuestVideoControls videoRef={getVideoElementRef()} className="z-20" />
+          {/* Unified video controls for non-YouTube videos */}
+          {videoType !== 'youtube' && videoRefReady && (
+            <VideoControls
+              videoRef={getVideoElementRef()}
+              isHost={isHost}
+              isLoading={isLoading}
+              onPlay={onPlay}
+              onPause={onPause}
+              onSeek={time => {
+                // Only hosts can seek, so only call onSeeked for hosts
+                if (isHost) {
+                  onSeeked();
+                }
+              }}
+              className="z-20"
+            />
           )}
 
           {/* Block video controls for non-hosts on YouTube */}
@@ -253,8 +289,8 @@ export function VideoPlayerContainer({
                     <Edit3 className="h-4 w-4" />
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="fixed left-[50%] top-[50%] max-h-[85vh] w-[95vw] max-w-md translate-x-[-50%] translate-y-[-50%] gap-0 p-0 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
-                  <DialogHeader className="px-6 pb-4 pt-6">
+                <DialogContent className="fixed left-[50%] top-[50%] flex max-h-[85vh] w-[95vw] max-w-md translate-x-[-50%] translate-y-[-50%] flex-col gap-0 overflow-hidden p-0 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
+                  <DialogHeader className="flex-shrink-0 px-6 pb-4 pt-6">
                     <DialogTitle className="flex items-center space-x-2 text-base sm:text-lg">
                       <Edit3 className="h-5 w-5 text-primary" />
                       <span>Change Video</span>
@@ -264,7 +300,7 @@ export function VideoPlayerContainer({
                     </DialogDescription>
                   </DialogHeader>
 
-                  <ScrollArea className="flex-1 px-6">
+                  <ScrollArea className="min-h-0 flex-1 px-6">
                     <div className="space-y-4 py-4">
                       {!showConfirmation ? (
                         <form onSubmit={handleSubmit} className="space-y-4">
@@ -293,14 +329,15 @@ export function VideoPlayerContainer({
                             and the new video will be loaded.
                           </p>
                           <div className="mt-3 rounded bg-amber-100 p-2 text-xs text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-                            <strong>New video:</strong> {pendingUrl}
+                            <div className="font-medium">New video:</div>
+                            <div className="mt-1 text-wrap break-all">{pendingUrl}</div>
                           </div>
                         </div>
                       )}
                     </div>
                   </ScrollArea>
 
-                  <div className="flex justify-end gap-3 border-t bg-gray-50 p-6 pt-4 dark:bg-black">
+                  <div className="flex flex-shrink-0 justify-end gap-3 border-t bg-gray-50 p-6 pt-4 dark:bg-black">
                     {!showConfirmation ? (
                       <Button onClick={handleChangeVideoClick} size="sm" disabled={isLoading}>
                         {isLoading ? 'Setting Video...' : 'Change Video'}

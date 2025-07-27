@@ -180,7 +180,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(
       <video
         ref={videoRef}
         className={`${className}`}
-        controls={isHost}
+        controls={false} // Always use custom controls
         onPlay={handlePlay}
         onPause={handlePause}
         onSeeked={handleSeeked}
@@ -188,7 +188,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(
         onTimeUpdate={handleTimeUpdate}
         playsInline
         preload="metadata"
-        controlsList={isHost ? undefined : 'nodownload noremoteplayback'}
+        controlsList="nodownload noremoteplayback"
         disablePictureInPicture={!isHost}
       />
     );

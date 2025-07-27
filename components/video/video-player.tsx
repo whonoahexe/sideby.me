@@ -145,11 +145,11 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
       <video
         ref={videoRef}
         src={src}
-        controls={isHost}
+        controls={false} // Always use custom controls
         className={className}
         preload="metadata"
         playsInline
-        controlsList={isHost ? undefined : 'nodownload noremoteplayback'}
+        controlsList="nodownload noremoteplayback"
         disablePictureInPicture={!isHost}
       >
         Your browser does not support the video tag.
