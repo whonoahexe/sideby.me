@@ -178,33 +178,57 @@ export function ChatOverlay({
 
   const overlayContent = (
     <div
-      className={`fixed right-6 top-6 z-[2147483647] w-80 rounded-lg border border-border bg-background/95 shadow-lg backdrop-blur-sm transition-all duration-300 ${
-        isMinimized ? 'h-12' : 'h-96'
+      className={`fixed right-6 top-6 z-[2147483647] border border-border bg-background/95 shadow-lg backdrop-blur-sm transition-all duration-300 ease-out ${
+        isMinimized ? 'h-12 w-12 rounded-full' : 'h-96 w-80 rounded-lg'
       }`}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-border p-3">
-        <div className="flex items-center gap-2">
-          <MessageCircle className="h-4 w-4" />
-          <span className="text-sm font-medium">Chat</span>
-          {messages.length > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              {messages.length}
-            </Badge>
-          )}
-        </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={handleSoundToggle} className="h-8 w-8 p-0">
-            {soundEnabled ? <Volume2 className="h-3 w-3" /> : <VolumeX className="h-3 w-3" />}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onToggleMinimize} className="h-8 w-8 p-0">
-            <MinusIcon className="h-3 w-3" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
-            <X className="h-3 w-3" />
+      {isMinimized ? (
+        /* Minimized State - Just icon with badge */
+        <div className="flex h-full w-full items-center justify-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleMinimize}
+            className="relative h-8 w-8 p-0 hover:bg-background/50"
+          >
+            <MessageCircle className="h-4 w-4" />
+            {messages.length > 0 && (
+              <Badge
+                variant="destructive"
+                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full p-0 text-xs"
+              >
+                {messages.length > 99 ? '99+' : messages.length}
+              </Badge>
+            )}
           </Button>
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-border p-3">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="h-4 w-4" />
+              <span className="text-sm font-medium">Chat</span>
+              {messages.length > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {messages.length}
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" onClick={handleSoundToggle} className="h-8 w-8 p-0">
+                {soundEnabled ? <Volume2 className="h-3 w-3" /> : <VolumeX className="h-3 w-3" />}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onToggleMinimize} className="h-8 w-8 p-0">
+                <MinusIcon className="h-3 w-3" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
 
       {!isMinimized && (
         <>

@@ -140,11 +140,6 @@ a {
     scrollbar-gutter: stable both-edges;
   }
 
-  /* Ensure scrollbars don't affect layout */
-  body {
-    overflow-y: scroll;
-  }
-
   /* Prevent layout shift when modals open */
   body[data-scroll-locked] {
     padding-right: 0 !important;

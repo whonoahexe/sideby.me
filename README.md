@@ -10,7 +10,7 @@
 - [x] Implement Zod for type inference wherever possible?
 - [x] Optimize controls dialogue for mobile because it is too long and can be clicked behind (sometimes)
 - [x] A feature to change videos in between sessions
-- [ ] Enable chat overlay in fullscreen
+- [x] Enable chat overlay in fullscreen
 - [x] Implement notification sound for messages
 - [ ] Develop native player (far future)
 - [ ] Add subtitles support

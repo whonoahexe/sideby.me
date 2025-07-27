@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Maximize, Volume2, VolumeX, Play, Pause, SkipBack, SkipForward, Loader2, MessageCircle } from 'lucide-react';
+import { Maximize, Volume2, VolumeX, Play, Pause, RotateCcw, RotateCw, Loader2, MessageCircle } from 'lucide-react';
 
 interface VideoControlsProps {
   videoRef: React.RefObject<HTMLVideoElement> | null;
@@ -32,6 +32,7 @@ export function VideoControls({
   const [duration, setDuration] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
   const sliderRef = useRef<HTMLDivElement>(null);
   const programmaticActionRef = useRef(false);
   const hideControlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -100,17 +101,43 @@ export function VideoControls({
       setIsMuted(video.muted);
     };
 
+    const handleLoadStart = () => {
+      setIsVideoLoading(true);
+    };
+
+    const handleCanPlay = () => {
+      setIsVideoLoading(false);
+    };
+
+    const handleWaiting = () => {
+      setIsVideoLoading(true);
+    };
+
+    const handlePlaying = () => {
+      setIsVideoLoading(false);
+    };
+
+    const handleLoadedData = () => {
+      setIsVideoLoading(false);
+    };
+
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
     video.addEventListener('volumechange', handleVolumeChange);
+    video.addEventListener('loadstart', handleLoadStart);
+    video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('waiting', handleWaiting);
+    video.addEventListener('playing', handlePlaying);
+    video.addEventListener('loadeddata', handleLoadedData);
 
     // Initialize state
     setIsPlaying(!video.paused);
     setIsMuted(video.muted);
     setDuration(video.duration || 0);
     setCurrentTime(video.currentTime || 0);
+    setIsVideoLoading(video.readyState < 3); // HAVE_FUTURE_DATA or less means loading
 
     return () => {
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
@@ -118,6 +145,11 @@ export function VideoControls({
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('volumechange', handleVolumeChange);
+      video.removeEventListener('loadstart', handleLoadStart);
+      video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('waiting', handleWaiting);
+      video.removeEventListener('playing', handlePlaying);
+      video.removeEventListener('loadeddata', handleLoadedData);
     };
   }, [videoRef, isDragging]);
 
@@ -295,6 +327,10 @@ export function VideoControls({
     // Only allow host to click to play/pause
     if (!isHost) return;
 
+    // Disable click-to-play/pause on mobile devices
+    const isMobile = window.innerWidth < 768 || 'ontouchstart' in window;
+    if (isMobile) return;
+
     // Prevent click if it's on a control button or slider
     const target = e.target as HTMLElement;
     if (target.closest('button') || target.closest('.seek-slider')) {
@@ -318,6 +354,15 @@ export function VideoControls({
           <div className="flex items-center space-x-2 rounded-lg bg-black/70 px-4 py-2 text-white">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span className="text-sm">Loading...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Video loading indicator */}
+      {isVideoLoading && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="rounded-full bg-primary/20 p-3">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         </div>
       )}
@@ -378,7 +423,7 @@ export function VideoControls({
                   className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-white/20 bg-black/60 p-0 text-white transition-all duration-200 hover:border-primary/50 hover:bg-primary hover:text-primary-foreground`}
                   title="Seek backward 10s"
                 >
-                  <SkipBack className={isFullscreen ? 'h-5 w-5' : 'h-4 w-4'} />
+                  <RotateCcw className={isFullscreen ? 'h-5 w-5' : 'h-4 w-4'} />
                 </Button>
 
                 <Button
@@ -402,7 +447,7 @@ export function VideoControls({
                   className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-white/20 bg-black/60 p-0 text-white transition-all duration-200 hover:border-primary/50 hover:bg-primary hover:text-primary-foreground`}
                   title="Seek forward 10s"
                 >
-                  <SkipForward className={isFullscreen ? 'h-5 w-5' : 'h-4 w-4'} />
+                  <RotateCw className={isFullscreen ? 'h-5 w-5' : 'h-4 w-4'} />
                 </Button>
               </>
             )}
