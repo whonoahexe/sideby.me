@@ -1,99 +1,264 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { MessageCircle } from 'lucide-react';
+import { useRef, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useSocket } from '@/hooks/use-socket';
+import { useRoom } from '@/hooks/use-room';
+import { useVideoSync } from '@/hooks/use-video-sync';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { YouTubePlayerRef } from '@/components/video/youtube-player';
+import { VideoPlayerRef } from '@/components/video/video-player';
+import { HLSPlayerRef } from '@/components/video/hls-player';
+import { VideoSetup } from '@/components/video/video-setup';
+import { Chat } from '@/components/chat/chat';
+import { ChatOverlay } from '@/components/chat/chat-overlay';
+import { UserList } from '@/components/room/user-list';
+import { RoomHeader } from '@/components/room/room-header';
+import { ErrorDisplay, LoadingDisplay, SyncError, GuestInfoBanner } from '@/components/room/room-status';
+import { VideoPlayerContainer } from '@/components/room/video-player-container';
+import { HostControlDialog } from '@/components/room/host-control-dialog';
+import { useFullscreenChatOverlay } from '@/hooks/use-fullscreen-chat-overlay';
+import { parseVideoUrl } from '@/lib/video-utils';
 
-interface YouTubePlayerOverlayProps {
-  onShowChatOverlay?: () => void;
-}
+export default function RoomPage() {
+  const params = useParams();
+  const router = useRouter();
+  const roomId = params.roomId as string;
+  const { socket } = useSocket();
 
-export function YouTubePlayerOverlay({ onShowChatOverlay }: YouTubePlayerOverlayProps) {
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showControls, setShowControls] = useState(true);
+  // Player refs
+  const youtubePlayerRef = useRef<YouTubePlayerRef>(null);
+  const videoPlayerRef = useRef<VideoPlayerRef>(null);
+  const hlsPlayerRef = useRef<HLSPlayerRef>(null);
 
-  // Handle fullscreen state changes
+  // Use room hook for state and basic room operations
+  const {
+    room,
+    currentUser,
+    messages,
+    typingUsers,
+    error,
+    syncError,
+    showGuestInfoBanner,
+    showHostDialog,
+    showCopied,
+    setShowGuestInfoBanner,
+    setShowHostDialog,
+    handlePromoteUser,
+    handleSendMessage,
+    handleTypingStart,
+    handleTypingStop,
+    copyRoomId,
+    shareRoom,
+  } = useRoom({ roomId });
+
+  // Use video sync hook for video synchronization
+  const {
+    syncVideo,
+    startSyncCheck,
+    stopSyncCheck,
+    handleVideoPlay,
+    handleVideoPause,
+    handleVideoSeek,
+    handleYouTubeStateChange,
+    handleSetVideo,
+  } = useVideoSync({
+    room,
+    currentUser,
+    roomId,
+    youtubePlayerRef,
+    videoPlayerRef,
+    hlsPlayerRef,
+  });
+
+  // Handle video control attempts by guests
+  const handleVideoControlAttempt = () => {
+    if (!currentUser?.isHost) {
+      setShowHostDialog(true);
+      setShowGuestInfoBanner(false);
+    }
+  };
+
+  // Use fullscreen chat overlay hook
+  const { showChatOverlay, isChatMinimized, toggleChatMinimize, closeChatOverlay, showChatOverlayManually } =
+    useFullscreenChatOverlay();
+
+  // Use keyboard shortcuts hook
+  useKeyboardShortcuts({
+    hasVideo: !!room?.videoUrl,
+    isHost: currentUser?.isHost || false,
+    onControlAttempt: handleVideoControlAttempt,
+  });
+
+  // Handle video sync events from socket
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      const isCurrentlyFullscreen = !!(
-        document.fullscreenElement ||
-        (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement ||
-        (document as Document & { msFullscreenElement?: Element }).msFullscreenElement
-      );
-      setIsFullscreen(isCurrentlyFullscreen);
+    if (!socket) return;
 
-      // Show controls when fullscreen state changes
-      setShowControls(true);
+    const handleVideoPlayed = ({ currentTime, timestamp }: { currentTime: number; timestamp: number }) => {
+      syncVideo(currentTime, true, timestamp);
+    };
 
-      // Auto-hide controls after a delay in fullscreen
-      if (isCurrentlyFullscreen) {
-        const timeout = setTimeout(() => {
-          setShowControls(false);
-        }, 3000);
+    const handleVideoPaused = ({ currentTime, timestamp }: { currentTime: number; timestamp: number }) => {
+      syncVideo(currentTime, false, timestamp);
+    };
 
-        return () => clearTimeout(timeout);
+    const handleVideoSeeked = ({ currentTime, timestamp }: { currentTime: number; timestamp: number }) => {
+      syncVideo(currentTime, null, timestamp);
+    };
+
+    const handleSyncUpdate = ({
+      currentTime,
+      isPlaying,
+      timestamp,
+    }: {
+      currentTime: number;
+      isPlaying: boolean;
+      timestamp: number;
+    }) => {
+      if (currentUser?.isHost) {
+        // Hosts don't sync to sync-updates to avoid conflicts
+        return;
       }
+      console.log('📡 Received sync update from host');
+      syncVideo(currentTime, isPlaying, timestamp);
     };
 
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    document.addEventListener('msfullscreenchange', handleFullscreenChange);
-
-    // Check initial fullscreen state
-    handleFullscreenChange();
+    socket.on('video-played', handleVideoPlayed);
+    socket.on('video-paused', handleVideoPaused);
+    socket.on('video-seeked', handleVideoSeeked);
+    socket.on('sync-update', handleSyncUpdate);
 
     return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+      socket.off('video-played', handleVideoPlayed);
+      socket.off('video-paused', handleVideoPaused);
+      socket.off('video-seeked', handleVideoSeeked);
+      socket.off('sync-update', handleSyncUpdate);
     };
-  }, []);
+  }, [socket, syncVideo, currentUser?.isHost]);
 
-  // Show controls on mouse movement in fullscreen
+  // Start/stop sync check based on host status
   useEffect(() => {
-    if (!isFullscreen) return;
-
-    let hideTimeout: NodeJS.Timeout;
-
-    const handleMouseMove = () => {
-      setShowControls(true);
-      clearTimeout(hideTimeout);
-      hideTimeout = setTimeout(() => {
-        setShowControls(false);
-      }, 3000);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
+    if (currentUser?.isHost && room?.videoUrl) {
+      console.log('🎯 Starting sync check - user is host');
+      startSyncCheck();
+    } else {
+      console.log('🛑 Stopping sync check - user is not host or no video');
+      stopSyncCheck();
+    }
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      clearTimeout(hideTimeout);
+      stopSyncCheck();
     };
-  }, [isFullscreen]);
+  }, [currentUser?.isHost, room?.videoUrl, startSyncCheck, stopSyncCheck]);
 
-  // Only show overlay in fullscreen mode
-  if (!isFullscreen || !onShowChatOverlay) {
-    return null;
+  // Handle errors
+  if (error) {
+    return <ErrorDisplay error={error} onRetry={() => router.push('/join')} />;
   }
 
+  // Handle loading state
+  if (!room || !currentUser) {
+    return <LoadingDisplay roomId={roomId} />;
+  }
+
+  const parsedVideo = room.videoUrl ? parseVideoUrl(room.videoUrl) : null;
+
   return (
-    <div
-      className={`pointer-events-none absolute inset-0 z-50 transition-opacity duration-300 ${
-        showControls ? 'opacity-100' : 'opacity-0'
-      }`}
-    >
-      {/* Chat button - positioned in top right */}
-      <div className="absolute right-4 top-4">
-        <Button
-          variant="secondary"
-          size="default"
-          onClick={onShowChatOverlay}
-          className="pointer-events-auto h-11 w-11 border border-white/20 bg-black/60 p-0 text-white transition-all duration-200 hover:border-primary/50 hover:bg-primary hover:text-primary-foreground"
-          title="Show chat"
-        >
-          <MessageCircle className="h-5 w-5" />
-        </Button>
+    <div className="space-y-6">
+      {/* Room Header */}
+      <RoomHeader
+        roomId={roomId}
+        hostName={room.hostName}
+        hostCount={room.users.filter(u => u.isHost).length}
+        isHost={currentUser.isHost}
+        showCopied={showCopied}
+        onCopyRoomId={copyRoomId}
+        onShareRoom={shareRoom}
+      />
+
+      {/* Sync Error */}
+      {syncError && <SyncError error={syncError} />}
+
+      {/* Guest Info Banner */}
+      {showGuestInfoBanner && !currentUser.isHost && room.videoUrl && (
+        <GuestInfoBanner onLearnMore={() => setShowHostDialog(true)} onDismiss={() => setShowGuestInfoBanner(false)} />
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-4">
+        {/* Main Content */}
+        <div className="space-y-6 lg:col-span-3">
+          {/* Video Player */}
+          {room.videoUrl && parsedVideo && room.videoType ? (
+            <VideoPlayerContainer
+              videoUrl={room.videoUrl}
+              videoType={room.videoType}
+              videoId={parsedVideo.embedUrl.split('/embed/')[1]?.split('?')[0]}
+              isHost={currentUser.isHost}
+              onPlay={handleVideoPlay}
+              onPause={handleVideoPause}
+              onSeeked={handleVideoSeek}
+              onYouTubeStateChange={handleYouTubeStateChange}
+              onControlAttempt={handleVideoControlAttempt}
+              onVideoChange={handleSetVideo}
+              onShowChatOverlay={showChatOverlayManually}
+              youtubePlayerRef={youtubePlayerRef}
+              videoPlayerRef={videoPlayerRef}
+              hlsPlayerRef={hlsPlayerRef}
+            />
+          ) : (
+            <VideoSetup
+              onVideoSet={handleSetVideo}
+              isHost={currentUser.isHost}
+              hasVideo={!!room.videoUrl}
+              videoUrl={room.videoUrl}
+            />
+          )}
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          <UserList
+            users={room.users}
+            currentUserId={currentUser.id}
+            currentUserIsHost={currentUser.isHost}
+            onPromoteUser={handlePromoteUser}
+          />
+
+          <Chat
+            messages={messages}
+            currentUserId={currentUser.id}
+            onSendMessage={handleSendMessage}
+            onTypingStart={handleTypingStart}
+            onTypingStop={handleTypingStop}
+            typingUsers={typingUsers}
+          />
+        </div>
       </div>
+
+      {/* Host Control Dialog */}
+      <HostControlDialog open={showHostDialog} onOpenChange={setShowHostDialog} />
+
+      {/* Chat Overlay for Fullscreen */}
+      {(() => {
+        console.log('About to render ChatOverlay with:', {
+          showChatOverlay: !!showChatOverlay,
+          isChatMinimized: !!isChatMinimized,
+          messagesLength: messages.length,
+        });
+        return null;
+      })()}
+      <ChatOverlay
+        messages={messages}
+        currentUserId={currentUser.id}
+        onSendMessage={handleSendMessage}
+        onTypingStart={handleTypingStart}
+        onTypingStop={handleTypingStop}
+        typingUsers={typingUsers}
+        isVisible={showChatOverlay}
+        isMinimized={isChatMinimized}
+        onToggleMinimize={toggleChatMinimize}
+        onClose={closeChatOverlay}
+      />
     </div>
   );
 }
