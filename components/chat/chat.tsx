@@ -7,8 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Send, MessageCircle } from 'lucide-react';
+import { Send, MessageCircle, Volume2, VolumeX } from 'lucide-react';
+import { toast } from 'sonner';
 import { ChatMessage, TypingUser } from '@/types';
+import { useNotificationSound } from '@/hooks/use-notification-sound';
 
 interface ChatProps {
   messages: ChatMessage[];
@@ -36,14 +38,38 @@ export function Chat({
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Notification sound hook
+  const { enabled: soundEnabled, toggleEnabled: toggleSound, playNotification } = useNotificationSound();
+
+  // Handle sound toggle with user feedback
+  const handleSoundToggle = () => {
+    toggleSound();
+    const newState = !soundEnabled;
+    toast.success(newState ? 'Notification sounds enabled' : 'Notification sounds disabled', {
+      duration: 2000,
+      position: 'bottom-right',
+    });
+  };
+
   // Auto-scroll to bottom only when new messages arrive (not on initial load or typing changes)
   useEffect(() => {
     // Only scroll if we have new messages (not initial load)
     if (messages.length > 0 && messages.length > previousMessageCount) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+
+      // Play notification sound for new messages from other users
+      if (previousMessageCount > 0) {
+        // Ensure it's not the initial load
+        const newMessages = messages.slice(previousMessageCount);
+        const hasNewMessageFromOther = newMessages.some(msg => msg.userId !== currentUserId);
+
+        if (hasNewMessageFromOther) {
+          playNotification();
+        }
+      }
     }
     setPreviousMessageCount(messages.length);
-  }, [messages, previousMessageCount]);
+  }, [messages, previousMessageCount, currentUserId, playNotification]);
 
   // Scroll to bottom when typing users change (but only within the chat container)
   useEffect(() => {
@@ -142,9 +168,23 @@ export function Chat({
         <CardTitle className="flex items-center space-x-2">
           <MessageCircle className="h-5 w-5" />
           <span>Chat</span>
-          <Badge variant="secondary" className="ml-auto">
-            {messages.length}
-          </Badge>
+          <div className="ml-auto flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSoundToggle}
+              className="h-8 w-8 p-0 hover:bg-muted"
+              title={soundEnabled ? 'Disable notification sound' : 'Enable notification sound'}
+              aria-label={soundEnabled ? 'Disable notification sound' : 'Enable notification sound'}
+            >
+              {soundEnabled ? (
+                <Volume2 className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <VolumeX className="h-4 w-4 text-muted-foreground" />
+              )}
+            </Button>
+            <Badge variant="secondary">{messages.length}</Badge>
+          </div>
         </CardTitle>
       </CardHeader>
 
