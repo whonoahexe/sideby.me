@@ -8,7 +8,7 @@
 - [x] Allow key controls for guests while typing, such as j, l, k, m, f, or arrow keys, right now they can't use these keys because they don't have permission to control the video
 - [x] Ensure unique names for hosts and guests
 - [x] Implement Zod for type inference wherever possible?
-- [ ] Optimize controls dialogue for mobile because it is too long and can be clicked behind (sometimes)
+- [x] Optimize controls dialogue for mobile because it is too long and can be clicked behind (sometimes)
 - [ ] A feature to change videos in between sessions
 - [ ] Enable chat overlay in fullscreen
 - [ ] Implement notification sound for messages?
