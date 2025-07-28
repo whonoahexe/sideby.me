@@ -83,9 +83,7 @@ export function ChatOverlay({
       // Play notification sound for new unread messages from other users
       if (previousMessageCount > 0) {
         const newMessages = messages.slice(previousMessageCount);
-        const hasNewUnreadMessageFromOther = newMessages.some(msg => 
-          msg.userId !== currentUserId && !msg.isRead
-        );
+        const hasNewUnreadMessageFromOther = newMessages.some(msg => msg.userId !== currentUserId && !msg.isRead);
 
         if (hasNewUnreadMessageFromOther) {
           playNotification();

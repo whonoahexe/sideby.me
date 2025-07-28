@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSocket } from '@/hooks/use-socket';
 import { useRoom } from '@/hooks/use-room';
 import { useVideoSync } from '@/hooks/use-video-sync';
+import { useSubtitles } from '@/hooks/use-subtitles';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { YouTubePlayerRef } from '@/components/video/youtube-player';
 import { VideoPlayerRef } from '@/components/video/video-player';
@@ -52,6 +53,43 @@ export default function RoomPage() {
     copyRoomId,
     shareRoom,
   } = useRoom({ roomId });
+
+  // Helper function to extract video ID from URL for subtitle storage
+  const getVideoIdForStorage = (videoUrl?: string): string | undefined => {
+    if (!videoUrl) return undefined;
+
+    try {
+      const urlObj = new URL(videoUrl);
+
+      // YouTube URLs
+      if (urlObj.hostname.includes('youtube.com') || urlObj.hostname.includes('youtu.be')) {
+        if (urlObj.hostname.includes('youtu.be')) {
+          return urlObj.pathname.slice(1);
+        } else if (urlObj.hostname.includes('youtube.com')) {
+          return urlObj.searchParams.get('v') || undefined;
+        }
+      }
+
+      // For other video types, use the full URL as the ID (hashed for localStorage key)
+      return btoa(videoUrl)
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .substring(0, 16);
+    } catch {
+      return undefined;
+    }
+  };
+
+  // Use local subtitle hook for subtitle management (no socket sync)
+  const {
+    subtitleTracks,
+    activeTrackId: activeSubtitleTrack,
+    addSubtitleTracks,
+    removeSubtitleTrack,
+    setActiveSubtitleTrack,
+  } = useSubtitles({
+    roomId,
+    videoId: getVideoIdForStorage(room?.videoUrl),
+  });
 
   // Use video sync hook for video synchronization
   const {
@@ -202,6 +240,12 @@ export default function RoomPage() {
               onControlAttempt={handleVideoControlAttempt}
               onVideoChange={handleSetVideo}
               onShowChatOverlay={showChatOverlayManually}
+              subtitleTracks={subtitleTracks}
+              activeSubtitleTrack={activeSubtitleTrack}
+              onAddSubtitleTracks={addSubtitleTracks}
+              onRemoveSubtitleTrack={removeSubtitleTrack}
+              onActiveSubtitleTrackChange={setActiveSubtitleTrack}
+              currentVideoTitle={undefined}
               youtubePlayerRef={youtubePlayerRef}
               videoPlayerRef={videoPlayerRef}
               hlsPlayerRef={hlsPlayerRef}

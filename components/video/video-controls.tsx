@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Maximize, Volume2, VolumeX, Play, Pause, RotateCcw, RotateCw, Loader2, MessageCircle } from 'lucide-react';
+import { SubtitleManager } from './subtitle-manager';
+import type { SubtitleTrack } from '@/types/schemas';
 
 interface VideoControlsProps {
   videoRef: React.RefObject<HTMLVideoElement> | null;
@@ -12,7 +14,15 @@ interface VideoControlsProps {
   onPause?: () => void;
   onSeek?: (time: number) => void;
   onShowChatOverlay?: () => void;
+  subtitleTracks?: SubtitleTrack[];
+  activeSubtitleTrack?: string;
+  onAddSubtitleTracks?: (tracks: SubtitleTrack[]) => void;
+  onRemoveSubtitleTrack?: (trackId: string) => void;
+  onActiveSubtitleTrackChange?: (trackId?: string) => void;
+  currentVideoTitle?: string;
   className?: string;
+  onControlsVisibilityChange?: (visible: boolean) => void;
+  onFullscreenChange?: (isFullscreen: boolean) => void;
 }
 
 export function VideoControls({
@@ -23,7 +33,15 @@ export function VideoControls({
   onPause,
   onSeek,
   onShowChatOverlay,
+  subtitleTracks = [],
+  activeSubtitleTrack,
+  onAddSubtitleTracks,
+  onRemoveSubtitleTrack,
+  onActiveSubtitleTrackChange,
+  currentVideoTitle,
   className,
+  onControlsVisibilityChange,
+  onFullscreenChange,
 }: VideoControlsProps) {
   const [isMuted, setIsMuted] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -40,14 +58,32 @@ export function VideoControls({
   // Handle client-side hydration and initial control visibility
   useEffect(() => {
     setShowControls(true); // Ensure controls are visible after hydration
+    onControlsVisibilityChange?.(true); // Notify parent immediately
 
     // Start the auto-hide timer on mount
     const timeout = setTimeout(() => {
       setShowControls(false);
+      onControlsVisibilityChange?.(false);
     }, 4000); // Give a bit more time initially
 
     hideControlsTimeoutRef.current = timeout;
-  }, []);
+  }, [onControlsVisibilityChange]);
+
+  const showControlsWithAutoHide = useCallback(() => {
+    setShowControls(true);
+    onControlsVisibilityChange?.(true);
+
+    // Clear existing timeout
+    if (hideControlsTimeoutRef.current) {
+      clearTimeout(hideControlsTimeoutRef.current);
+    }
+
+    // Auto-hide controls after 3 seconds of inactivity
+    hideControlsTimeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+      onControlsVisibilityChange?.(false);
+    }, 3000);
+  }, [onControlsVisibilityChange]);
 
   // Handle fullscreen state changes
   useEffect(() => {
@@ -58,6 +94,9 @@ export function VideoControls({
         (document as Document & { msFullscreenElement?: Element }).msFullscreenElement
       );
       setIsFullscreen(isCurrentlyFullscreen);
+
+      // Notify parent component about fullscreen change
+      onFullscreenChange?.(isCurrentlyFullscreen);
 
       // Show controls when entering/exiting fullscreen
       if (isCurrentlyFullscreen !== isFullscreen) {
@@ -74,7 +113,7 @@ export function VideoControls({
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.removeEventListener('msfullscreenchange', handleFullscreenChange);
     };
-  }, [isFullscreen]); // Update video state
+  }, [isFullscreen, onFullscreenChange, showControlsWithAutoHide]); // Update video state
   useEffect(() => {
     const video = videoRef?.current;
     if (!video) return;
@@ -296,20 +335,6 @@ export function VideoControls({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const showControlsWithAutoHide = () => {
-    setShowControls(true);
-
-    // Clear existing timeout
-    if (hideControlsTimeoutRef.current) {
-      clearTimeout(hideControlsTimeoutRef.current);
-    }
-
-    // Auto-hide controls after 3 seconds of inactivity
-    hideControlsTimeoutRef.current = setTimeout(() => {
-      setShowControls(false);
-    }, 3000);
-  };
-
   const handleMouseMove = () => {
     showControlsWithAutoHide();
   };
@@ -320,6 +345,7 @@ export function VideoControls({
       clearTimeout(hideControlsTimeoutRef.current);
     }
     setShowControls(false);
+    onControlsVisibilityChange?.(false);
   };
   const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -472,6 +498,20 @@ export function VideoControls({
                 <Volume2 className={isFullscreen ? 'h-5 w-5' : 'h-4 w-4'} />
               )}
             </Button>
+
+            {/* Subtitle Controls */}
+            {onAddSubtitleTracks && onActiveSubtitleTrackChange && (
+              <SubtitleManager
+                subtitleTracks={subtitleTracks}
+                activeTrackId={activeSubtitleTrack}
+                onAddTracks={onAddSubtitleTracks}
+                onRemoveTrack={onRemoveSubtitleTrack || (() => {})}
+                onActiveTrackChange={onActiveSubtitleTrackChange}
+                currentVideoTitle={currentVideoTitle}
+                isHost={isHost}
+                isFullscreen={isFullscreen}
+              />
+            )}
 
             {/* Chat button - only show in fullscreen */}
             {isFullscreen && onShowChatOverlay && (

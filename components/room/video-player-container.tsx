@@ -4,7 +4,9 @@ import { YouTubePlayer, YouTubePlayerRef } from '@/components/video/youtube-play
 import { VideoPlayer, VideoPlayerRef } from '@/components/video/video-player';
 import { HLSPlayer, HLSPlayerRef } from '@/components/video/hls-player';
 import { VideoControls } from '@/components/video/video-controls';
+import { SubtitleOverlay } from '@/components/video/subtitle-overlay';
 import { Video, ExternalLink, Edit3, AlertTriangle } from 'lucide-react';
+import type { SubtitleTrack } from '@/types/schemas';
 import {
   Dialog,
   DialogContent,
@@ -32,6 +34,12 @@ interface VideoPlayerContainerProps {
   onControlAttempt: () => void;
   onVideoChange?: (url: string) => void;
   onShowChatOverlay?: () => void;
+  subtitleTracks?: SubtitleTrack[];
+  activeSubtitleTrack?: string;
+  onAddSubtitleTracks?: (tracks: SubtitleTrack[]) => void;
+  onRemoveSubtitleTrack?: (trackId: string) => void;
+  onActiveSubtitleTrackChange?: (trackId?: string) => void;
+  currentVideoTitle?: string;
   youtubePlayerRef: React.RefObject<YouTubePlayerRef | null>;
   videoPlayerRef: React.RefObject<VideoPlayerRef | null>;
   hlsPlayerRef: React.RefObject<HLSPlayerRef | null>;
@@ -49,6 +57,12 @@ export function VideoPlayerContainer({
   onControlAttempt,
   onVideoChange,
   onShowChatOverlay,
+  subtitleTracks = [],
+  activeSubtitleTrack,
+  onAddSubtitleTracks,
+  onRemoveSubtitleTrack,
+  onActiveSubtitleTrackChange,
+  currentVideoTitle,
   youtubePlayerRef,
   videoPlayerRef,
   hlsPlayerRef,
@@ -60,6 +74,8 @@ export function VideoPlayerContainer({
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [pendingUrl, setPendingUrl] = useState('');
   const [videoRefReady, setVideoRefReady] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true); // Start with controls visible
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Check if video ref is ready
   useEffect(() => {
@@ -239,6 +255,8 @@ export function VideoPlayerContainer({
             onPause={onPause}
             onSeeked={onSeeked}
             isHost={isHost}
+            subtitleTracks={subtitleTracks}
+            activeSubtitleTrack={activeSubtitleTrack}
             className="h-full w-full"
           />
         );
@@ -248,8 +266,24 @@ export function VideoPlayerContainer({
   return (
     <Card>
       <CardContent className="p-6">
-        <div className="relative aspect-video overflow-hidden rounded-lg bg-black" data-video-container>
+        <div
+          className={`relative aspect-video overflow-hidden rounded-lg bg-black ${
+            controlsVisible ? 'video-container-with-controls' : ''
+          } ${isFullscreen ? 'video-container-fullscreen' : ''}`}
+          data-video-container
+        >
           {renderPlayer()}
+
+          {/* Custom subtitle overlay for non-YouTube videos */}
+          {videoType !== 'youtube' && (
+            <SubtitleOverlay
+              videoRef={getVideoElementRef()}
+              subtitleTracks={subtitleTracks}
+              activeSubtitleTrack={activeSubtitleTrack}
+              controlsVisible={controlsVisible}
+              isFullscreen={isFullscreen}
+            />
+          )}
 
           {/* Unified video controls for non-YouTube videos */}
           {videoType !== 'youtube' && videoRefReady && (
@@ -266,7 +300,15 @@ export function VideoPlayerContainer({
                 }
               }}
               onShowChatOverlay={onShowChatOverlay}
+              subtitleTracks={subtitleTracks}
+              activeSubtitleTrack={activeSubtitleTrack}
+              onAddSubtitleTracks={onAddSubtitleTracks}
+              onRemoveSubtitleTrack={onRemoveSubtitleTrack}
+              onActiveSubtitleTrackChange={onActiveSubtitleTrackChange}
+              currentVideoTitle={currentVideoTitle}
               className="z-20"
+              onControlsVisibilityChange={setControlsVisible}
+              onFullscreenChange={setIsFullscreen}
             />
           )}
 

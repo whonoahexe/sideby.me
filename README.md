@@ -12,7 +12,7 @@
 - [x] A feature to change videos in between sessions
 - [x] Enable chat overlay in fullscreen
 - [x] Implement notification sound for messages
-- [ ] Develop native player (far future)
+- [x] Develop player controls
 - [ ] Add subtitles support
 - [ ] Explore voice and video features along with text
 - [ ] Consider mobile app development??!!!?

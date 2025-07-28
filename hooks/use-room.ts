@@ -161,7 +161,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
       // Mark messages as read if they're from the current user, unread otherwise
       const messageWithReadStatus = {
         ...message,
-        isRead: message.userId === currentUser?.id || false
+        isRead: message.userId === currentUser?.id || false,
       };
       setMessages(prev => [...prev, messageWithReadStatus]);
     };
@@ -418,9 +418,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
   }, [roomId]);
 
   const markMessagesAsRead = useCallback(() => {
-    setMessages(prev => 
-      prev.map(message => ({ ...message, isRead: true }))
-    );
+    setMessages(prev => prev.map(message => ({ ...message, isRead: true })));
   }, []);
 
   return {

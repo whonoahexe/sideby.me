@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useVideoSubtitleTracks } from '@/hooks/use-video-subtitle-tracks';
+import type { SubtitleTrack } from '@/types/schemas';
 
 interface VideoPlayerProps {
   src: string;
@@ -11,6 +13,8 @@ interface VideoPlayerProps {
   onSeeked?: () => void;
   className?: string;
   isHost?: boolean;
+  subtitleTracks?: SubtitleTrack[];
+  activeSubtitleTrack?: string;
 }
 
 export interface VideoPlayerRef {
@@ -21,12 +25,34 @@ export interface VideoPlayerRef {
   getDuration: () => number;
   isPaused: () => boolean;
   getVideoElement: () => HTMLVideoElement | null;
+  debugSubtitles: () => void;
 }
 
 export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
-  ({ src, onReady, onPlay, onPause, onTimeUpdate, onSeeked, className, isHost = false }, ref) => {
+  (
+    {
+      src,
+      onReady,
+      onPlay,
+      onPause,
+      onTimeUpdate,
+      onSeeked,
+      className,
+      isHost = false,
+      subtitleTracks = [],
+      activeSubtitleTrack,
+    },
+    ref
+  ) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const programmaticActionRef = useRef(false);
+
+    // Use dedicated hook for subtitle track management
+    const { debugSubtitles } = useVideoSubtitleTracks({
+      videoElement: videoRef.current,
+      subtitleTracks,
+      activeSubtitleTrack,
+    });
 
     useImperativeHandle(ref, () => ({
       play: () => {
@@ -59,6 +85,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
       getVideoElement: () => {
         return videoRef.current;
       },
+      debugSubtitles,
     }));
 
     useEffect(() => {
@@ -151,6 +178,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
         playsInline
         controlsList="nodownload noremoteplayback"
         disablePictureInPicture={!isHost}
+        crossOrigin="anonymous"
       >
         Your browser does not support the video tag.
       </video>

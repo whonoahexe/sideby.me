@@ -47,6 +47,15 @@ export const TypingUserSchema = z.object({
   timestamp: z.number().positive(),
 });
 
+export const SubtitleTrackSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  language: z.string(),
+  url: z.string().url(),
+  format: z.enum(['vtt', 'srt', 'ass']),
+  isDefault: z.boolean().default(false),
+});
+
 export const RoomSchema = z.object({
   id: RoomIdSchema,
   hostId: z.string().uuid(),
@@ -162,6 +171,7 @@ export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 export type TypingUser = z.infer<typeof TypingUserSchema>;
 export type VideoState = z.infer<typeof VideoStateSchema>;
 export type VideoType = z.infer<typeof VideoTypeSchema>;
+export type SubtitleTrack = z.infer<typeof SubtitleTrackSchema>;
 
 // Socket event data types
 export type CreateRoomData = z.infer<typeof CreateRoomDataSchema>;
