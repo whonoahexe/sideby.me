@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import { Space_Grotesk, Space_Mono } from 'next/font/google';
 import './globals.css';
 import { Navigation } from '@/components/layout/navigation';
-import { SocketProvider } from '@/contexts/socket';
+import { SocketProvider } from '@/contexts/socket-provider';
 import { Toaster } from '@/components/ui/sonner';
-import { ThemeProvider } from '@/components/layout/theme-provider';
+import { ThemeProvider } from '@/contexts/theme-provider';
 
 const spaceGrotesk = Space_Grotesk({
   variable: '--font-space-grotesk',

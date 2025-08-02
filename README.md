@@ -13,7 +13,7 @@
 - [x] Enable chat overlay in fullscreen
 - [x] Implement notification sound for messages
 - [x] Develop player controls
-- [ ] Add subtitles support
+- [x] Add subtitles support
 - [ ] Explore voice and video features along with text
 - [ ] Consider mobile app development??!!!?
 
