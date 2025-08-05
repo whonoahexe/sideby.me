@@ -28,12 +28,9 @@ https://watch-with.brkn.me/
 **1. Environment Setup**
 
 ```bash
-# Copy environment template
-cp .env.local
-
 # Configure your environment variables
 REDIS_URL=redis://localhost:6379
-NEXT_PUBLIC_SOCKET_URL=http://localhost:3001
+NEXT_PUBLIC_SOCKET_URL=http://localhost:3000
 ```
 
 **2. Available Scripts**
