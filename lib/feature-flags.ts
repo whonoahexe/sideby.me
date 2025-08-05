@@ -1,23 +1,26 @@
-export type FeatureFlag = keyof typeof FEATURE_FLAGS;
-
+// list of feature flags
 export const FEATURE_FLAGS = {
   SUBTITLES_SUPPORT: true,
 } as const;
 
+export type FeatureFlag = keyof typeof FEATURE_FLAGS;
+
 export function isEnabled(flag: FeatureFlag): boolean {
   const envKey = `NEXT_PUBLIC_FF_${flag}`;
-  const value = process.env[envKey];
+  const envValue = process.env[envKey];
 
-  return value === 'true';
+  if (envValue !== undefined) {
+    return envValue === 'true';
+  }
+
+  return FEATURE_FLAGS[flag];
 }
 
-// debugging utility to log all feature flags
+// debugging utility
 export function getAllFeatureFlags(): Record<FeatureFlag, boolean> {
-  const flags: FeatureFlag[] = ['SUBTITLES_SUPPORT'];
-
-  return flags.reduce(
+  return Object.keys(FEATURE_FLAGS).reduce(
     (acc, flag) => {
-      acc[flag] = isEnabled(flag);
+      acc[flag as FeatureFlag] = isEnabled(flag as FeatureFlag);
       return acc;
     },
     {} as Record<FeatureFlag, boolean>
