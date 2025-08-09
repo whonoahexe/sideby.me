@@ -110,6 +110,65 @@ export const RoomActionDataSchema = z.object({
   roomId: RoomIdSchema,
 });
 
+// Voice chat schemas
+export const VoiceJoinDataSchema = z.object({
+  roomId: RoomIdSchema,
+});
+
+export const VoiceLeaveDataSchema = z.object({
+  roomId: RoomIdSchema,
+});
+
+export const VoicePeerJoinResponseSchema = z.object({
+  userId: z.string().uuid(),
+});
+
+export const VoiceOfferSchema = z.object({
+  roomId: RoomIdSchema,
+  targetUserId: z.string().uuid(),
+  sdp: z.any(),
+});
+
+export const VoiceAnswerSchema = z.object({
+  roomId: RoomIdSchema,
+  targetUserId: z.string().uuid(),
+  sdp: z.any(),
+});
+
+export const VoiceIceCandidateSchema = z.object({
+  roomId: RoomIdSchema,
+  targetUserId: z.string().uuid(),
+  candidate: z.any(),
+});
+
+export const VoicePeerLeaveResponseSchema = z.object({
+  userId: z.string().uuid(),
+});
+
+export const VoiceErrorResponseSchema = z.object({
+  error: z.string(),
+});
+
+export const VoiceExistingPeersResponseSchema = z.object({
+  userIds: z.array(z.string().uuid()),
+});
+
+// Incoming signaling event payloads (from server)
+export const VoiceOfferEventResponseSchema = z.object({
+  fromUserId: z.string().uuid(),
+  sdp: z.any(),
+});
+
+export const VoiceAnswerEventResponseSchema = z.object({
+  fromUserId: z.string().uuid(),
+  sdp: z.any(),
+});
+
+export const VoiceIceCandidateEventResponseSchema = z.object({
+  fromUserId: z.string().uuid(),
+  candidate: z.any(),
+});
+
 // Response schemas
 export const RoomCreatedResponseSchema = z.object({
   roomId: RoomIdSchema,
@@ -195,3 +254,17 @@ export type SyncUpdateResponse = z.infer<typeof SyncUpdateResponseSchema>;
 export type NewMessageResponse = z.infer<typeof NewMessageResponseSchema>;
 export type TypingEventResponse = z.infer<typeof TypingEventResponseSchema>;
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+
+// Voice chat types
+export type VoiceJoinData = z.infer<typeof VoiceJoinDataSchema>;
+export type VoiceLeaveData = z.infer<typeof VoiceLeaveDataSchema>;
+export type VoicePeerJoinResponse = z.infer<typeof VoicePeerJoinResponseSchema>;
+export type VoiceOffer = z.infer<typeof VoiceOfferSchema>;
+export type VoiceAnswer = z.infer<typeof VoiceAnswerSchema>;
+export type VoiceIceCandidate = z.infer<typeof VoiceIceCandidateSchema>;
+export type VoicePeerLeaveResponse = z.infer<typeof VoicePeerLeaveResponseSchema>;
+export type VoiceErrorResponse = z.infer<typeof VoiceErrorResponseSchema>;
+export type VoiceExistingPeersResponse = z.infer<typeof VoiceExistingPeersResponseSchema>;
+export type VoiceOfferEventResponse = z.infer<typeof VoiceOfferEventResponseSchema>;
+export type VoiceAnswerEventResponse = z.infer<typeof VoiceAnswerEventResponseSchema>;
+export type VoiceIceCandidateEventResponse = z.infer<typeof VoiceIceCandidateEventResponseSchema>;
