@@ -59,10 +59,12 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
       id => id !== socket.id
     );
 
-    // Map socket ids in voice room to userIds
+    // Map socket ids in voice room to userIds but only if the socket is still in the main room
     const peerUserIds = peers
-      .map(id => io.sockets.sockets.get(id) as Socket<SocketEvents, SocketEvents, object, SocketData>)
-      .map(s => s?.data.userId)
+      .map(id => io.sockets.sockets.get(id) as Socket<SocketEvents, SocketEvents, object, SocketData> | undefined)
+      .filter((s): s is Socket<SocketEvents, SocketEvents, object, SocketData> => Boolean(s))
+      .filter(s => s.data.roomId === roomId)
+      .map(s => s.data.userId)
       .filter((id): id is string => Boolean(id));
 
     slog('sending existing peers', { count: peerUserIds.length });
@@ -140,6 +142,11 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
         if (room.startsWith('voice:') && socket.data.userId) {
           socket.to(room).emit('voice-peer-left', { userId: socket.data.userId });
           slog('broadcasted peer-left on disconnect', { room });
+          // Also proactively leave the voice room to update adapter state
+          const maybePromise = socket.leave(room);
+          if (maybePromise && typeof (maybePromise as Promise<void>).then === 'function') {
+            (maybePromise as Promise<void>).catch(() => {});
+          }
         }
       }
     } catch {

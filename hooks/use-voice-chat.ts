@@ -253,6 +253,8 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
     const handlePeerLeft = ({ userId }: { userId: string }) => {
       dlog('handlePeerLeft', { userId });
       cleanupPeer(userId);
+      // Defensive: if we somehow still count ourselves plus one, clamp the count by removing stale entries
+      setActivePeerIds(prev => prev.filter(id => id !== userId));
     };
 
     const handleVoiceError = ({ error }: { error: string }) => {
