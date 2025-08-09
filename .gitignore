@@ -45,5 +45,5 @@ next-env.d.ts
 .cursor/
 
 # etc
-.github/
+.github/*.md
 notepad/

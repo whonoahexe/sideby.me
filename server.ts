@@ -13,6 +13,14 @@ const handle = app.getRequestHandler();
 app.prepare().then(() => {
   const httpServer = createServer(async (req, res) => {
     try {
+      if (req.url && (req.url === '/_health' || req.url.startsWith('/_health?'))) {
+        res.statusCode = 200;
+        res.setHeader('content-type', 'text/plain; charset=utf-8');
+        res.setHeader('cache-control', 'no-store');
+        res.end("oh hello! it works btw, if that's what you are wondering");
+        return;
+      }
+
       const parsedUrl = parse(req.url!, true);
       await handle(req, res, parsedUrl);
     } catch (err) {
