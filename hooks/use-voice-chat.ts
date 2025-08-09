@@ -21,6 +21,7 @@ interface UseVoiceChatReturn {
   isConnecting: boolean;
   error: string;
   activePeerIds: string[]; // userIds
+  speakingUserIds: Set<string>;
   enable: () => Promise<void>;
   disable: () => Promise<void>;
   toggleMute: () => void;
@@ -49,10 +50,15 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState('');
   const [activePeerIds, setActivePeerIds] = useState<string[]>([]);
+  const [speakingUserIds, setSpeakingUserIds] = useState<Set<string>>(new Set());
 
   const localStreamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef<Map<string, PeerConnectionEntry>>(new Map());
   const appliedRemoteAnswerRef = useRef<Set<string>>(new Set());
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserNodesRef = useRef<
+    Map<string, { analyser: AnalyserNode; source: MediaStreamAudioSourceNode; rafId: number | null }>
+  >(new Map());
 
   const rtcConfig = useMemo<RTCConfiguration>(
     () => ({
@@ -103,6 +109,40 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       dlog('getUserMedia success', { tracks: stream.getAudioTracks().length });
       localStreamRef.current = stream;
+      // Initialize Web Audio for speaking detection (local)
+      if (!audioContextRef.current) {
+        try {
+          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        } catch {}
+      }
+      if (audioContextRef.current && currentUser?.id) {
+        try {
+          const ctx = audioContextRef.current;
+          const source = ctx.createMediaStreamSource(stream);
+          const analyser = ctx.createAnalyser();
+          analyser.fftSize = 512;
+          source.connect(analyser);
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+          const userId = currentUser.id;
+          const tick = () => {
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+            const avg = sum / dataArray.length;
+            const isSpeakingNow = avg > 20;
+            setSpeakingUserIds(prev => {
+              const next = new Set(prev);
+              if (isSpeakingNow) next.add(userId);
+              else next.delete(userId);
+              return next;
+            });
+            const id = requestAnimationFrame(tick);
+            const entry = analyserNodesRef.current.get(userId);
+            if (entry) entry.rafId = id;
+          };
+          analyserNodesRef.current.set(userId, { analyser, source, rafId: requestAnimationFrame(tick) });
+        } catch {}
+      }
       return stream;
     } catch (e) {
       dlog('getUserMedia error', e);
@@ -146,6 +186,35 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
           .play()
           .then(() => dlog('remote audio playing', { peerUserId }))
           .catch(err => dlog('remote audio play blocked', { peerUserId, err: String(err) }));
+        // Start speaking detection for remote peer
+        if (audioContextRef.current) {
+          try {
+            const ctx = audioContextRef.current;
+            const source = ctx.createMediaStreamSource(event.streams[0]);
+            const analyser = ctx.createAnalyser();
+            analyser.fftSize = 512;
+            source.connect(analyser);
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            const tick = () => {
+              analyser.getByteFrequencyData(dataArray);
+              let sum = 0;
+              for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+              const avg = sum / dataArray.length;
+              const isSpeakingNow = avg > 20;
+              setSpeakingUserIds(prev => {
+                const next = new Set(prev);
+                if (isSpeakingNow) next.add(peerUserId);
+                else next.delete(peerUserId);
+                return next;
+              });
+              const id = requestAnimationFrame(tick);
+              const entry = analyserNodesRef.current.get(peerUserId);
+              if (entry) entry.rafId = id;
+            };
+            const rafId = requestAnimationFrame(tick);
+            analyserNodesRef.current.set(peerUserId, { analyser, source, rafId });
+          } catch {}
+        }
       };
 
       const localStream = await ensureLocalStream();
@@ -255,6 +324,12 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       cleanupPeer(userId);
       // Defensive: if we somehow still count ourselves plus one, clamp the count by removing stale entries
       setActivePeerIds(prev => prev.filter(id => id !== userId));
+      setSpeakingUserIds(prev => {
+        if (!prev.has(userId)) return prev;
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
     };
 
     const handleVoiceError = ({ error }: { error: string }) => {
@@ -327,6 +402,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
     isConnecting,
     error,
     activePeerIds,
+    speakingUserIds,
     enable,
     disable,
     toggleMute,

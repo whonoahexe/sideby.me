@@ -21,7 +21,6 @@ import { HostControlDialog } from '@/components/room/host-control-dialog';
 import { useFullscreenChatOverlay } from '@/hooks/use-fullscreen-chat-overlay';
 import { parseVideoUrl } from '@/lib/video-utils';
 import { useVoiceChat } from '@/hooks/use-voice-chat';
-import { VoiceControls } from '@/components/room/voice-controls';
 
 export default function RoomPage() {
   const params = useParams();
@@ -273,22 +272,7 @@ export default function RoomPage() {
             currentUserId={currentUser.id}
             currentUserIsHost={currentUser.isHost}
             onPromoteUser={handlePromoteUser}
-          />
-
-          <VoiceControls
-            isEnabled={voice.isEnabled}
-            isMuted={voice.isMuted}
-            isConnecting={voice.isConnecting}
-            participantCount={voice.activePeerIds.length + (voice.isEnabled ? 1 : 0)}
-            roomUserCount={room.users.length}
-            softCap={5}
-            showOverCapDialog={overCap && !voice.isEnabled}
-            onEnable={voice.enable}
-            onDisable={voice.disable}
-            onToggleMute={voice.toggleMute}
-            onCloseOverCapDialog={() => {
-              /* handled by parent state in the future */
-            }}
+            speakingUserIds={voice.speakingUserIds}
           />
 
           <Chat
@@ -298,6 +282,16 @@ export default function RoomPage() {
             onTypingStart={handleTypingStart}
             onTypingStop={handleTypingStop}
             typingUsers={typingUsers}
+            voice={{
+              isEnabled: voice.isEnabled,
+              isMuted: voice.isMuted,
+              isConnecting: voice.isConnecting,
+              participantCount: voice.activePeerIds.length + (voice.isEnabled ? 1 : 0),
+              overCap,
+              onEnable: voice.enable,
+              onDisable: voice.disable,
+              onToggleMute: voice.toggleMute,
+            }}
           />
         </div>
       </div>
