@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Send, MessageCircle, Volume2, VolumeX } from 'lucide-react';
+import { Send, MessageCircle, Volume2, VolumeX, Mic, MicOff, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { ChatMessage, TypingUser } from '@/types';
 import { useNotificationSound } from '@/hooks/use-notification-sound';
@@ -20,6 +20,16 @@ interface ChatProps {
   onTypingStop?: () => void;
   typingUsers?: TypingUser[];
   className?: string;
+  voice?: {
+    isEnabled: boolean;
+    isMuted: boolean;
+    isConnecting: boolean;
+    participantCount: number;
+    overCap: boolean;
+    onEnable: () => void;
+    onDisable: () => void;
+    onToggleMute: () => void;
+  };
 }
 
 export function Chat({
@@ -30,6 +40,7 @@ export function Chat({
   onTypingStop,
   typingUsers = [],
   className,
+  voice,
 }: ChatProps) {
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -37,6 +48,8 @@ export function Chat({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressTriggeredRef = useRef(false);
 
   // Notification sound hook
   const { enabled: soundEnabled, toggleEnabled: toggleSound, playNotification } = useNotificationSound();
@@ -273,6 +286,79 @@ export function Chat({
               className="flex-1"
               maxLength={500}
             />
+            {voice && (
+              <Button
+                type="button"
+                size="icon"
+                variant={voice.isEnabled ? (voice.isMuted ? 'secondary' : 'outline') : 'outline'}
+                onMouseDown={() => {
+                  if (!voice.isEnabled) return;
+                  longPressTriggeredRef.current = false;
+                  if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                  longPressTimerRef.current = setTimeout(() => {
+                    longPressTriggeredRef.current = true;
+                    voice.onDisable();
+                    toast.success('Left voice chat');
+                  }, 600);
+                }}
+                onMouseUp={() => {
+                  if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                }}
+                onMouseLeave={() => {
+                  if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                }}
+                onTouchStart={() => {
+                  if (!voice.isEnabled) return;
+                  longPressTriggeredRef.current = false;
+                  if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                  longPressTimerRef.current = setTimeout(() => {
+                    longPressTriggeredRef.current = true;
+                    voice.onDisable();
+                    toast.success('Left voice chat');
+                  }, 600);
+                }}
+                onTouchEnd={() => {
+                  if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                }}
+                onTouchCancel={() => {
+                  if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                }}
+                onClick={() => {
+                  if (longPressTriggeredRef.current) return; // ignore click right after long-press
+                  if (voice.isEnabled) {
+                    voice.onToggleMute();
+                  } else if (voice.overCap) {
+                    toast.error('Voice chat is full (max 5 participants).');
+                  } else {
+                    voice.onEnable();
+                  }
+                }}
+                onContextMenu={e => {
+                  if (!voice.isEnabled) return;
+                  e.preventDefault();
+                  voice.onDisable();
+                }}
+                disabled={voice.isConnecting}
+                title={
+                  voice.isEnabled
+                    ? voice.isMuted
+                      ? 'Unmute (long-press/right-click to leave)'
+                      : 'Mute (long-press/right-click to leave)'
+                    : 'Join Voice'
+                }
+                aria-label={voice.isEnabled ? (voice.isMuted ? 'Unmute' : 'Mute') : 'Join Voice'}
+              >
+                {voice.isEnabled ? (
+                  voice.isMuted ? (
+                    <MicOff className="h-4 w-4" />
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )
+                ) : (
+                  <Phone className="h-4 w-4" />
+                )}
+              </Button>
+            )}
             <Button type="submit" size="icon" disabled={!inputMessage.trim()}>
               <Send className="h-4 w-4" />
             </Button>

@@ -13,9 +13,17 @@ interface UserListProps {
   currentUserIsHost?: boolean;
   onPromoteUser?: (userId: string) => void;
   className?: string;
+  speakingUserIds?: Set<string>;
 }
 
-export function UserList({ users, currentUserId, currentUserIsHost, onPromoteUser, className }: UserListProps) {
+export function UserList({
+  users,
+  currentUserId,
+  currentUserIsHost,
+  onPromoteUser,
+  className,
+  speakingUserIds,
+}: UserListProps) {
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -54,7 +62,9 @@ export function UserList({ users, currentUserId, currentUserIsHost, onPromoteUse
                 user.id === currentUserId ? 'border border-primary/20 bg-primary/10' : 'hover:bg-muted/50'
               }`}
             >
-              <Avatar className="h-8 w-8">
+              <Avatar
+                className={`h-8 w-8 ${speakingUserIds?.has(user.id) ? 'ring-2 ring-green-500 ring-offset-2' : ''}`}
+              >
                 <AvatarFallback className="text-xs">{getInitials(user.name)}</AvatarFallback>
               </Avatar>
 

@@ -20,6 +20,7 @@ import { VideoPlayerContainer } from '@/components/room/video-player-container';
 import { HostControlDialog } from '@/components/room/host-control-dialog';
 import { useFullscreenChatOverlay } from '@/hooks/use-fullscreen-chat-overlay';
 import { parseVideoUrl } from '@/lib/video-utils';
+import { useVoiceChat } from '@/hooks/use-voice-chat';
 
 export default function RoomPage() {
   const params = useParams();
@@ -109,6 +110,10 @@ export default function RoomPage() {
     videoPlayerRef,
     hlsPlayerRef,
   });
+
+  // Voice chat hook (must be before any early returns)
+  const voice = useVoiceChat({ roomId, currentUser });
+  const overCap = (room?.users.length ?? 0) > 5;
 
   // Handle video control attempts by guests
   const handleVideoControlAttempt = () => {
@@ -200,7 +205,7 @@ export default function RoomPage() {
     return <LoadingDisplay roomId={roomId} />;
   }
 
-  const parsedVideo = room.videoUrl ? parseVideoUrl(room.videoUrl) : null;
+  const parsedVideo = room?.videoUrl ? parseVideoUrl(room.videoUrl) : null;
 
   return (
     <div className="space-y-6">
@@ -267,6 +272,7 @@ export default function RoomPage() {
             currentUserId={currentUser.id}
             currentUserIsHost={currentUser.isHost}
             onPromoteUser={handlePromoteUser}
+            speakingUserIds={voice.speakingUserIds}
           />
 
           <Chat
@@ -276,6 +282,16 @@ export default function RoomPage() {
             onTypingStart={handleTypingStart}
             onTypingStop={handleTypingStop}
             typingUsers={typingUsers}
+            voice={{
+              isEnabled: voice.isEnabled,
+              isMuted: voice.isMuted,
+              isConnecting: voice.isConnecting,
+              participantCount: voice.activePeerIds.length + (voice.isEnabled ? 1 : 0),
+              overCap,
+              onEnable: voice.enable,
+              onDisable: voice.disable,
+              onToggleMute: voice.toggleMute,
+            }}
           />
         </div>
       </div>

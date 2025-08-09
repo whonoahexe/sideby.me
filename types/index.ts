@@ -23,6 +23,18 @@ import type {
   TypingEventResponse,
   ErrorResponse,
   VideoState,
+  VoiceJoinData,
+  VoiceLeaveData,
+  VoicePeerJoinResponse,
+  VoiceOffer,
+  VoiceAnswer,
+  VoiceIceCandidate,
+  VoicePeerLeaveResponse,
+  VoiceErrorResponse,
+  VoiceExistingPeersResponse,
+  VoiceOfferEventResponse,
+  VoiceAnswerEventResponse,
+  VoiceIceCandidateEventResponse,
 } from './schemas';
 
 export interface SocketEvents {
@@ -63,4 +75,20 @@ export interface SocketEvents {
   // General events
   error: (data: ErrorResponse) => void;
   disconnect: () => void;
+
+  // Voice chat signaling
+  // Client -> Server
+  'voice-join': (data: VoiceJoinData) => void;
+  'voice-leave': (data: VoiceLeaveData) => void;
+  'voice-offer': (data: VoiceOffer) => void;
+  'voice-answer': (data: VoiceAnswer) => void;
+  'voice-ice-candidate': (data: VoiceIceCandidate) => void;
+  // Server -> Client
+  'voice-peer-joined': (data: VoicePeerJoinResponse) => void;
+  'voice-existing-peers': (data: VoiceExistingPeersResponse) => void;
+  'voice-offer-received': (data: VoiceOfferEventResponse) => void;
+  'voice-answer-received': (data: VoiceAnswerEventResponse) => void;
+  'voice-ice-candidate-received': (data: VoiceIceCandidateEventResponse) => void;
+  'voice-peer-left': (data: VoicePeerLeaveResponse) => void;
+  'voice-error': (data: VoiceErrorResponse) => void;
 }

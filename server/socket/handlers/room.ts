@@ -300,6 +300,14 @@ export async function handleLeaveRoom(
       }
     }
 
+    // Also leave voice room if joined and notify peers
+    const voiceRoom = `voice:${roomId}`;
+    if (socket.rooms.has(voiceRoom)) {
+      socket.to(voiceRoom).emit('voice-peer-left', { userId: socket.data.userId });
+      await socket.leave(voiceRoom);
+      console.log(`Voice: ${socket.data.userName || 'User'} left ${voiceRoom}`);
+    }
+
     await socket.leave(roomId);
     console.log(`${socket.data.userName || 'User'} left room ${roomId}`);
   } catch (error) {
