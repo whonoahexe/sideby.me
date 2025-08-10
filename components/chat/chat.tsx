@@ -1,18 +1,28 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Send, MessageCircle, Volume2, VolumeX, Mic, MicOff, Phone } from 'lucide-react';
-import { toast } from 'sonner';
+import { MessageCircle } from 'lucide-react';
 import { ChatMessage, TypingUser } from '@/types';
 import { useNotificationSound } from '@/hooks/use-notification-sound';
+import { ChatHeader } from './chat-header';
+import { ChatMessageItem } from './chat-message';
+import { ChatInput } from './chat-input';
+import { TypingIndicator } from './typing-indicator';
 
-interface ChatProps {
+interface VoiceConfig {
+  isEnabled: boolean;
+  isMuted: boolean;
+  isConnecting: boolean;
+  participantCount: number;
+  overCap: boolean;
+  onEnable: () => void;
+  onDisable: () => void;
+  onToggleMute: () => void;
+}
+
+export interface ChatProps {
   messages: ChatMessage[];
   currentUserId: string;
   onSendMessage: (message: string) => void;
@@ -20,16 +30,12 @@ interface ChatProps {
   onTypingStop?: () => void;
   typingUsers?: TypingUser[];
   className?: string;
-  voice?: {
-    isEnabled: boolean;
-    isMuted: boolean;
-    isConnecting: boolean;
-    participantCount: number;
-    overCap: boolean;
-    onEnable: () => void;
-    onDisable: () => void;
-    onToggleMute: () => void;
-  };
+  voice?: VoiceConfig;
+  // Mode props
+  mode?: 'sidebar' | 'overlay';
+  unreadCount?: number;
+  onToggleMinimize?: () => void;
+  onClose?: () => void;
 }
 
 export function Chat({
@@ -41,6 +47,10 @@ export function Chat({
   typingUsers = [],
   className,
   voice,
+  mode = 'sidebar',
+  unreadCount = 0,
+  onToggleMinimize,
+  onClose,
 }: ChatProps) {
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -48,31 +58,17 @@ export function Chat({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const longPressTriggeredRef = useRef(false);
 
   // Notification sound hook
   const { enabled: soundEnabled, toggleEnabled: toggleSound, playNotification } = useNotificationSound();
 
-  // Handle sound toggle with user feedback
-  const handleSoundToggle = () => {
-    toggleSound();
-    const newState = !soundEnabled;
-    toast.success(newState ? 'Notification sounds enabled' : 'Notification sounds disabled', {
-      duration: 2000,
-      position: 'bottom-right',
-    });
-  };
-
-  // Auto-scroll to bottom only when new messages arrive (not on initial load or typing changes)
+  // Auto-scroll to bottom only when new messages arrive
   useEffect(() => {
-    // Only scroll if we have new messages (not initial load)
     if (messages.length > 0 && messages.length > previousMessageCount) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
 
       // Play notification sound for new messages from other users
       if (previousMessageCount > 0) {
-        // Ensure it's not the initial load
         const newMessages = messages.slice(previousMessageCount);
         const hasNewMessageFromOther = newMessages.some(msg => msg.userId !== currentUserId);
 
@@ -84,18 +80,22 @@ export function Chat({
     setPreviousMessageCount(messages.length);
   }, [messages, previousMessageCount, currentUserId, playNotification]);
 
-  // Scroll to bottom when typing users change (but only within the chat container)
+  // Scroll to bottom when typing users change
   useEffect(() => {
     if (typingUsers.length > 0) {
-      // Use a more gentle scroll that doesn't affect the main page
-      if (scrollAreaRef.current) {
-        const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-        if (scrollContainer) {
-          scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      if (mode === 'sidebar') {
+        // Use a more gentle scroll that doesn't affect the main page
+        if (scrollAreaRef.current) {
+          const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+          if (scrollContainer) {
+            scrollContainer.scrollTop = scrollContainer.scrollHeight;
+          }
         }
+      } else {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
       }
     }
-  }, [typingUsers]);
+  }, [typingUsers, mode]);
 
   // Handle typing indicators
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,213 +158,95 @@ export function Chat({
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
+  // Empty state component
+  const EmptyState = () => (
+    <div className="py-8 text-center text-muted-foreground">
+      <MessageCircle className="mx-auto mb-2 h-8 w-8 opacity-50" />
+      <p>No messages yet :/ Start the conversation!</p>
+    </div>
+  );
 
-  const formatMessageTime = (timestamp: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(new Date(timestamp));
-  };
-
-  return (
-    <Card className={className}>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center space-x-2">
-          <MessageCircle className="h-5 w-5" />
-          <span>Chat</span>
-          <div className="ml-auto flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSoundToggle}
-              className="h-8 w-8 p-0 hover:bg-muted"
-              title={soundEnabled ? 'Disable notification sound' : 'Enable notification sound'}
-              aria-label={soundEnabled ? 'Disable notification sound' : 'Enable notification sound'}
-            >
-              {soundEnabled ? (
-                <Volume2 className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <VolumeX className="h-4 w-4 text-muted-foreground" />
-              )}
-            </Button>
-            <Badge variant="secondary">{messages.length}</Badge>
-          </div>
-        </CardTitle>
-      </CardHeader>
-
-      <CardContent className="p-0">
-        <ScrollArea className="h-96 px-4" ref={scrollAreaRef}>
-          <div className="min-w-0 space-y-4 pb-4">
-            {messages.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground">
-                <MessageCircle className="mx-auto mb-2 h-8 w-8 opacity-50" />
-                <p>No messages yet :/ Start the conversation!</p>
-              </div>
-            ) : (
-              messages.map(message => (
-                <div
-                  key={message.id}
-                  className={`flex min-w-0 space-x-3 ${
-                    message.userId === currentUserId ? 'flex-row-reverse space-x-reverse' : ''
-                  }`}
-                >
-                  <Avatar className="h-8 w-8 flex-shrink-0">
-                    <AvatarFallback className="text-xs">{getInitials(message.userName)}</AvatarFallback>
-                  </Avatar>
-
-                  <div className={`min-w-0 flex-1 space-y-1 ${message.userId === currentUserId ? 'text-right' : ''}`}>
-                    <div
-                      className={`flex items-center ${message.userId === currentUserId && 'flex-row-reverse gap-2'} space-x-2`}
-                    >
-                      <span className="text-sm font-medium">
-                        {message.userId !== currentUserId ? message.userName : 'you!'}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{formatMessageTime(message.timestamp)}</span>
-                    </div>
-
-                    <div
-                      className={`inline-block max-w-full break-words rounded-lg px-3 py-2 text-sm ${
-                        message.userId === currentUserId ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                      }`}
-                      style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
-                    >
-                      {message.message}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-
-            {/* Typing Indicators */}
-            {typingUsers.length > 0 && (
-              <div className="flex space-x-3">
-                <Avatar className="h-8 w-8 flex-shrink-0">
-                  <AvatarFallback className="text-xs">
-                    {typingUsers.length === 1 ? getInitials(typingUsers[0].userName) : '...'}
-                  </AvatarFallback>
-                </Avatar>
-
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-muted-foreground">
-                      {typingUsers.length === 1
-                        ? `${typingUsers[0].userName} is typing`
-                        : `${typingUsers.length} people are typing`}
-                    </span>
-                  </div>
-
-                  <div className="inline-block rounded-lg bg-muted px-3 py-2">
-                    <div className="flex space-x-1">
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:0ms]" />
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:150ms]" />
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:300ms]" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div ref={bottomRef} />
-          </div>
-        </ScrollArea>
-
-        <div className="border-t p-4">
-          <form onSubmit={handleSendMessage} className="flex space-x-2">
-            <Input
-              placeholder="Type a message..."
-              value={inputMessage}
-              onChange={handleInputChange}
-              className="flex-1"
-              maxLength={500}
+  // Render sidebar mode
+  if (mode === 'sidebar') {
+    return (
+      <Card className={className}>
+        <CardHeader>
+          <CardTitle>
+            <ChatHeader
+              mode="sidebar"
+              messageCount={messages.length}
+              soundEnabled={soundEnabled}
+              onSoundToggle={toggleSound}
+              voice={voice}
             />
-            {voice && (
-              <Button
-                type="button"
-                size="icon"
-                variant={voice.isEnabled ? (voice.isMuted ? 'secondary' : 'outline') : 'outline'}
-                onMouseDown={() => {
-                  if (!voice.isEnabled) return;
-                  longPressTriggeredRef.current = false;
-                  if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-                  longPressTimerRef.current = setTimeout(() => {
-                    longPressTriggeredRef.current = true;
-                    voice.onDisable();
-                    toast.success('Left voice chat');
-                  }, 600);
-                }}
-                onMouseUp={() => {
-                  if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-                }}
-                onMouseLeave={() => {
-                  if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-                }}
-                onTouchStart={() => {
-                  if (!voice.isEnabled) return;
-                  longPressTriggeredRef.current = false;
-                  if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-                  longPressTimerRef.current = setTimeout(() => {
-                    longPressTriggeredRef.current = true;
-                    voice.onDisable();
-                    toast.success('Left voice chat');
-                  }, 600);
-                }}
-                onTouchEnd={() => {
-                  if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-                }}
-                onTouchCancel={() => {
-                  if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-                }}
-                onClick={() => {
-                  if (longPressTriggeredRef.current) return; // ignore click right after long-press
-                  if (voice.isEnabled) {
-                    voice.onToggleMute();
-                  } else if (voice.overCap) {
-                    toast.error('Voice chat is full (max 5 participants).');
-                  } else {
-                    voice.onEnable();
-                  }
-                }}
-                onContextMenu={e => {
-                  if (!voice.isEnabled) return;
-                  e.preventDefault();
-                  voice.onDisable();
-                }}
-                disabled={voice.isConnecting}
-                title={
-                  voice.isEnabled
-                    ? voice.isMuted
-                      ? 'Unmute (long-press/right-click to leave)'
-                      : 'Mute (long-press/right-click to leave)'
-                    : 'Join Voice'
-                }
-                aria-label={voice.isEnabled ? (voice.isMuted ? 'Unmute' : 'Mute') : 'Join Voice'}
-              >
-                {voice.isEnabled ? (
-                  voice.isMuted ? (
-                    <MicOff className="h-4 w-4" />
-                  ) : (
-                    <Mic className="h-4 w-4" />
-                  )
-                ) : (
-                  <Phone className="h-4 w-4" />
-                )}
-              </Button>
-            )}
-            <Button type="submit" size="icon" disabled={!inputMessage.trim()}>
-              <Send className="h-4 w-4" />
-            </Button>
-          </form>
-        </div>
-      </CardContent>
-    </Card>
+          </CardTitle>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          <ScrollArea className="h-96 px-4" ref={scrollAreaRef}>
+            <div className="min-w-0 space-y-4 pb-4">
+              {messages.length === 0 ? (
+                <EmptyState />
+              ) : (
+                messages.map(message => (
+                  <ChatMessageItem key={message.id} message={message} currentUserId={currentUserId} mode="sidebar" />
+                ))
+              )}
+
+              <TypingIndicator typingUsers={typingUsers} mode="sidebar" />
+              <div ref={bottomRef} />
+            </div>
+          </ScrollArea>
+
+          <ChatInput
+            inputMessage={inputMessage}
+            onInputChange={handleInputChange}
+            onSubmit={handleSendMessage}
+            voice={voice}
+            mode="sidebar"
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Render overlay mode
+  return (
+    <>
+      <ChatHeader
+        mode="overlay"
+        unreadCount={unreadCount}
+        soundEnabled={soundEnabled}
+        onSoundToggle={toggleSound}
+        voice={voice}
+        onToggleMinimize={onToggleMinimize}
+        onClose={onClose}
+      />
+
+      {/* Messages */}
+      <div ref={scrollAreaRef} className="h-64 flex-1 space-y-3 overflow-y-auto p-3">
+        {messages.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            <MessageCircle className="mx-auto mb-2 h-8 w-8 opacity-50" />
+            <p>No messages yet :/ Start the conversation!</p>
+          </div>
+        ) : (
+          messages.map(message => (
+            <ChatMessageItem key={message.id} message={message} currentUserId={currentUserId} mode="overlay" />
+          ))
+        )}
+
+        <TypingIndicator typingUsers={typingUsers} mode="overlay" />
+        <div ref={bottomRef} />
+      </div>
+
+      <ChatInput
+        inputMessage={inputMessage}
+        onInputChange={handleInputChange}
+        onSubmit={handleSendMessage}
+        voice={voice}
+        mode="overlay"
+      />
+    </>
   );
 }

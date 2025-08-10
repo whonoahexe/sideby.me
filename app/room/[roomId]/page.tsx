@@ -11,8 +11,7 @@ import { YouTubePlayerRef } from '@/components/video/youtube-player';
 import { VideoPlayerRef } from '@/components/video/video-player';
 import { HLSPlayerRef } from '@/components/video/hls-player';
 import { VideoSetup } from '@/components/video/video-setup';
-import { Chat } from '@/components/chat/chat';
-import { ChatOverlay } from '@/components/chat/chat-overlay';
+import { Chat, ChatOverlay } from '@/components/chat';
 import { UserList } from '@/components/room/user-list';
 import { RoomHeader } from '@/components/room/room-header';
 import { ErrorDisplay, LoadingDisplay, SyncError, GuestInfoBanner } from '@/components/room/room-status';
@@ -276,6 +275,7 @@ export default function RoomPage() {
           />
 
           <Chat
+            mode="sidebar"
             messages={messages}
             currentUserId={currentUser.id}
             onSendMessage={handleSendMessage}
@@ -320,6 +320,16 @@ export default function RoomPage() {
         onToggleMinimize={toggleChatMinimize}
         onClose={closeChatOverlay}
         onMarkMessagesAsRead={markMessagesAsRead}
+        voice={{
+          isEnabled: voice.isEnabled,
+          isMuted: voice.isMuted,
+          isConnecting: voice.isConnecting,
+          participantCount: voice.activePeerIds.length + (voice.isEnabled ? 1 : 0),
+          overCap,
+          onEnable: voice.enable,
+          onDisable: voice.disable,
+          onToggleMute: voice.toggleMute,
+        }}
       />
     </div>
   );

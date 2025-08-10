@@ -1,0 +1,53 @@
+'use client';
+
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { TypingUser } from '@/types';
+
+interface TypingIndicatorProps {
+  typingUsers: TypingUser[];
+  mode?: 'sidebar' | 'overlay';
+}
+
+export function TypingIndicator({ typingUsers, mode = 'sidebar' }: TypingIndicatorProps) {
+  if (typingUsers.length === 0) return null;
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const avatarSize = mode === 'overlay' ? 'h-6 w-6' : 'h-8 w-8';
+  const textSize = mode === 'overlay' ? 'text-sm' : 'text-sm';
+
+  return (
+    <div className="flex space-x-3">
+      <Avatar className={`${avatarSize} flex-shrink-0`}>
+        <AvatarFallback className="text-xs">
+          {typingUsers.length === 1 ? getInitials(typingUsers[0].userName) : '...'}
+        </AvatarFallback>
+      </Avatar>
+
+      <div className="flex-1 space-y-1">
+        <div className="flex items-center space-x-2">
+          <span className={`${textSize} font-medium text-muted-foreground`}>
+            {typingUsers.length === 1
+              ? `${typingUsers[0].userName} is typing`
+              : `${typingUsers.length} people are typing`}
+          </span>
+        </div>
+
+        <div className="inline-block rounded-lg bg-muted px-3 py-2">
+          <div className="flex space-x-1">
+            <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:0ms]" />
+            <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:150ms]" />
+            <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:300ms]" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
