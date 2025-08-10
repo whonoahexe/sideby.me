@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSocket } from '@/hooks/use-socket';
 import { User } from '@/types';
 import { createStunOnlyRTCConfiguration, createRTCConfiguration } from '@/lib/ice-server';
+import { toast } from 'sonner';
 
 type PeerConnectionEntry = {
   peerConnection: RTCPeerConnection;
@@ -32,6 +33,8 @@ interface UseVoiceChatReturn {
 
 // Connection timeout constants
 const STUN_CONNECTION_TIMEOUT = 4000;
+// Bandwidth patrol: auto-disconnect solo users after 2 minutes
+const SOLO_USER_TIMEOUT = 120000; // 2 minutes
 
 export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVoiceChatOptions): UseVoiceChatReturn {
   const { socket } = useSocket();
@@ -53,6 +56,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
   const analyserNodesRef = useRef<
     Map<string, { analyser: AnalyserNode; source: MediaStreamAudioSourceNode; rafId: number | null }>
   >(new Map());
+  const soloTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const cleanupPeer = useCallback((userId: string) => {
     dlog('cleanupPeer', { userId });
@@ -87,6 +91,54 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
     setError('');
     setActivePeerIds([]);
   }, [cleanupPeer]);
+
+  // Bandwidth Patrol: Auto-disconnect solo users to save bandwidth
+  const startSoloUserTimeout = useCallback(() => {
+    if (soloTimeoutRef.current) {
+      clearTimeout(soloTimeoutRef.current);
+    }
+
+    dlog('🚨 Bandwidth Patrol: Starting solo user timeout (2 minutes)');
+
+    soloTimeoutRef.current = setTimeout(async () => {
+      dlog('🚨 Bandwidth Patrol: Solo timeout triggered - disconnecting user');
+
+      // Show toast notification with ErrorDisplay-inspired styling
+      toast.error('🚨 Bandwidth Patrol', {
+        description:
+          "Noah told me to end the call to save bandwidth because you're all alone. That stuff doesn't grow on trees!",
+        duration: 4000,
+        style: {
+          border: '1px solid hsl(var(--destructive))',
+          backgroundColor: 'hsl(var(--background))',
+        },
+        className: 'text-sm',
+      });
+
+      // Also set error state for any UI that might use it
+      setError(
+        "🚨 Noah told me to end the call to save bandwidth because you're all alone. That stuff doesn't grow on trees!"
+      );
+
+      // Auto-disconnect after a short delay to let user see the message
+      setTimeout(async () => {
+        if (socket) {
+          socket.emit('voice-leave', { roomId });
+          await cleanupAll();
+        }
+        setError(''); // Clear error after disconnect
+      }, 3000);
+    }, SOLO_USER_TIMEOUT);
+  }, [socket, roomId, cleanupAll]);
+
+  const clearSoloUserTimeout = useCallback(() => {
+    if (soloTimeoutRef.current) {
+      dlog('🚨 Bandwidth Patrol: Clearing solo timeout - friends joined!');
+
+      clearTimeout(soloTimeoutRef.current);
+      soloTimeoutRef.current = null;
+    }
+  }, []);
 
   const ensureLocalStream = useCallback(async () => {
     if (localStreamRef.current) return localStreamRef.current;
@@ -308,16 +360,24 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       dlog('handleExistingPeers', { userIds });
       const availableSlots = Math.max(0, maxParticipants - 1); // excluding self
       const limited = userIds.slice(0, availableSlots);
+
+      // Bandwidth Patrol: Check if user is solo
+      const otherPeers = limited.filter(peerId => peerId !== currentUser.id);
+      if (otherPeers.length === 0) {
+        dlog('🚨 Bandwidth Patrol: User is solo, starting timeout');
+        startSoloUserTimeout();
+      } else {
+        dlog('🚨 Bandwidth Patrol: Other peers detected, clearing timeout');
+        clearSoloUserTimeout();
+      }
+
       // Sort to ensure deterministic offer order, reducing glare
-      limited
-        .filter(peerId => peerId !== currentUser.id)
-        .sort()
-        .forEach(async peerId => {
-          if (!peersRef.current.has(peerId)) {
-            dlog('initiate to peer from existing list', { peerId });
-            await createPeerConnection(peerId, true);
-          }
-        });
+      otherPeers.sort().forEach(async peerId => {
+        if (!peersRef.current.has(peerId)) {
+          dlog('initiate to peer from existing list', { peerId });
+          await createPeerConnection(peerId, true);
+        }
+      });
     };
 
     const handlePeerJoined = async ({ userId }: { userId: string }) => {
@@ -325,6 +385,10 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       // To avoid offer glare, the newly joined peer will initiate offers via 'voice-existing-peers'.
       // Existing peers simply wait for offers from the joiner.
       dlog('handlePeerJoined (no-init, waiting for offer)', { userId });
+
+      // Bandwidth Patrol: Someone joined, clear solo timeout
+      dlog('🚨 Bandwidth Patrol: Peer joined, clearing solo timeout');
+      clearSoloUserTimeout();
     };
 
     const handleOffer = async ({ fromUserId, sdp }: { fromUserId: string; sdp: RTCSessionDescriptionInit }) => {
@@ -394,6 +458,13 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
         next.delete(userId);
         return next;
       });
+
+      // Bandwidth Patrol: Check if user is now solo after peer left
+      const remainingPeers = Array.from(peersRef.current.keys()).filter(id => id !== userId);
+      if (remainingPeers.length === 0) {
+        dlog('🚨 Bandwidth Patrol: Last peer left, user is now solo');
+        startSoloUserTimeout();
+      }
     };
 
     const handleVoiceError = ({ error }: { error: string }) => {
@@ -418,7 +489,16 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       socket.off('voice-peer-left', handlePeerLeft);
       socket.off('voice-error', handleVoiceError);
     };
-  }, [socket, currentUser, createPeerConnection, cleanupPeer, roomId, maxParticipants]);
+  }, [
+    socket,
+    currentUser,
+    createPeerConnection,
+    cleanupPeer,
+    roomId,
+    maxParticipants,
+    startSoloUserTimeout,
+    clearSoloUserTimeout,
+  ]);
 
   const enable = useCallback(async () => {
     if (!socket || !currentUser) return;
@@ -440,10 +520,14 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
   const disable = useCallback(async () => {
     if (!socket) return;
     dlog('disable start');
+
+    // Bandwidth Patrol: Clear solo timeout when disabling
+    clearSoloUserTimeout();
+
     socket.emit('voice-leave', { roomId });
     await cleanupAll();
     dlog('disable done');
-  }, [socket, roomId, cleanupAll]);
+  }, [socket, roomId, cleanupAll, clearSoloUserTimeout]);
 
   const toggleMute = useCallback(() => {
     const stream = localStreamRef.current;
@@ -456,9 +540,10 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
   // Autocleanup on unmount
   useEffect(() => {
     return () => {
+      clearSoloUserTimeout();
       cleanupAll();
     };
-  }, [cleanupAll]);
+  }, [cleanupAll, clearSoloUserTimeout]);
 
   return {
     isEnabled,
