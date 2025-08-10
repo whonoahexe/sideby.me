@@ -1,12 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSocket } from '@/hooks/use-socket';
 import { User } from '@/types';
+import { createStunOnlyRTCConfiguration, createRTCConfiguration } from '@/lib/ice-server';
 
 type PeerConnectionEntry = {
   peerConnection: RTCPeerConnection;
   remoteAudioEl: HTMLAudioElement;
+  connectionAttempt: number;
+  isUsingTurn: boolean;
 };
 
 interface UseVoiceChatOptions {
@@ -27,17 +30,8 @@ interface UseVoiceChatReturn {
   toggleMute: () => void;
 }
 
-const STUN_SERVERS: RTCIceServer[] = [
-  {
-    urls: [
-      'stun:stun.l.google.com:19302',
-      'stun:stun1.l.google.com:19302',
-      'stun:stun2.l.google.com:19302',
-      'stun:stun3.l.google.com:19302',
-      'stun:stun4.l.google.com:19302',
-    ],
-  },
-];
+// Connection timeout constants
+const STUN_CONNECTION_TIMEOUT = 4000;
 
 export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVoiceChatOptions): UseVoiceChatReturn {
   const { socket } = useSocket();
@@ -59,14 +53,6 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
   const analyserNodesRef = useRef<
     Map<string, { analyser: AnalyserNode; source: MediaStreamAudioSourceNode; rafId: number | null }>
   >(new Map());
-
-  const rtcConfig = useMemo<RTCConfiguration>(
-    () => ({
-      iceServers: STUN_SERVERS,
-      sdpSemantics: 'unified-plan',
-    }),
-    []
-  );
 
   const cleanupPeer = useCallback((userId: string) => {
     dlog('cleanupPeer', { userId });
@@ -152,24 +138,97 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
   }, []);
 
   const createPeerConnection = useCallback(
-    async (peerUserId: string, isInitiator: boolean) => {
+    async (peerUserId: string, isInitiator: boolean, useTurn: boolean = false) => {
       if (!socket) return;
-      if (peersRef.current.has(peerUserId)) return peersRef.current.get(peerUserId)!.peerConnection;
 
-      dlog('createPeerConnection', { peerUserId, isInitiator });
+      // If we already have a connection and it's not a TURN retry, return existing
+      const existingEntry = peersRef.current.get(peerUserId);
+      if (existingEntry && !useTurn) {
+        return existingEntry.peerConnection;
+      }
+
+      dlog('createPeerConnection', { peerUserId, isInitiator, useTurn });
+
+      // Clean up existing connection if this is a TURN retry
+      if (existingEntry && useTurn) {
+        dlog('Cleaning up existing connection for TURN retry', { peerUserId });
+        cleanupPeer(peerUserId);
+      }
+
+      // Choose configuration based on whether this is a TURN fallback
+      const rtcConfig = useTurn ? await createRTCConfiguration() : createStunOnlyRTCConfiguration();
       const pc = new RTCPeerConnection(rtcConfig);
+
+      let connectionTimeout: NodeJS.Timeout | null = null;
+      let hasConnected = false;
+      const connectionAttempt = useTurn ? 2 : 1;
+
+      // Setup connection timeout for STUN-only attempts
+      if (!useTurn) {
+        connectionTimeout = setTimeout(async () => {
+          if (hasConnected || pc.connectionState === 'connected') return;
+
+          dlog('STUN connection timeout, attempting TURN fallback', { peerUserId });
+
+          // Clear the timeout
+          if (connectionTimeout) {
+            clearTimeout(connectionTimeout);
+            connectionTimeout = null;
+          }
+
+          // Attempt TURN fallback
+          try {
+            await createPeerConnection(peerUserId, isInitiator, true);
+          } catch (error) {
+            dlog('TURN fallback failed', { peerUserId, error });
+            setError('Failed to establish voice connection');
+          }
+        }, STUN_CONNECTION_TIMEOUT);
+      }
 
       pc.onicecandidate = event => {
         if (event.candidate) {
-          dlog('local ICE', { peerUserId, hasCandidate: true, type: event.candidate.type });
+          dlog('local ICE', {
+            peerUserId,
+            hasCandidate: true,
+            type: event.candidate.type,
+            method: useTurn ? 'TURN' : 'STUN',
+            attempt: connectionAttempt,
+          });
           socket.emit('voice-ice-candidate', { roomId, targetUserId: peerUserId, candidate: event.candidate });
         }
       };
 
       pc.onconnectionstatechange = () => {
-        dlog('connectionState', { peerUserId, state: pc.connectionState });
-        if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-          cleanupPeer(peerUserId);
+        dlog('connectionState', {
+          peerUserId,
+          state: pc.connectionState,
+          method: useTurn ? 'TURN' : 'STUN',
+          attempt: connectionAttempt,
+        });
+
+        if (pc.connectionState === 'connected') {
+          hasConnected = true;
+          if (connectionTimeout) {
+            clearTimeout(connectionTimeout);
+            connectionTimeout = null;
+          }
+          dlog('🎉 Voice connection established', {
+            peerUserId,
+            method: useTurn ? 'TURN' : 'STUN',
+            attempt: connectionAttempt,
+          });
+        } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+          if (connectionTimeout) {
+            clearTimeout(connectionTimeout);
+            connectionTimeout = null;
+          }
+
+          // Only cleanup if this is a TURN attempt (final attempt) or if connection was previously established
+          if (useTurn || hasConnected) {
+            dlog('Connection failed, cleaning up peer', { peerUserId, method: useTurn ? 'TURN' : 'STUN' });
+            cleanupPeer(peerUserId);
+          }
         }
       };
 
@@ -181,11 +240,11 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       pc.ontrack = event => {
         dlog('ontrack', { peerUserId, streams: event.streams.length });
         remoteAudioEl.srcObject = event.streams[0];
-        // Attempt to play immediately; some browsers need a direct call
         remoteAudioEl
           .play()
           .then(() => dlog('remote audio playing', { peerUserId }))
           .catch(err => dlog('remote audio play blocked', { peerUserId, err: String(err) }));
+
         // Start speaking detection for remote peer
         if (audioContextRef.current) {
           try {
@@ -220,11 +279,16 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       const localStream = await ensureLocalStream();
       localStream.getAudioTracks().forEach(track => pc.addTrack(track, localStream));
 
-      peersRef.current.set(peerUserId, { peerConnection: pc, remoteAudioEl });
+      peersRef.current.set(peerUserId, {
+        peerConnection: pc,
+        remoteAudioEl,
+        connectionAttempt,
+        isUsingTurn: useTurn,
+      });
       setActivePeerIds(prev => (prev.includes(peerUserId) ? prev : [...prev, peerUserId]));
 
       if (isInitiator) {
-        dlog('createOffer', { peerUserId });
+        dlog('createOffer', { peerUserId, useTurn });
         const offer = await pc.createOffer({ offerToReceiveAudio: true });
         await pc.setLocalDescription(offer);
         dlog('send voice-offer', { peerUserId });
@@ -233,7 +297,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
 
       return pc;
     },
-    [socket, roomId, rtcConfig, ensureLocalStream, cleanupPeer]
+    [socket, roomId, ensureLocalStream, cleanupPeer]
   );
 
   // Socket signaling handlers
