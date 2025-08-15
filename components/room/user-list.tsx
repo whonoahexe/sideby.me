@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, Crown, User } from 'lucide-react';
+import { Users, Crown, User, UserX } from 'lucide-react';
 import { User as UserType } from '@/types';
 
 interface UserListProps {
@@ -12,6 +12,7 @@ interface UserListProps {
   currentUserId: string;
   currentUserIsHost?: boolean;
   onPromoteUser?: (userId: string) => void;
+  onKickUser?: (userId: string) => void;
   className?: string;
   speakingUserIds?: Set<string>;
 }
@@ -21,9 +22,15 @@ export function UserList({
   currentUserId,
   currentUserIsHost,
   onPromoteUser,
+  onKickUser,
   className,
   speakingUserIds,
 }: UserListProps) {
+  console.log(
+    '🧑‍🤝‍🧑 UserList received users:',
+    users.map(u => `${u.name} (${u.id})`)
+  );
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -94,6 +101,19 @@ export function UserList({
                     title={`Promote ${user.name} to host`}
                   >
                     <Crown className="h-3 w-3" />
+                  </Button>
+                )}
+
+                {/* Kick button for hosts to kick guests */}
+                {currentUserIsHost && !user.isHost && user.id !== currentUserId && onKickUser && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => onKickUser(user.id)}
+                    className="h-6 px-2 text-xs"
+                    title={`Kick ${user.name} from room`}
+                  >
+                    <UserX className="h-3 w-3" />
                   </Button>
                 )}
 

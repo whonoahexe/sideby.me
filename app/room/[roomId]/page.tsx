@@ -46,6 +46,7 @@ export default function RoomPage() {
     setShowGuestInfoBanner,
     setShowHostDialog,
     handlePromoteUser,
+    handleKickUser,
     handleSendMessage,
     handleTypingStart,
     handleTypingStop,
@@ -271,6 +272,7 @@ export default function RoomPage() {
             currentUserId={currentUser.id}
             currentUserIsHost={currentUser.isHost}
             onPromoteUser={handlePromoteUser}
+            onKickUser={handleKickUser}
             speakingUserIds={voice.speakingUserIds}
           />
 

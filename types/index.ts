@@ -11,11 +11,13 @@ import type {
   SendMessageData,
   SyncCheckData,
   RoomActionData,
+  KickUserData,
   RoomCreatedResponse,
   RoomJoinedResponse,
   UserJoinedResponse,
   UserLeftResponse,
   UserPromotedResponse,
+  UserKickedResponse,
   VideoSetResponse,
   VideoEventResponse,
   SyncUpdateResponse,
@@ -42,6 +44,7 @@ export interface SocketEvents {
   'create-room': (data: CreateRoomData) => void;
   'join-room': (data: JoinRoomData) => void;
   'leave-room': (data: RoomActionData) => void;
+  'kick-user': (data: KickUserData) => void;
   'promote-host': (data: PromoteHostData) => void;
   'room-created': (data: RoomCreatedResponse) => void;
   'room-joined': (data: RoomJoinedResponse) => void;
@@ -49,6 +52,7 @@ export interface SocketEvents {
   'user-joined': (data: UserJoinedResponse) => void;
   'user-left': (data: UserLeftResponse) => void;
   'user-promoted': (data: UserPromotedResponse) => void;
+  'user-kicked': (data: UserKickedResponse) => void;
 
   // Video events
   'set-video': (data: SetVideoData) => void;

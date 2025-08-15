@@ -2,7 +2,14 @@ import { Socket, Server as IOServer } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 import { redisService } from '@/server/redis';
 import { generateRoomId } from '@/lib/video-utils';
-import { Room, User, CreateRoomDataSchema, JoinRoomDataSchema, RoomActionDataSchema } from '@/types';
+import {
+  Room,
+  User,
+  CreateRoomDataSchema,
+  JoinRoomDataSchema,
+  RoomActionDataSchema,
+  KickUserDataSchema,
+} from '@/types';
 import { SocketEvents, SocketData } from '../types';
 import { validateData } from '../utils';
 
@@ -255,6 +262,93 @@ export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, 
     } catch (error) {
       console.error('Error promoting user:', error);
       socket.emit('error', { error: 'Failed to promote user' });
+    }
+  });
+
+  // Kick user
+  socket.on('kick-user', async data => {
+    try {
+      const validatedData = validateData(KickUserDataSchema, data, socket);
+      if (!validatedData) return;
+
+      const { roomId, userId } = validatedData;
+
+      if (!socket.data.userId) {
+        socket.emit('error', { error: 'Not authenticated' });
+        return;
+      }
+
+      const room = await redisService.rooms.getRoom(roomId);
+      if (!room) {
+        socket.emit('room-error', { error: 'Room not found' });
+        return;
+      }
+
+      const currentUser = room.users.find(u => u.id === socket.data.userId);
+      if (!currentUser?.isHost) {
+        socket.emit('error', { error: 'Only hosts can kick users' });
+        return;
+      }
+
+      const targetUser = room.users.find(u => u.id === userId);
+      if (!targetUser) {
+        socket.emit('error', { error: 'User not found' });
+        return;
+      }
+
+      if (targetUser.isHost) {
+        socket.emit('error', { error: 'Cannot kick another host' });
+        return;
+      }
+
+      if (targetUser.id === currentUser.id) {
+        socket.emit('error', { error: 'Cannot kick yourself' });
+        return;
+      }
+
+      // Get the target user's socket ID from Redis
+      const targetSocketId = await redisService.userMapping.getUserSocket(userId);
+
+      // Remove user from room first
+      const updatedUsers = room.users.filter(u => u.id !== userId);
+      const updatedRoom = { ...room, users: updatedUsers };
+      await redisService.rooms.updateRoom(roomId, updatedRoom);
+
+      // Remove the kicked user from Socket.IO room and notify them
+      if (targetSocketId) {
+        const targetSocket = io.sockets.sockets.get(targetSocketId);
+        if (targetSocket) {
+          // Remove them from voice room if joined
+          const voiceRoom = `voice:${roomId}`;
+          if (targetSocket.rooms.has(voiceRoom)) {
+            targetSocket.to(voiceRoom).emit('voice-peer-left', { userId });
+            await targetSocket.leave(voiceRoom);
+          }
+
+          // Remove from main room FIRST
+          await targetSocket.leave(roomId);
+
+          // Then notify them they were kicked
+          targetSocket.emit('room-error', {
+            error: `You have been kicked from the room by ${currentUser.name}`,
+          });
+        }
+
+        // Remove userId -> socketId mapping from Redis
+        await redisService.userMapping.removeUserSocket(userId);
+      }
+
+      // Send to all users in the room (including the host who initiated the kick)
+      io.to(roomId).emit('user-kicked', {
+        userId,
+        userName: targetUser.name,
+        kickedBy: currentUser.id,
+      });
+
+      console.log(`${targetUser.name} was kicked from room ${roomId} by ${currentUser.name}`);
+    } catch (error) {
+      console.error('Error kicking user:', error);
+      socket.emit('error', { error: 'Failed to kick user' });
     }
   });
 }

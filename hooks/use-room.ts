@@ -29,6 +29,7 @@ interface UseRoomReturn {
   setShowHostDialog: (show: boolean) => void;
   setShowCopied: (show: boolean) => void;
   handlePromoteUser: (userId: string) => void;
+  handleKickUser: (userId: string) => void;
   handleSendMessage: (message: string) => void;
   handleTypingStart: () => void;
   handleTypingStop: () => void;
@@ -134,6 +135,37 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
       console.log(`👑 ${userName} has been promoted to host`);
     };
 
+    const handleUserKicked = ({
+      userId,
+      userName,
+      kickedBy,
+    }: {
+      userId: string;
+      userName: string;
+      kickedBy?: string;
+    }) => {
+      setRoom(prev => {
+        if (!prev) return null;
+
+        const userExists = prev.users.some(u => u.id === userId);
+        if (!userExists) return prev;
+
+        const updatedUsers = prev.users.filter(u => u.id !== userId);
+        return {
+          ...prev,
+          users: [...updatedUsers],
+        };
+      });
+
+      // Only show toast if the current user didn't initiate the kick
+      setCurrentUser(currentUser => {
+        if (currentUser && kickedBy && currentUser.id !== kickedBy) {
+          toast.info(`${userName} has been kicked from the room`);
+        }
+        return currentUser;
+      });
+    };
+
     const handleVideoSet = ({ videoUrl, videoType }: { videoUrl: string; videoType: 'youtube' | 'mp4' | 'm3u8' }) => {
       setRoom(prev =>
         prev
@@ -185,6 +217,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
     const handleRoomError = ({ error }: { error: string }) => {
       console.error('🚨 Room error:', error);
 
+      // Handle room closure (all hosts left)
       if (error.includes('All hosts have left') || error.includes('Redirecting to home page')) {
         console.log('🚪 Room closed by host departure, redirecting to home...');
 
@@ -205,6 +238,22 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
         return;
       }
 
+      // Handle kick messages - should always redirect regardless of room state
+      if (error.includes('You have been kicked from the room')) {
+        console.log('🚪 User has been kicked, redirecting to home...');
+
+        toast.error('Kicked from Room', {
+          description: error,
+          duration: 4000,
+        });
+
+        setTimeout(() => {
+          router.push('/');
+        }, 1500);
+        return;
+      }
+
+      // For other errors, only show if not already in room
       if (room && currentUser) {
         console.log('🛡️ Ignoring room error - already successfully in room');
         return;
@@ -232,6 +281,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
     socket.on('user-joined', handleUserJoined);
     socket.on('user-left', handleUserLeft);
     socket.on('user-promoted', handleUserPromoted);
+    socket.on('user-kicked', handleUserKicked);
     socket.on('video-set', handleVideoSet);
     socket.on('new-message', handleNewMessage);
     socket.on('user-typing', handleUserTyping);
@@ -244,6 +294,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
       socket.off('user-joined', handleUserJoined);
       socket.off('user-left', handleUserLeft);
       socket.off('user-promoted', handleUserPromoted);
+      socket.off('user-kicked', handleUserKicked);
       socket.off('video-set', handleVideoSet);
       socket.off('new-message', handleNewMessage);
       socket.off('user-typing', handleUserTyping);
@@ -380,6 +431,19 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
     [socket, currentUser?.isHost, roomId]
   );
 
+  const handleKickUser = useCallback(
+    (userId: string) => {
+      if (!socket || !currentUser?.isHost) return;
+
+      const targetUser = room?.users.find(u => u.id === userId);
+      if (targetUser) {
+        socket.emit('kick-user', { roomId, userId });
+        toast.success(`${targetUser.name} has been kicked from the room`);
+      }
+    },
+    [socket, currentUser?.isHost, roomId, room?.users]
+  );
+
   const handleSendMessage = useCallback(
     (message: string) => {
       if (!socket) return;
@@ -439,6 +503,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
     setShowHostDialog,
     setShowCopied,
     handlePromoteUser,
+    handleKickUser,
     handleSendMessage,
     handleTypingStart,
     handleTypingStop,

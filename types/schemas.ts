@@ -110,6 +110,11 @@ export const RoomActionDataSchema = z.object({
   roomId: RoomIdSchema,
 });
 
+export const KickUserDataSchema = z.object({
+  roomId: RoomIdSchema,
+  userId: z.string().uuid(),
+});
+
 // Voice chat schemas
 export const VoiceJoinDataSchema = z.object({
   roomId: RoomIdSchema,
@@ -194,6 +199,12 @@ export const UserPromotedResponseSchema = z.object({
   userName: UserNameSchema,
 });
 
+export const UserKickedResponseSchema = z.object({
+  userId: z.string().uuid(),
+  userName: UserNameSchema,
+  kickedBy: z.string().uuid().optional(),
+});
+
 export const VideoSetResponseSchema = z.object({
   videoUrl: VideoUrlSchema,
   videoType: z.enum(['youtube', 'mp4', 'm3u8']),
@@ -241,6 +252,7 @@ export type PromoteHostData = z.infer<typeof PromoteHostDataSchema>;
 export type SendMessageData = z.infer<typeof SendMessageDataSchema>;
 export type SyncCheckData = z.infer<typeof SyncCheckDataSchema>;
 export type RoomActionData = z.infer<typeof RoomActionDataSchema>;
+export type KickUserData = z.infer<typeof KickUserDataSchema>;
 
 // Response types
 export type RoomCreatedResponse = z.infer<typeof RoomCreatedResponseSchema>;
@@ -248,6 +260,7 @@ export type RoomJoinedResponse = z.infer<typeof RoomJoinedResponseSchema>;
 export type UserJoinedResponse = z.infer<typeof UserJoinedResponseSchema>;
 export type UserLeftResponse = z.infer<typeof UserLeftResponseSchema>;
 export type UserPromotedResponse = z.infer<typeof UserPromotedResponseSchema>;
+export type UserKickedResponse = z.infer<typeof UserKickedResponseSchema>;
 export type VideoSetResponse = z.infer<typeof VideoSetResponseSchema>;
 export type VideoEventResponse = z.infer<typeof VideoEventResponseSchema>;
 export type SyncUpdateResponse = z.infer<typeof SyncUpdateResponseSchema>;
