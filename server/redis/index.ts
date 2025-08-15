@@ -1,5 +1,6 @@
 import { RoomRepository } from './handlers/room';
 import { ChatRepository } from './handlers/chat';
+import { UserMappingRepository } from './handlers/user-mapping';
 
 export class RedisService {
   private static instance: RedisService;
@@ -7,10 +8,12 @@ export class RedisService {
   // Expose repositories directly for more flexible access
   public readonly rooms: RoomRepository;
   public readonly chat: ChatRepository;
+  public readonly userMapping: UserMappingRepository;
 
   private constructor() {
     this.rooms = RoomRepository.getInstance();
     this.chat = ChatRepository.getInstance();
+    this.userMapping = UserMappingRepository.getInstance();
   }
 
   static getInstance(): RedisService {

@@ -94,7 +94,7 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
     if (!validated) return;
     const { roomId, targetUserId, sdp } = validated;
     // Find socket for target user in room
-    const targetSocket = findSocketByUserId(io, targetUserId);
+    const targetSocket = await findSocketByUserId(io, targetUserId);
     if (!targetSocket) {
       slog('voice-offer target not found', { targetUserId });
       socket.emit('voice-error', { error: 'Target user not found' });
@@ -109,7 +109,7 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
     const validated = validateData(VoiceAnswerSchema, data, socket);
     if (!validated) return;
     const { roomId, targetUserId, sdp } = validated;
-    const targetSocket = findSocketByUserId(io, targetUserId);
+    const targetSocket = await findSocketByUserId(io, targetUserId);
     if (!targetSocket) {
       slog('voice-answer target not found', { targetUserId });
       socket.emit('voice-error', { error: 'Target user not found' });
@@ -124,7 +124,7 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
     const validated = validateData(VoiceIceCandidateSchema, data, socket);
     if (!validated) return;
     const { roomId, targetUserId, candidate } = validated;
-    const targetSocket = findSocketByUserId(io, targetUserId);
+    const targetSocket = await findSocketByUserId(io, targetUserId);
     if (!targetSocket) {
       slog('voice-ice target not found', { targetUserId });
       socket.emit('voice-error', { error: 'Target user not found' });
@@ -155,15 +155,36 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
   });
 }
 
-function findSocketByUserId(
+// Efficiently find a socket by userId using Redis mapping
+async function findSocketByUserId(
   io: IOServer,
   userId: string
-): Socket<SocketEvents, SocketEvents, object, SocketData> | undefined {
-  for (const [, s] of io.sockets.sockets) {
-    const socket = s as Socket<SocketEvents, SocketEvents, object, SocketData>;
-    if (socket.data.userId === userId) {
+): Promise<Socket<SocketEvents, SocketEvents, object, SocketData> | undefined> {
+  try {
+    // Get socketId from Redis mapping
+    const socketId = await redisService.userMapping.getUserSocket(userId);
+    if (!socketId) {
+      return undefined;
+    }
+
+    // Get socket from Socket.IO using the mapped socketId
+    const socket = io.sockets.sockets.get(socketId) as
+      | Socket<SocketEvents, SocketEvents, object, SocketData>
+      | undefined;
+
+    // Verify the socket still exists and has the correct userId
+    if (socket && socket.data.userId === userId) {
       return socket;
     }
+
+    // If socket doesn't exist or userId doesn't match, clean up stale mapping
+    if (!socket || socket.data.userId !== userId) {
+      await redisService.userMapping.removeUserSocket(userId);
+    }
+
+    return undefined;
+  } catch (error) {
+    console.error('Error finding socket by userId:', error);
+    return undefined;
   }
-  return undefined;
 }

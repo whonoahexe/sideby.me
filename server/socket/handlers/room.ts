@@ -48,6 +48,9 @@ export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, 
 
       await socket.join(roomId);
 
+      // Store userId -> socketId mapping in Redis for efficient lookup
+      await redisService.userMapping.setUserSocket(userId, socket.id);
+
       socket.emit('room-created', { roomId, room, hostToken: room.hostToken });
       socket.emit('room-joined', { room, user });
       console.log(`Room ${roomId} created by ${hostName} with token ${room.hostToken}`);
@@ -119,6 +122,9 @@ export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, 
           socket.data.roomId = roomId;
 
           await socket.join(roomId);
+
+          // Store userId -> socketId mapping in Redis for efficient lookup
+          await redisService.userMapping.setUserSocket(existingUser.id, socket.id);
           console.log(`${userName} rejoined room ${roomId} (existing user, isHost: ${existingUser.isHost})`);
           socket.emit('room-joined', { room, user: existingUser });
           return;
@@ -184,6 +190,9 @@ export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, 
       socket.data.roomId = roomId;
 
       await socket.join(roomId);
+
+      // Store userId -> socketId mapping in Redis for efficient lookup
+      await redisService.userMapping.setUserSocket(userId, socket.id);
 
       socket.emit('room-joined', { room: updatedRoom!, user });
       socket.to(roomId).emit('user-joined', { user });
@@ -309,6 +318,10 @@ export async function handleLeaveRoom(
     }
 
     await socket.leave(roomId);
+
+    // Remove userId -> socketId mapping from Redis
+    await redisService.userMapping.removeUserSocket(socket.data.userId);
+
     console.log(`${socket.data.userName || 'User'} left room ${roomId}`);
   } catch (error) {
     console.error('Error leaving room:', error);
