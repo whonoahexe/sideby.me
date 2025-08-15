@@ -11,6 +11,8 @@ type PeerConnectionEntry = {
   remoteAudioEl: HTMLAudioElement;
   connectionAttempt: number;
   isUsingTurn: boolean;
+  reconnectAttempts: number;
+  reconnectTimeoutId: NodeJS.Timeout | null;
 };
 
 interface UseVoiceChatOptions {
@@ -34,7 +36,11 @@ interface UseVoiceChatReturn {
 // Connection timeout constants
 const STUN_CONNECTION_TIMEOUT = 4000;
 // Bandwidth patrol: auto-disconnect solo users after 2 minutes
-const SOLO_USER_TIMEOUT = 120000; // 2 minutes
+const SOLO_USER_TIMEOUT = 120000;
+// Reconnection constants
+const MAX_RECONNECT_ATTEMPTS = 3;
+const BASE_RECONNECT_DELAY = 1000;
+const MAX_RECONNECT_DELAY = 30000;
 
 export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVoiceChatOptions): UseVoiceChatReturn {
   const { socket } = useSocket();
@@ -62,6 +68,12 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
     dlog('cleanupPeer', { userId });
     const entry = peersRef.current.get(userId);
     if (!entry) return;
+
+    // Clear reconnection timeout if it exists
+    if (entry.reconnectTimeoutId) {
+      clearTimeout(entry.reconnectTimeoutId);
+    }
+
     entry.peerConnection.onicecandidate = null;
     entry.peerConnection.ontrack = null;
     entry.peerConnection.onconnectionstatechange = null;
@@ -265,6 +277,17 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
             clearTimeout(connectionTimeout);
             connectionTimeout = null;
           }
+
+          // Reset reconnection attempts on successful connection
+          const entry = peersRef.current.get(peerUserId);
+          if (entry) {
+            entry.reconnectAttempts = 0;
+            if (entry.reconnectTimeoutId) {
+              clearTimeout(entry.reconnectTimeoutId);
+              entry.reconnectTimeoutId = null;
+            }
+          }
+
           dlog('🎉 Voice connection established', {
             peerUserId,
             method: useTurn ? 'TURN' : 'STUN',
@@ -276,9 +299,43 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
             connectionTimeout = null;
           }
 
-          // Only cleanup if this is a TURN attempt (final attempt) or if connection was previously established
-          if (useTurn || hasConnected) {
-            dlog('Connection failed, cleaning up peer', { peerUserId, method: useTurn ? 'TURN' : 'STUN' });
+          // For failed connections, attempt reconnection with exponential backoff
+          if (pc.connectionState === 'failed' && !useTurn) {
+            // For STUN failures, first try TURN fallback instead of reconnection
+            dlog('STUN connection failed, attempting TURN fallback', { peerUserId });
+            createPeerConnection(peerUserId, isInitiator, true).catch(error => {
+              dlog('TURN fallback failed, starting reconnection logic', { peerUserId, error });
+              // Start reconnection logic after TURN fails
+              const entry = peersRef.current.get(peerUserId);
+              if (entry && entry.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                scheduleReconnection(peerUserId, isInitiator);
+              } else {
+                cleanupPeer(peerUserId);
+              }
+            });
+            return; // Don't cleanup, TURN attempt will handle it
+          }
+
+          // If this was a TURN attempt, start reconnection logic
+          if (useTurn && pc.connectionState === 'failed') {
+            const entry = peersRef.current.get(peerUserId);
+            if (entry && entry.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+              dlog('🔄 TURN connection failed, scheduling reconnection', {
+                peerUserId,
+                attempt: entry.reconnectAttempts + 1,
+              });
+              scheduleReconnection(peerUserId, isInitiator);
+              return; // Don't cleanup immediately, let reconnection handle it
+            }
+          }
+
+          // Only cleanup if this is a final failure or if connection was previously established
+          if (useTurn || hasConnected || pc.connectionState === 'disconnected') {
+            dlog('Connection failed permanently, cleaning up peer', {
+              peerUserId,
+              method: useTurn ? 'TURN' : 'STUN',
+              finalFailure: true,
+            });
             cleanupPeer(peerUserId);
           }
         }
@@ -336,6 +393,8 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
         remoteAudioEl,
         connectionAttempt,
         isUsingTurn: useTurn,
+        reconnectAttempts: 0,
+        reconnectTimeoutId: null,
       });
       setActivePeerIds(prev => (prev.includes(peerUserId) ? prev : [...prev, peerUserId]));
 
@@ -350,6 +409,61 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       return pc;
     },
     [socket, roomId, ensureLocalStream, cleanupPeer]
+  );
+
+  // Exponential backoff reconnection logic
+  const scheduleReconnection = useCallback(
+    (peerUserId: string, wasInitiator: boolean) => {
+      const entry = peersRef.current.get(peerUserId);
+      if (!entry) return;
+
+      if (entry.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        dlog('🔄 Max reconnection attempts reached for peer', { peerUserId, attempts: entry.reconnectAttempts });
+        cleanupPeer(peerUserId);
+        return;
+      }
+
+      const attempt = entry.reconnectAttempts + 1;
+      const delay = Math.min(BASE_RECONNECT_DELAY * Math.pow(2, attempt - 1), MAX_RECONNECT_DELAY);
+
+      dlog('🔄 Scheduling reconnection', { peerUserId, attempt, delay });
+
+      const timeoutId = setTimeout(async () => {
+        try {
+          dlog('🔄 Attempting reconnection', { peerUserId, attempt });
+
+          // Clean up the old connection but keep the entry structure
+          const oldEntry = peersRef.current.get(peerUserId);
+          if (oldEntry) {
+            oldEntry.peerConnection.close();
+            oldEntry.remoteAudioEl.remove();
+          }
+
+          // Create new connection with incremented attempt count
+          await createPeerConnection(peerUserId, wasInitiator, entry.isUsingTurn);
+
+          // Update the attempt count for the new connection
+          const newEntry = peersRef.current.get(peerUserId);
+          if (newEntry) {
+            newEntry.reconnectAttempts = attempt;
+          }
+        } catch (error) {
+          dlog('🔄 Reconnection failed', { peerUserId, attempt, error });
+          // If reconnection fails, schedule another attempt
+          const currentEntry = peersRef.current.get(peerUserId);
+          if (currentEntry && currentEntry.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            scheduleReconnection(peerUserId, wasInitiator);
+          } else {
+            cleanupPeer(peerUserId);
+          }
+        }
+      }, delay);
+
+      // Update the entry with the new timeout
+      entry.reconnectTimeoutId = timeoutId;
+      entry.reconnectAttempts = attempt;
+    },
+    [cleanupPeer, createPeerConnection]
   );
 
   // Socket signaling handlers
