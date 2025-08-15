@@ -299,15 +299,6 @@ export default function RoomPage() {
       {/* Host Control Dialog */}
       <HostControlDialog open={showHostDialog} onOpenChange={setShowHostDialog} />
 
-      {/* Chat Overlay for Fullscreen */}
-      {(() => {
-        console.log('About to render ChatOverlay with:', {
-          showChatOverlay: !!showChatOverlay,
-          isChatMinimized: !!isChatMinimized,
-          messagesLength: messages.length,
-        });
-        return null;
-      })()}
       <ChatOverlay
         messages={messages}
         currentUserId={currentUser.id}

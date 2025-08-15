@@ -1,17 +1,4 @@
-interface TurnCredential {
-  username: string;
-  credential: string;
-  urls: string[];
-}
-
-interface TurnResponse {
-  username: string;
-  password: string;
-  ttl: number;
-  uris: string[];
-}
-
-const turnApiKey = process.env.METERED_API_KEY;
+const turnApiKey = process.env.NEXT_PUBLIC_METERED_API_KEY;
 const TURN_API_URL = `https://whonoahexe.metered.live/api/v1/turn/credentials?apiKey=${turnApiKey}`;
 
 const STUN_SERVERS: RTCIceServer[] = [
@@ -27,13 +14,13 @@ const STUN_SERVERS: RTCIceServer[] = [
 ];
 
 // Fetches TURN credentials from the Metered API
-export async function fetchTurnCredentials(): Promise<TurnCredential | null> {
-  try {
-    if (!turnApiKey) {
-      console.warn('[TURN] No API key configured');
-      return null;
-    }
+export async function fetchTurnCredentials(): Promise<RTCIceServer[] | null> {
+  if (!turnApiKey) {
+    console.warn('[TURN] NEXT_PUBLIC_METERED_API_KEY not found in environment variables');
+    return null;
+  }
 
+  try {
     const response = await fetch(TURN_API_URL, {
       method: 'GET',
       headers: {
@@ -46,13 +33,11 @@ export async function fetchTurnCredentials(): Promise<TurnCredential | null> {
       return null;
     }
 
-    const data: TurnResponse = await response.json();
+    const data: RTCIceServer[] = await response.json();
+    console.log('[TURN] API Response:', data);
 
-    return {
-      username: data.username,
-      credential: data.password,
-      urls: data.uris,
-    };
+    // The API returns RTCIceServer objects directly
+    return data;
   } catch (error) {
     console.warn('[TURN] Error fetching TURN credentials:', error);
     return null;
@@ -66,15 +51,10 @@ export async function createIceServerConfig(): Promise<RTCIceServer[]> {
 
   // Try to add TURN servers as fallback
   try {
-    const turnCredentials = await fetchTurnCredentials();
+    const turnServers = await fetchTurnCredentials();
 
-    if (turnCredentials) {
-      iceServers.push({
-        urls: turnCredentials.urls,
-        username: turnCredentials.username,
-        credential: turnCredentials.credential,
-      });
-
+    if (turnServers && turnServers.length > 0) {
+      iceServers.push(...turnServers);
       console.log('[TURN] Successfully configured TURN servers as fallback');
     } else {
       console.log('[TURN] No TURN credentials available, using STUN-only configuration');

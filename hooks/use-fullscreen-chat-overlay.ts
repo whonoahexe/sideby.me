@@ -61,12 +61,6 @@ export function useFullscreenChatOverlay() {
     setIsChatMinimized(false);
   };
 
-  console.log('useFullscreenChatOverlay state:', {
-    isFullscreen: !!isFullscreen,
-    showChatOverlay: !!showChatOverlay,
-    isChatMinimized: !!isChatMinimized,
-  });
-
   return {
     isFullscreen,
     showChatOverlay,
