@@ -17,9 +17,10 @@ const spaceMono = Space_Mono({
   weight: ['400', '700'],
 });
 
+// Todo: add more metadata & proper branding
 export const metadata: Metadata = {
-  title: '.noah - watch party hell yeah!',
-  description: 'browser share & video streaming sucks, a custom solution for watching videos together?',
+  title: 'Sideby.me - A real-time solution?',
+  description: 'Browser share & video streaming suck, a custom solution for watching videos together?',
 };
 
 export default function RootLayout({
@@ -28,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${spaceGrotesk.variable} ${spaceMono.variable} antialiased`}>
         <ThemeProvider>
           <SocketProvider>

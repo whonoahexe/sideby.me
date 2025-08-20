@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Play, Users, Home, Menu } from 'lucide-react';
+import { Play, Users, Home, Menu, Video } from 'lucide-react';
 
 export function Navigation() {
   const pathname = usePathname();
@@ -25,8 +25,8 @@ export function Navigation() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center space-x-2">
-            <Play className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">Watch.With</span>
+            <Video className="h-8 w-8 text-primary" />
+            <span className="text-xl font-bold">Sideby.me</span>
           </Link>
 
           {/* Desktop Navigation */}

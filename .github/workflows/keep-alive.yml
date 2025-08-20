@@ -18,7 +18,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          URL="https://watch-with.brkn.me/_health"
+          URL="https://sideby.me/_health"
           echo "Pinging $URL"
           for attempt in {1..3}; do
             HTTP_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 20 --connect-timeout 10 -H "User-Agent: keep-alive-bot/1.0" "$URL" || echo "000")

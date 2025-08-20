@@ -38,7 +38,7 @@ export function HostControlDialog({ open, onOpenChange }: HostControlDialogProps
             <span>Video Controls</span>
           </DialogTitle>
           <DialogDescription className="text-sm">
-            Learn about permissions and controls in Watch.with rooms.
+            Learn about permissions and controls in Sideby.me rooms.
           </DialogDescription>
         </DialogHeader>
 

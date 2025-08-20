@@ -19,7 +19,7 @@ export default function HomePage() {
             </span>
           </h1>
           <p className="mx-auto max-w-2xl text-xl text-muted-foreground">
-            {`Create rooms, invite friends, and enjoy synchronized video watching with real-time chat! (planning audio soon?)`}
+            {`Create rooms, invite friends, and enjoy synchronized video watching with real-time chat!`}
           </p>
         </div>
 

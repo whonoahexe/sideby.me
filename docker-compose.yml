@@ -1,7 +1,7 @@
 services:
   redis:
     image: redis:7-alpine
-    container_name: watch-with-redis
+    container_name: sideby-me-redis
     ports:
       - '6379:6379'
     volumes:

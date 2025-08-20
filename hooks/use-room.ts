@@ -472,7 +472,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
     const url = `${window.location.origin}/room/${roomId}`;
     if (navigator.share) {
       navigator.share({
-        title: 'Join my Watch.With room',
+        title: 'Join my Sideby.me room',
         text: `Join me to watch videos together! Room ID: ${roomId}`,
         url,
       });

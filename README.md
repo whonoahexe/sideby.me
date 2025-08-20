@@ -1,4 +1,4 @@
-# `Watch.With`
+# `Sideby.me`
 
 A feature-rich, open-source platform for synchronized watch parties. Create rooms, invite friends, & enjoy movies together in real-time.
 
@@ -14,7 +14,7 @@ TL;DR:
 - Support for multiple video sources (yt, mp4, hls)
 - Upload & sync custom subtitles
 
-https://watch-with.brkn.me/
+https://sideby.me/
 
 ## Getting Started
 
