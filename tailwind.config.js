@@ -57,8 +57,8 @@ module.exports = {
       },
       borderRadius: {
         lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        md: 'calc(var(--radius) - 4px)',
+        sm: 'calc(var(--radius) - 8px)',
       },
       keyframes: {
         'accordion-down': {
@@ -74,7 +74,25 @@ module.exports = {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
       },
+      transitionTimingFunction: {
+        'fast-slow': 'cubic-bezier(0.075, 0.82, 0.165, 1)',
+        'slow-slow': 'cubic-bezier(0.77, 0, 0.175, 1)',
+        'slow-fast': 'cubic-bezier(0.5, 0, 0.75, 0)',
+      },
+      transitionProperty: {
+        interactive: 'background-color, outline, box-shadow, transform',
+      },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [
+    require('tailwindcss-animate'),
+    function ({ addUtilities }) {
+      addUtilities({
+        '.transition-interactive': {
+          transition:
+            'background-color 0.2s cubic-bezier(0.075, 0.82, 0.165, 1), outline 0.3s cubic-bezier(0.77, 0, 0.175, 1), box-shadow 0.3s cubic-bezier(0.075, 0.82, 0.165, 1), transform 0.3s cubic-bezier(0.075, 0.82, 0.165, 1)',
+        },
+      });
+    },
+  ],
 };

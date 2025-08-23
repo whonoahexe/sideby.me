@@ -41,14 +41,12 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     setIsInitialized(true);
 
     const socketUrl = process.env.NODE_ENV === 'production' ? undefined : 'http://localhost:3000';
-    console.log('📡 Connecting to:', socketUrl);
 
     const socketInstance = io(socketUrl, {
       path: '/api/socket/io',
       transports: ['websocket', 'polling'],
       autoConnect: true,
     });
-
     setSocket(socketInstance);
 
     const handleConnect = () => {
@@ -71,7 +69,6 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     socketInstance.on('disconnect', handleDisconnect);
     socketInstance.on('connect_error', handleConnectError);
 
-    // Cleanup function
     return () => {
       console.log('🧹 Cleaning up socket...');
       socketInstance.off('connect', handleConnect);
@@ -79,12 +76,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       socketInstance.off('connect_error', handleConnectError);
       socketInstance.disconnect();
     };
-  }, []); // Empty dependency array - run once
+  }, []); // Run once
 
   return <SocketContext.Provider value={{ socket, isConnected, isInitialized }}>{children}</SocketContext.Provider>;
-};
-
-// Legacy cleanup function for compatibility
-export const disconnectSocket = () => {
-  console.log('⚠️ disconnectSocket called - deprecated');
 };
