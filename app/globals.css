@@ -39,7 +39,7 @@ a {
 
 @layer base {
   :root {
-    --radius: 0.625rem;
+    --radius: 0.75rem;
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;

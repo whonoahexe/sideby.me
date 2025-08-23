@@ -33,7 +33,9 @@ export default function RootLayout({
       <body className={`${spaceGrotesk.variable} ${spaceMono.variable} antialiased`}>
         <ThemeProvider>
           <SocketProvider>
-            <div className="min-h-screen bg-background bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-background to-background">
+            {/* Old gradient effect */}
+            {/* <div className="min-h-screen bg-background bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-background to-background"> */}
+            <div className="min-h-screen bg-background">
               <Navigation />
               <main className="container mx-auto px-4 py-6">{children}</main>
             </div>

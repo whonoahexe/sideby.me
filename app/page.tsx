@@ -13,10 +13,9 @@ export default function HomePage() {
         <div className="space-y-3">
           <h1 className="text-4xl font-bold tracking-tight md:text-6xl">
             Watch Videos
-            <span className="bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
-              {' '}
-              Together?
-            </span>
+            {/* Old gradient text */}
+            {/* <span className="bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent"> */}
+            <span className="text-primary"> Together?</span>
           </h1>
           <p className="mx-auto max-w-2xl text-xl text-muted-foreground">
             {`Create rooms, invite friends, and enjoy synchronized video watching with real-time chat!`}
