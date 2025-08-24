@@ -267,7 +267,26 @@ export function VideoControls({
       videoRef.current.pause();
       onPause?.();
     } else {
-      videoRef.current.play().catch(console.error);
+      // Check if video has supported sources before attempting to play
+      const video = videoRef.current;
+      if (!video.src && video.children.length === 0) {
+        console.error('❌ No video source available');
+        return;
+      }
+
+      video.play().catch(error => {
+        console.error('❌ Video play failed:', error);
+
+        // Handle specific error types
+        if (error.name === 'NotSupportedError') {
+          console.error('Video format not supported or source unavailable');
+          // You could emit an event here to show a toast notification
+        } else if (error.name === 'NotAllowedError') {
+          console.error('Video play blocked by browser policy');
+        } else if (error.name === 'AbortError') {
+          console.error('Video play aborted');
+        }
+      });
       onPlay?.();
     }
   };

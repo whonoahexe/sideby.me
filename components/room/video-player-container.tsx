@@ -19,7 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { parseVideoUrl } from '@/lib/video-utils';
+import { parseVideoUrl, validateVideoSource, getSupportedVideoFormats } from '@/lib/video-utils';
 import { toast } from 'sonner';
 
 interface VideoPlayerContainerProps {
@@ -76,6 +76,7 @@ export function VideoPlayerContainer({
   const [videoRefReady, setVideoRefReady] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true); // Start with controls visible
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [videoSourceValid, setVideoSourceValid] = useState<boolean | null>(null);
 
   // Check if video ref is ready
   useEffect(() => {
@@ -98,6 +99,55 @@ export function VideoPlayerContainer({
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoType]);
+
+  // Validate video source for non-YouTube videos
+  useEffect(() => {
+    if (videoType === 'youtube') {
+      setVideoSourceValid(true);
+      return;
+    }
+
+    let isValid = true;
+
+    const validateSource = async () => {
+      console.log('🔍 Validating video source:', videoUrl);
+
+      // Check browser support first
+      const supportedFormats = getSupportedVideoFormats();
+      console.log('📋 Browser supported formats:', supportedFormats);
+
+      // For HLS streams, check if HLS is supported
+      if (videoType === 'm3u8' && !supportedFormats.hls) {
+        console.warn('⚠️ HLS streams not natively supported, will use HLS.js');
+      }
+
+      try {
+        const isSourceValid = await validateVideoSource(videoUrl);
+        if (isValid) {
+          // Check if component is still mounted and this validation is still relevant
+          setVideoSourceValid(isSourceValid);
+
+          if (!isSourceValid) {
+            console.error('❌ Video source validation failed for:', videoUrl);
+            toast.error('Video Source Error', {
+              description: 'The video source appears to be invalid or inaccessible. Please check the URL.',
+            });
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error during video source validation:', error);
+        if (isValid) {
+          setVideoSourceValid(false);
+        }
+      }
+    };
+
+    validateSource();
+
+    return () => {
+      isValid = false; // Cleanup flag to prevent state updates after unmount
+    };
+  }, [videoUrl, videoType]);
 
   // Get video element ref for guest controls
   const getVideoElementRef = () => {
@@ -123,7 +173,7 @@ export function VideoPlayerContainer({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!newUrl.trim()) {
@@ -131,30 +181,76 @@ export function VideoPlayerContainer({
       return;
     }
 
+    setIsLoading(true);
+    setError('');
+
     const parsed = parseVideoUrl(newUrl.trim());
     if (!parsed) {
-      setError('Please enter a valid YouTube, MP4, or M3U8 video URL');
+      setError('Please enter a valid YouTube, MP4, WebM, OGG, MOV, or M3U8 video URL');
+      setIsLoading(false);
       return;
+    }
+
+    // For non-YouTube videos, validate the source
+    if (parsed.type !== 'youtube') {
+      console.log('🔍 Validating new video source...');
+      try {
+        const isValid = await validateVideoSource(parsed.embedUrl);
+        if (!isValid) {
+          setError('Video source appears to be invalid or inaccessible. Please check the URL and try again.');
+          setIsLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.error('Validation error:', error);
+        setError('Could not validate video source. The video may not be accessible.');
+        setIsLoading(false);
+        return;
+      }
     }
 
     setPendingUrl(newUrl.trim());
     setShowConfirmation(true);
+    setIsLoading(false);
   };
 
-  const handleChangeVideoClick = () => {
+  const handleChangeVideoClick = async () => {
     if (!newUrl.trim()) {
       setError('Please enter a video URL');
       return;
     }
 
+    setIsLoading(true);
+    setError('');
+
     const parsed = parseVideoUrl(newUrl.trim());
     if (!parsed) {
-      setError('Please enter a valid YouTube, MP4, or M3U8 video URL');
+      setError('Please enter a valid YouTube, MP4, WebM, OGG, MOV, or M3U8 video URL');
+      setIsLoading(false);
       return;
+    }
+
+    // For non-YouTube videos, validate the source
+    if (parsed.type !== 'youtube') {
+      console.log('🔍 Validating new video source...');
+      try {
+        const isValid = await validateVideoSource(parsed.embedUrl);
+        if (!isValid) {
+          setError('Video source appears to be invalid or inaccessible. Please check the URL and try again.');
+          setIsLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.error('Validation error:', error);
+        setError('Could not validate video source. The video may not be accessible.');
+        setIsLoading(false);
+        return;
+      }
     }
 
     setPendingUrl(newUrl.trim());
     setShowConfirmation(true);
+    setIsLoading(false);
   };
 
   const executeVideoChange = () => {
@@ -224,6 +320,30 @@ export function VideoPlayerContainer({
   }, [isChangeDialogOpen]);
 
   const renderPlayer = () => {
+    // Show error state if video source validation failed
+    if (videoSourceValid === false && videoType !== 'youtube') {
+      return (
+        <div className="flex h-full w-full items-center justify-center bg-primary">
+          <div className="text-center text-primary-foreground">
+            <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-destructive" />
+            <h3 className="mb-2 text-lg font-semibold">Video Source Error</h3>
+            <p className="mb-4 text-sm text-primary-foreground">
+              The video source appears to be invalid or inaccessible.
+            </p>
+            <div className="text-xs text-primary-foreground">
+              <p>Possible causes:</p>
+              <ul className="mt-1 list-inside list-disc text-left">
+                <li>URL is incorrect or video has been removed</li>
+                <li>Video format not supported by your browser</li>
+                <li>Network or CORS issues</li>
+                <li>Server is not responding</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     switch (videoType) {
       case 'youtube':
         return (
@@ -275,7 +395,7 @@ export function VideoPlayerContainer({
           {renderPlayer()}
 
           {/* Custom subtitle overlay for non-YouTube videos */}
-          {videoType !== 'youtube' && (
+          {videoType !== 'youtube' && videoSourceValid !== false && (
             <SubtitleOverlay
               videoRef={getVideoElementRef()}
               subtitleTracks={subtitleTracks}
@@ -286,7 +406,7 @@ export function VideoPlayerContainer({
           )}
 
           {/* Unified video controls for non-YouTube videos */}
-          {videoType !== 'youtube' && videoRefReady && (
+          {videoType !== 'youtube' && videoRefReady && videoSourceValid !== false && (
             <VideoControls
               videoRef={getVideoElementRef()}
               isHost={isHost}
