@@ -38,7 +38,7 @@ export default function HomePage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
+          <Card className="border-border bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
             <CardHeader>
               <div className="flex items-center space-x-3">
                 <Video className="h-8 w-8 text-primary" />
@@ -52,7 +52,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
+          <Card className="border-border bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
             <CardHeader>
               <div className="flex items-center space-x-3">
                 <MessageCircle className="h-8 w-8 text-primary" />
@@ -66,7 +66,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
+          <Card className="border-border bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
             <CardHeader>
               <div className="flex items-center space-x-3">
                 <Shield className="h-8 w-8 text-primary" />
@@ -80,7 +80,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
+          <Card className="border-border bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
             <CardHeader>
               <div className="flex items-center space-x-3">
                 <Users className="h-8 w-8 text-primary" />
@@ -94,7 +94,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
+          <Card className="border-border bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
             <CardHeader>
               <div className="flex items-center space-x-3">
                 <Play className="h-8 w-8 text-primary" />
@@ -108,7 +108,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
+          <Card className="border-border bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
             <CardHeader>
               <div className="flex items-center space-x-3">
                 <Zap className="h-8 w-8 text-primary" />
