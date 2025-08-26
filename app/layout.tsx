@@ -33,11 +33,6 @@ export const metadata: Metadata = {
   creator: 'Noah',
   publisher: 'sideby.me',
   metadataBase: new URL('https://sideby.me'),
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#FAFAFA' },
-    { media: '(prefers-color-scheme: dark)', color: '#0A0A0A' },
-  ],
-  colorScheme: 'dark light',
   icons: {
     icon: '/favicon.ico',
     shortcut: '/favicon-32x32.png',
@@ -97,7 +92,7 @@ export default function RootLayout({
           <SocketProvider>
             {/* Legacy gradient effect */}
             {/* <div className="min-h-screen bg-background bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-background to-background"> */}
-            <div className="min-h-screen bg-background">
+            <div className="mx-auto min-h-screen max-w-screen-2xl bg-background">
               <Navigation />
               <main className="container mx-auto px-4 py-6">{children}</main>
             </div>
