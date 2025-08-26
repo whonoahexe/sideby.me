@@ -49,7 +49,7 @@ export function Navigation() {
           <div className="flex items-center gap-2 md:hidden">
             <Button variant="ghost" size="default" className="flex items-center">
               {ActiveIcon && <ActiveIcon className="h-4 w-4" />}
-              <span className="text-sm">{activeItem?.label || 'Page'}</span>
+              <span>{activeItem?.label || 'Page'}</span>
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

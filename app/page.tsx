@@ -9,34 +9,21 @@ export default function HomePage() {
   return (
     <div className="space-y-16">
       {/* Hero Section */}
-      <section className="mt-12 space-y-6 py-12 text-center">
-        <div className="space-y-3">
-          <h1 className="text-4xl font-bold tracking-tight md:text-6xl">
-            Watch Videos
-            {/* Old gradient text */}
-            {/* <span className="bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent"> */}
-            <span className="text-primary"> Together?</span>
-          </h1>
-          <p className="mx-auto max-w-2xl text-xl text-muted-foreground">
-            {`Create rooms, invite friends, and enjoy synchronized video watching with real-time chat!`}
-          </p>
-        </div>
+      <section className="mt-16 space-y-6 py-24 text-center">
+        <h1 className="mx-auto max-w-5xl text-6xl font-bold tracking-tighter md:text-8xl">OH! HMM, SOMEONE'S HERE?</h1>
+        <p className="text-neutral mx-auto max-w-xl text-3xl font-semibold tracking-tighter">
+          {`Create rooms, invite friends, and enjoy synchronized video watching with real-time chat!`}
+        </p>
 
-        <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+        <div className="flex flex-col items-center justify-center gap-6 sm:flex-row">
           <Link href="/create">
-            <Button size="lg" className="flex items-center space-x-2 shadow-lg shadow-primary/25">
-              <Play className="h-5 w-5" />
+            <Button size="lg">
               <span>Create Room</span>
             </Button>
           </Link>
 
           <Link href="/join">
-            <Button
-              variant="outline"
-              size="lg"
-              className="flex items-center space-x-2 border-primary/20 hover:border-primary/40 hover:bg-primary/5"
-            >
-              <Users className="h-5 w-5" />
+            <Button variant="ghost" size="lg">
               <span>Join Room</span>
             </Button>
           </Link>
