@@ -9,13 +9,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/80 active:bg-primary',
-        destructive:
-          'bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
-        outline:
-          'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50',
-        secondary: 'bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80',
-        ghost: 'hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted',
+        default: 'bg-primary text-primary-foreground hover:bg-primary-500 active:bg-primary',
+        disabled: 'bg-neutral-200 text-neutral-400 cursor-not-allowed',
+        secondary: 'bg-secondary text-secondary-foreground hover:bg-primary-100 active:bg-primary-50',
+        destructive: 'bg-destructive text-primary-foreground hover:bg-destructive-500 active:bg-destructive',
+        outline: 'border border-border bg-background text-accent-foreground hover:bg-accent active:bg-background',
+        // ghost: 'hover:bg-muted hover:text-muted-foreground active:bg-neutral-200',
+        // Removed active state from ghost to make the navbar buttons more subtle
+        ghost: 'hover:bg-muted hover:text-muted-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {

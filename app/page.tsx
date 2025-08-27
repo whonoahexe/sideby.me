@@ -2,16 +2,16 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Play, Users, Video, MessageCircle, Shield, Zap } from 'lucide-react';
+import { Icon } from '../components/ui/icon';
+import { Pencil } from 'lucide-react';
 
 export default function HomePage() {
   return (
-    <div className="space-y-16">
+    <>
       {/* Hero Section */}
       <section className="mt-16 space-y-6 py-24 text-center">
         <h1 className="mx-auto max-w-5xl text-6xl font-bold tracking-tighter md:text-8xl">OH! HMM, SOMEONE'S HERE?</h1>
-        <p className="text-neutral mx-auto max-w-xl text-3xl font-semibold tracking-tighter">
+        <p className="mx-auto max-w-xl text-3xl font-semibold tracking-tighter text-neutral">
           {`Create rooms, invite friends, and enjoy synchronized video watching with real-time chat!`}
         </p>
 
@@ -30,135 +30,110 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="space-y-8">
-        <div className="space-y-3 text-center">
-          <h2 className="text-3xl font-bold">Everything you need</h2>
-          <p className="text-muted-foreground">{`Simple, fast, and reliable video watching experience (hopefylly)`}</p>
+      {/* Experimental Cards */}
+      <section className="flex w-full justify-center rounded-md bg-primary/60 px-6 py-24">
+        <div className="flex w-full max-w-7xl flex-wrap items-center justify-center gap-12">
+          <div className="flex min-w-80 max-w-xl flex-col items-start justify-center gap-12 self-stretch">
+            <div className="flex flex-col items-start gap-4">
+              <span className="text-4xl font-extrabold tracking-tighter text-primary-foreground">
+                Synchronized Playback from Multiple Video Sources.
+              </span>
+              <span className="tracking-tight text-primary-foreground">
+                {`Perfect synchronization across all devices. Play, pause, and seek together in real-time. Support for YouTube videos and direct video links. Just paste the URL and start watching.`}
+              </span>
+            </div>
+            <Link href="/create">
+              <Button size="lg">Create Room</Button>
+            </Link>
+          </div>
+          <div className="flex shrink-0 grow basis-0 flex-col items-center justify-center self-stretch">
+            <div className="h-144 flex w-full min-w-60 max-w-xl flex-col items-center justify-center overflow-hidden rounded-md">
+              <img
+                className="w-full shrink-0 grow basis-0 object-cover"
+                src="https://res.cloudinary.com/subframe/image/upload/v1724705524/uploads/302/l5oq75rpdkq2kowa2xkj.png"
+              />
+            </div>
+          </div>
         </div>
+      </section>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="border-border bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
-            <CardHeader>
-              <div className="flex items-center space-x-3">
-                <Video className="h-8 w-8 text-primary" />
-                <CardTitle>Synchronized Playback</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Perfect synchronization across all devices. Play, pause, and seek together in real-time.
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
-            <CardHeader>
-              <div className="flex items-center space-x-3">
-                <MessageCircle className="h-8 w-8 text-primary" />
-                <CardTitle>Real-time Chat</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Chat with your friends while watching. Share reactions and discuss the content live.
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
-            <CardHeader>
-              <div className="flex items-center space-x-3">
-                <Shield className="h-8 w-8 text-primary" />
-                <CardTitle>Host Control</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Room hosts have full control over video playback while guests enjoy the experience.
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
-            <CardHeader>
-              <div className="flex items-center space-x-3">
-                <Users className="h-8 w-8 text-primary" />
-                <CardTitle>Easy Room Creation</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Create rooms instantly and share the room ID with friends. No sign-up required.
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
-            <CardHeader>
-              <div className="flex items-center space-x-3">
-                <Play className="h-8 w-8 text-primary" />
-                <CardTitle>Multiple Video Sources</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Support for YouTube videos and direct video links. Just paste the URL and start watching.
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/20">
-            <CardHeader>
-              <div className="flex items-center space-x-3">
-                <Zap className="h-8 w-8 text-primary" />
-                <CardTitle>Instant Connection</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Lightning-fast connections powered by Socket.IO for the best real-time experience.
-              </CardDescription>
-            </CardContent>
-          </Card>
+      <section className="flex w-full justify-center rounded-md px-6 py-24">
+        <div className="flex w-full max-w-7xl flex-row-reverse flex-wrap items-center justify-center gap-12">
+          <div className="flex min-w-80 max-w-xl flex-col items-start justify-center gap-12 self-stretch">
+            <div className="flex flex-col items-start gap-4">
+              <span className="text-4xl font-extrabold tracking-tighter text-primary-foreground">
+                Real-time Chat with Host Control.
+              </span>
+              <span className="tracking-tight text-primary-foreground">
+                {`Room hosts have full control over video playback while guests enjoy the experience. Create rooms instantly and share the room ID with friends. No sign-up required.`}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href="/create">
+                <Button size="lg">Create Room</Button>
+              </Link>
+              <Link href="/join">
+                <Button variant="ghost" size="lg">
+                  Join Room
+                </Button>
+              </Link>
+            </div>
+          </div>
+          <div className="flex shrink-0 grow basis-0 flex-col items-center justify-center self-stretch">
+            <div className="h-144 flex w-full min-w-60 max-w-xl flex-col items-center justify-center overflow-hidden rounded-md">
+              <img
+                className="w-full shrink-0 grow basis-0 object-cover"
+                src="https://res.cloudinary.com/subframe/image/upload/v1724690133/uploads/302/tswlwr0qfwwhkgbjwplw.png"
+              />
+            </div>
+          </div>
         </div>
       </section>
 
       {/* How it works */}
-      <section className="space-y-8 pb-12">
-        <div className="space-y-3 text-center">
-          <h2 className="text-3xl font-bold">How it works</h2>
-          <p className="text-muted-foreground">Get started in just three simple steps</p>
-        </div>
-
-        <div className="grid gap-8 md:grid-cols-3">
-          <div className="space-y-4 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-              <span className="text-2xl font-bold text-primary">1</span>
-            </div>
-            <h3 className="text-xl font-semibold">Create or Join</h3>
-            <p className="text-muted-foreground">Create a new room or join an existing one with a room ID</p>
+      <section className="flex w-full shrink-0 grow basis-0 items-center justify-center gap-4 px-6 py-24">
+        <div className="flex max-w-7xl shrink-0 grow basis-0 flex-wrap items-center justify-center gap-12">
+          <div className="flex min-w-60 max-w-sm flex-1 items-center gap-4">
+            <Icon variant="secondary" size="xl" className="shrink-0">
+              <Pencil />
+            </Icon>
+            <span className="font-bold tracking-tight">{'Create a new room or join an existing one.'}</span>
           </div>
-
-          <div className="space-y-4 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-              <span className="text-2xl font-bold text-primary">2</span>
-            </div>
-            <h3 className="text-xl font-semibold">Add Video</h3>
-            <p className="text-muted-foreground">
-              {`Paste a YouTube or supported video URL (e.g. MP4, M3U8) to start watching together`}
-            </p>
+          <div className="flex min-w-60 max-w-sm flex-1 items-center gap-4">
+            <Icon variant="secondary" size="xl" className="shrink-0">
+              <Pencil />
+            </Icon>
+            <span className="font-bold tracking-tight">{'Paste a Youtube or supported URL.'}</span>
           </div>
-
-          <div className="space-y-4 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-              <span className="text-2xl font-bold text-primary">3</span>
-            </div>
-            <h3 className="text-xl font-semibold">Enjoy Together</h3>
-            <p className="text-muted-foreground">Watch in perfect sync while chatting with your friends</p>
+          <div className="flex min-w-60 max-w-sm flex-1 items-center gap-4">
+            <Icon variant="secondary" size="xl" className="shrink-0">
+              <Pencil />
+            </Icon>
+            <span className="font-bold tracking-tight">Watch in perfect sync while chatting with your friends.</span>
           </div>
         </div>
       </section>
-    </div>
+
+      {/* CTA */}
+      <div className="flex w-full shrink-0 grow basis-0 flex-col items-center justify-center gap-2 px-6 py-24">
+        <div className="flex w-full max-w-7xl flex-col items-center justify-center gap-8 rounded-lg bg-primary-900 px-6 pb-16 pt-28">
+          <div className="flex w-full flex-col items-center justify-center gap-6 py-12">
+            <span className="w-full max-w-3xl whitespace-pre-wrap text-center text-5xl font-extrabold tracking-tighter text-primary-300 md:text-7xl md:font-bold">
+              {'OH CMON, GO AHEAD AND TRY IT OUT, HELP A JOBLESS FRIEND :)'}
+            </span>
+            <span className="w-full max-w-3xl whitespace-pre-wrap text-center font-bold tracking-tighter text-black">
+              {
+                'Also planning support for listening parties, study rooms, productivity collabs in real-time with extreme low latency (yay?)'
+              }
+            </span>
+          </div>
+          <Link href="/create">
+            <Button variant="secondary" size="lg">
+              Create Room
+            </Button>
+          </Link>
+        </div>
+      </div>
+    </>
   );
 }

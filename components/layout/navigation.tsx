@@ -28,13 +28,13 @@ export function Navigation() {
     <nav className="mx-4 rounded-full border border-border bg-accent">
       <div className="mx-auto p-6">
         <div className="flex h-12 items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 px-4 md:px-24">
+          <Link href="/" className="flex items-center gap-2 px-4 md:px-12">
             <Image src="/logo-monoline.svg" alt="Sideby.me logo" width={32} height={32} className="h-8 w-8" />
             <span className="hidden text-3xl font-semibold tracking-tighter md:flex">sideby.me</span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden items-center space-x-4 px-24 md:flex">
+          <div className="hidden items-center space-x-4 px-12 md:flex">
             {navigationItems.map(({ href, label, icon: Icon }) => (
               <Link key={href} href={href}>
                 <Button variant={pathname === href ? 'default' : 'ghost'} size="default" className="flex items-center">
