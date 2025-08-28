@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Icon } from '../components/ui/icon';
-import { Pencil } from 'lucide-react';
+import { PartyPopper, Pencil, Plus } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -101,13 +101,13 @@ export default function HomePage() {
           </div>
           <div className="flex min-w-60 max-w-sm flex-1 items-center gap-4">
             <Icon variant="secondary" size="xl" className="shrink-0">
-              <Pencil />
+              <Plus />
             </Icon>
             <span className="font-bold tracking-tight">{'Paste a Youtube or supported URL.'}</span>
           </div>
           <div className="flex min-w-60 max-w-sm flex-1 items-center gap-4">
             <Icon variant="secondary" size="xl" className="shrink-0">
-              <Pencil />
+              <PartyPopper />
             </Icon>
             <span className="font-bold tracking-tight">Watch in perfect sync while chatting with your friends.</span>
           </div>

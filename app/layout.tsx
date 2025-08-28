@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Space_Grotesk, Space_Mono } from 'next/font/google';
 import './globals.css';
 import { Navigation } from '@/components/layout/navigation';
+import { Footer } from '@/components/layout/footer';
 import { SocketProvider } from '@/contexts/socket-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/contexts/theme-provider';
@@ -92,9 +93,10 @@ export default function RootLayout({
           <SocketProvider>
             {/* Legacy gradient effect */}
             {/* <div className="min-h-screen bg-background bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-background to-background"> */}
-            <div className="mx-auto min-h-screen max-w-screen-2xl bg-background">
+            <div className="mx-auto flex min-h-screen max-w-screen-2xl flex-col bg-background">
               <Navigation />
-              <main className="container mx-auto px-4 py-6">{children}</main>
+              <main className="container mx-auto flex-1 px-4 py-6">{children}</main>
+              <Footer />
             </div>
             <Toaster richColors />
           </SocketProvider>

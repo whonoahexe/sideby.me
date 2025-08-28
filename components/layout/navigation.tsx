@@ -12,14 +12,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Users, Home, Menu, BadgePlus } from 'lucide-react';
 
+const navigationItems = [
+  { href: '/', label: 'Home', icon: Home },
+  { href: '/create', label: 'Create Room', icon: BadgePlus },
+  { href: '/join', label: 'Join Room', icon: Users },
+];
+
 export function Navigation() {
   const pathname = usePathname();
-
-  const navigationItems = [
-    { href: '/', label: 'Home', icon: Home },
-    { href: '/create', label: 'Create Room', icon: BadgePlus },
-    { href: '/join', label: 'Join Room', icon: Users },
-  ];
 
   const activeItem = navigationItems.find(item => item.href === pathname);
   const ActiveIcon = activeItem?.icon;
