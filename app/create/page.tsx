@@ -1,82 +1,137 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreateRoom } from '@/hooks/use-create-room';
-import { Play, Users } from 'lucide-react';
+import { AtSign, PenLine, Play, User, LucideIcon, BadgePlus } from 'lucide-react';
+import { Icon } from '../../components/ui/icon';
+import HowItWorks from '@/components/pages/how-it-works';
+import Link from 'next/link';
+
+const HOST_FEATURES = [
+  {
+    icon: Play,
+    title: 'Control video playback',
+  },
+  {
+    icon: PenLine,
+    title: 'Pause, seek video controls',
+  },
+  {
+    icon: User,
+    title: 'Manage room settings',
+  },
+] as const;
+
+function FeatureCard({ icon: IconComponent, title }: { icon: LucideIcon; title: string }) {
+  return (
+    <Card className="border-neutral-border bg-default-background flex w-full flex-none flex-col items-start gap-4 rounded-md border-solid px-4 py-4 shadow-sm sm:w-40">
+      <IconComponent className="text-heading-3 font-heading-3 text-primary" />
+      <span className="line-clamp-2 w-full text-sm tracking-tight text-neutral sm:text-base">{title}</span>
+    </Card>
+  );
+}
 
 export default function CreateRoomPage() {
   const { hostName, setHostName, isLoading, error, isConnected, isInitialized, handleCreateRoom } = useCreateRoom();
 
   return (
-    <div className="mx-auto mt-16 max-w-md">
-      <Card>
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <Play className="h-8 w-8 text-primary" />
-          </div>
-          <CardTitle className="text-2xl">Create Room</CardTitle>
-          <CardDescription>Start a new room and invite friends to watch videos together</CardDescription>
-        </CardHeader>
-
-        <CardContent>
-          <form onSubmit={handleCreateRoom} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="hostName">Your Name</Label>
-              <Input
-                id="hostName"
-                placeholder="Enter your name"
-                value={hostName}
-                onChange={e => setHostName(e.target.value)}
-                disabled={isLoading}
-                maxLength={50}
-              />
+    <>
+      <div className="px-4 py-6 sm:px-8 sm:py-8 lg:px-14 lg:py-14">
+        <Card className="mx-auto flex max-w-5xl flex-col items-center justify-center gap-6 rounded-lg border border-border bg-background p-6 sm:gap-8 sm:p-12 lg:gap-12 lg:p-24">
+          {/* Header Section */}
+          <header className="flex w-full shrink-0 grow basis-0 flex-col items-center justify-center gap-6 sm:gap-8 lg:gap-12">
+            <div className="flex w-full shrink-0 grow basis-0 flex-col items-center justify-center gap-4">
+              <Icon size="xl" variant="secondary">
+                <BadgePlus />
+              </Icon>
+              <h1 className="whitespace-pre-wrap text-4xl font-bold tracking-tighter sm:text-6xl lg:text-8xl">
+                Create Room
+              </h1>
             </div>
 
-            {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
-
-            <div className="space-y-3">
-              <Button type="submit" className="w-full" disabled={isLoading || !isConnected}>
-                {isLoading ? (
-                  <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-current" />
-                    Creating Room...
-                  </>
-                ) : (
-                  <>
-                    <Play className="mr-2 h-4 w-4" />
-                    Create Room
-                  </>
-                )}
-              </Button>
-
-              {!isConnected && isInitialized && (
-                <div className="text-center text-sm text-muted-foreground">Connecting to server...</div>
-              )}
-
-              {!isInitialized && <div className="text-center text-sm text-muted-foreground">Initializing...</div>}
-            </div>
-          </form>
-
-          <div className="mt-6 border-t border-border pt-6">
-            <div className="space-y-2 text-center">
-              <p className="text-sm text-muted-foreground">As the host, you&apos;ll be able to:</p>
-              <div className="space-y-1 text-sm">
-                <div className="flex items-center justify-center space-x-2">
-                  <Play className="h-3 w-3" />
-                  <span>Control video playback</span>
-                </div>
-                <div className="flex items-center justify-center space-x-2">
-                  <Users className="h-3 w-3" />
-                  <span>Manage room settings</span>
-                </div>
+            {/* Form Section */}
+            <div className="flex w-full shrink-0 grow basis-0 flex-col items-center justify-center gap-4">
+              <div className="flex w-full flex-col items-start justify-center gap-2 sm:gap-4">
+                <h2 className="text-2xl font-extrabold tracking-tighter text-primary sm:text-3xl lg:text-4xl">
+                  Step 1
+                </h2>
+                <p className="text-sm font-bold tracking-tight text-neutral-400 sm:text-base">
+                  Start a new room and invite friends to watch videos together.
+                </p>
               </div>
+
+              <form onSubmit={handleCreateRoom} className="w-full space-y-4">
+                {/* Name Input */}
+                <div className="w-full space-y-2">
+                  <Label htmlFor="hostName" className="text-sm font-bold tracking-tight sm:text-base">
+                    Your Name
+                  </Label>
+                  <div className="relative">
+                    <AtSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-neutral" />
+                    <Input
+                      id="hostName"
+                      name="hostName"
+                      type="text"
+                      value={hostName}
+                      onChange={e => setHostName(e.target.value)}
+                      placeholder="Enter your name"
+                      className="pl-10 text-base tracking-tight sm:text-lg"
+                      maxLength={20}
+                      required
+                      disabled={isLoading || !isConnected}
+                      aria-describedby={error ? 'error-message' : undefined}
+                    />
+                  </div>
+                </div>
+
+                {/* Error Display */}
+                {error && (
+                  <div id="error-message" className="text-sm font-medium text-red-500" role="alert">
+                    {error}
+                  </div>
+                )}
+
+                {/* Connection Status */}
+                {!isInitialized && <div className="text-sm font-medium text-yellow-500">Connecting to server...</div>}
+                {isInitialized && !isConnected && (
+                  <div className="text-sm font-medium text-red-500">Connection lost. Please refresh the page.</div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex w-full flex-col items-center gap-3 sm:flex-row sm:gap-4">
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="w-full sm:w-auto"
+                    disabled={isLoading || !isConnected || !hostName.trim()}
+                  >
+                    {isLoading ? 'Creating Room...' : 'Create Room'}
+                  </Button>
+                  <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
+                    <Link href="/join">Need to Join?</Link>
+                  </Button>
+                </div>
+              </form>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          </header>
+
+          {/* Divider */}
+          <div className="flex h-px w-full flex-none flex-col items-center bg-border" />
+
+          {/* Features Section */}
+          <section className="flex w-full flex-col items-center justify-center gap-4 sm:flex-row sm:flex-wrap lg:flex-nowrap">
+            {HOST_FEATURES.map((feature, index) => (
+              <FeatureCard key={index} icon={feature.icon} title={feature.title} />
+            ))}
+          </section>
+        </Card>
+      </div>
+
+      {/* How it works */}
+      <HowItWorks />
+    </>
   );
 }

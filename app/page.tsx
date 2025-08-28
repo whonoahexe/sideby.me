@@ -2,15 +2,14 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Icon } from '../components/ui/icon';
-import { PartyPopper, Pencil, Plus } from 'lucide-react';
+import HowItWorks from '@/components/pages/how-it-works';
 
 export default function HomePage() {
   return (
     <>
       {/* Hero Section */}
       <section className="mt-16 space-y-6 py-24 text-center">
-        <h1 className="mx-auto max-w-5xl text-6xl font-bold tracking-tighter md:text-8xl">OH! HMM, SOMEONE'S HERE?</h1>
+        <h1 className="mx-auto max-w-5xl text-6xl font-bold tracking-tighter md:text-8xl">{`OH! HMM, SOMEONE'S HERE?`}</h1>
         <p className="mx-auto max-w-xl text-3xl font-semibold tracking-tighter text-neutral">
           {`Create rooms, invite friends, and enjoy synchronized video watching with real-time chat!`}
         </p>
@@ -50,6 +49,7 @@ export default function HomePage() {
             <div className="h-144 flex w-full min-w-60 max-w-xl flex-col items-center justify-center overflow-hidden rounded-md">
               <img
                 className="w-full shrink-0 grow basis-0 object-cover"
+                alt="Synchronized Playback from Multiple Video Sources"
                 src="https://res.cloudinary.com/subframe/image/upload/v1724705524/uploads/302/l5oq75rpdkq2kowa2xkj.png"
               />
             </div>
@@ -84,6 +84,7 @@ export default function HomePage() {
               <img
                 className="w-full shrink-0 grow basis-0 object-cover"
                 src="https://res.cloudinary.com/subframe/image/upload/v1724690133/uploads/302/tswlwr0qfwwhkgbjwplw.png"
+                alt="Real-time Chat with Host Control"
               />
             </div>
           </div>
@@ -91,28 +92,7 @@ export default function HomePage() {
       </section>
 
       {/* How it works */}
-      <section className="flex w-full shrink-0 grow basis-0 items-center justify-center gap-4 px-6 py-24">
-        <div className="flex max-w-7xl shrink-0 grow basis-0 flex-wrap items-center justify-center gap-12">
-          <div className="flex min-w-60 max-w-sm flex-1 items-center gap-4">
-            <Icon variant="secondary" size="xl" className="shrink-0">
-              <Pencil />
-            </Icon>
-            <span className="font-bold tracking-tight">{'Create a new room or join an existing one.'}</span>
-          </div>
-          <div className="flex min-w-60 max-w-sm flex-1 items-center gap-4">
-            <Icon variant="secondary" size="xl" className="shrink-0">
-              <Plus />
-            </Icon>
-            <span className="font-bold tracking-tight">{'Paste a Youtube or supported URL.'}</span>
-          </div>
-          <div className="flex min-w-60 max-w-sm flex-1 items-center gap-4">
-            <Icon variant="secondary" size="xl" className="shrink-0">
-              <PartyPopper />
-            </Icon>
-            <span className="font-bold tracking-tight">Watch in perfect sync while chatting with your friends.</span>
-          </div>
-        </div>
-      </section>
+      <HowItWorks />
 
       {/* CTA */}
       <div className="flex w-full shrink-0 grow basis-0 flex-col items-center justify-center gap-2 px-6 py-24">
