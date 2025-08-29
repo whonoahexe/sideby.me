@@ -384,7 +384,7 @@ export function VideoPlayerContainer({
   };
 
   return (
-    <Card>
+    <Card className="border-0 py-0">
       <CardContent className="p-6">
         <div
           className={`relative aspect-video overflow-hidden rounded-lg bg-black ${

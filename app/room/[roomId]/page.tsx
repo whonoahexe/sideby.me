@@ -265,37 +265,36 @@ export default function RoomPage() {
           )}
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          <UserList
+        {/* Chat */}
+        <Chat
+          mode="sidebar"
+          messages={messages}
+          currentUserId={currentUser.id}
+          onSendMessage={handleSendMessage}
+          onTypingStart={handleTypingStart}
+          onTypingStop={handleTypingStop}
+          typingUsers={typingUsers}
+          voice={{
+            isEnabled: voice.isEnabled,
+            isMuted: voice.isMuted,
+            isConnecting: voice.isConnecting,
+            participantCount: voice.activePeerIds.length + (voice.isEnabled ? 1 : 0),
+            overCap,
+            onEnable: voice.enable,
+            onDisable: voice.disable,
+            onToggleMute: voice.toggleMute,
+          }}
+          className="border-0"
+        />
+
+        {/* <UserList
             users={room.users}
             currentUserId={currentUser.id}
             currentUserIsHost={currentUser.isHost}
             onPromoteUser={handlePromoteUser}
             onKickUser={handleKickUser}
             speakingUserIds={voice.speakingUserIds}
-          />
-
-          <Chat
-            mode="sidebar"
-            messages={messages}
-            currentUserId={currentUser.id}
-            onSendMessage={handleSendMessage}
-            onTypingStart={handleTypingStart}
-            onTypingStop={handleTypingStop}
-            typingUsers={typingUsers}
-            voice={{
-              isEnabled: voice.isEnabled,
-              isMuted: voice.isMuted,
-              isConnecting: voice.isConnecting,
-              participantCount: voice.activePeerIds.length + (voice.isEnabled ? 1 : 0),
-              overCap,
-              onEnable: voice.enable,
-              onDisable: voice.disable,
-              onToggleMute: voice.toggleMute,
-            }}
-          />
-        </div>
+          /> */}
       </div>
 
       {/* Host Control Dialog */}
