@@ -169,7 +169,7 @@ export function Chat({
   // Render sidebar mode
   if (mode === 'sidebar') {
     return (
-      <Card className={`mr-6 ${className}`}>
+      <Card className={`ml-6 mr-6 lg:ml-0 ${className}`}>
         <CardHeader className="p-0">
           <CardTitle>
             <ChatHeader

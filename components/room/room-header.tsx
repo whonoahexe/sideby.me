@@ -30,11 +30,13 @@ export function RoomHeader({
         {/* Room info */}
         <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
           <div className="space-y-1">
-            <CardTitle className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="break-all text-3xl font-semibold tracking-tighter sm:break-normal">Room {roomId}</span>
+            <CardTitle className="flex w-full flex-wrap items-center justify-between gap-x-2 gap-y-1 md:w-auto md:justify-start">
+              <span className="break-all text-2xl font-semibold tracking-tighter sm:break-normal md:text-3xl">
+                Room {roomId}
+              </span>
               {isHost && <Badge variant="default">Host</Badge>}
             </CardTitle>
-            <div className="flex gap-4 text-sm text-muted-foreground">
+            <div className="flex w-full justify-between gap-4 text-sm text-muted-foreground md:w-auto md:justify-start">
               <div className="flex items-center gap-2 text-primary-700">
                 <Crown className="h-4 w-4 flex-shrink-0" />
                 <span className="font-bold tracking-tight">by {hostName}</span>
