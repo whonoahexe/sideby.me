@@ -425,20 +425,20 @@ export function VideoControls({
           <div className={isFullscreen ? 'mb-6' : 'mb-4'}>
             <div
               ref={sliderRef}
-              className={`seek-slider group relative cursor-pointer rounded-full bg-white/20 transition-all hover:bg-white/30 ${
+              className={`seek-slider group relative cursor-pointer rounded-full bg-border transition-interactive hover:bg-white/30 ${
                 isFullscreen ? 'h-3' : 'h-2'
               }`}
               onMouseDown={handleSliderMouseDown}
             >
               {/* Progress bar */}
               <div
-                className="h-full rounded-full bg-primary shadow-sm transition-all duration-100"
+                className="h-full rounded-full bg-primary shadow-sm transition-interactive duration-100"
                 style={{ width: `${progressPercentage}%` }}
               />
 
               {/* Slider handle */}
               <div
-                className={`absolute top-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary opacity-0 shadow-lg transition-all hover:scale-110 group-hover:opacity-100 ${
+                className={`absolute top-1/2 -translate-y-1/2 rounded-full border-2 border-primary-foreground bg-primary opacity-0 shadow-lg transition-interactive hover:scale-110 group-hover:opacity-100 ${
                   isFullscreen ? 'h-5 w-5' : 'h-4 w-4'
                 }`}
                 style={{ left: `calc(${progressPercentage}% - ${isFullscreen ? '10px' : '8px'})` }}
@@ -447,7 +447,7 @@ export function VideoControls({
 
             {/* Time display */}
             <div
-              className={`mt-2 flex justify-between font-mono text-white/90 ${isFullscreen ? 'text-sm' : 'text-xs'}`}
+              className={`mt-2 flex justify-between font-mono text-primary-foreground ${isFullscreen ? 'text-sm' : 'text-xs'}`}
             >
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
@@ -465,7 +465,7 @@ export function VideoControls({
                   variant="secondary"
                   size={isFullscreen ? 'default' : 'sm'}
                   onClick={handleSeekBackward}
-                  className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-white/20 bg-black/60 p-0 text-white transition-all duration-200 hover:border-primary/50 hover:bg-primary hover:text-primary-foreground`}
+                  className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-border bg-black/60 p-0 text-primary-foreground transition-interactive hover:border-primary hover:bg-primary hover:text-primary-foreground`}
                   title="Seek backward 10s"
                 >
                   <RotateCcw className={isFullscreen ? 'h-5 w-5' : 'h-4 w-4'} />
@@ -475,13 +475,13 @@ export function VideoControls({
                   variant="secondary"
                   size={isFullscreen ? 'default' : 'sm'}
                   onClick={handlePlayPause}
-                  className={`${isFullscreen ? 'h-12 w-12' : 'h-10 w-10'} bg-primary p-0 text-primary-foreground shadow-lg transition-all duration-200 hover:scale-105 hover:bg-primary/80 hover:shadow-primary/25`}
+                  className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} bg-primary p-0 text-primary-foreground shadow-lg transition-interactive hover:scale-105 hover:bg-primary/80 hover:shadow-primary/25`}
                   title={isPlaying ? 'Pause' : 'Play'}
                 >
                   {isPlaying ? (
-                    <Pause className={isFullscreen ? 'h-6 w-6' : 'h-5 w-5'} />
+                    <Pause className={isFullscreen ? 'h-5 w-5' : 'h-4 w-4'} />
                   ) : (
-                    <Play className={isFullscreen ? 'h-6 w-6' : 'h-5 w-5'} />
+                    <Play className={isFullscreen ? 'h-5 w-5' : 'h-4 w-4'} />
                   )}
                 </Button>
 
@@ -489,7 +489,7 @@ export function VideoControls({
                   variant="secondary"
                   size={isFullscreen ? 'default' : 'sm'}
                   onClick={handleSeekForward}
-                  className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-white/20 bg-black/60 p-0 text-white transition-all duration-200 hover:border-primary/50 hover:bg-primary hover:text-primary-foreground`}
+                  className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-border bg-black/60 p-0 text-primary-foreground transition-interactive hover:border-primary hover:bg-primary hover:text-primary-foreground`}
                   title="Seek forward 10s"
                 >
                   <RotateCw className={isFullscreen ? 'h-5 w-5' : 'h-4 w-4'} />
@@ -504,10 +504,10 @@ export function VideoControls({
               variant="secondary"
               size={isFullscreen ? 'default' : 'sm'}
               onClick={handleMuteToggle}
-              className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-white/20 p-0 transition-all duration-200 ${
+              className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-border p-0 transition-interactive duration-200 ${
                 isMuted
-                  ? 'border-destructive/50 bg-destructive text-destructive-foreground hover:bg-destructive/80'
-                  : 'bg-black/60 text-white hover:border-primary/50 hover:bg-primary hover:text-primary-foreground'
+                  ? 'border-0 bg-destructive-100 text-destructive-800'
+                  : 'bg-black/60 text-primary-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground'
               }`}
               title={isMuted ? 'Unmute' : 'Mute'}
             >
@@ -538,7 +538,7 @@ export function VideoControls({
                 variant="secondary"
                 size="default"
                 onClick={onShowChatOverlay}
-                className="h-11 w-11 border border-white/20 bg-black/60 p-0 text-white transition-all duration-200 hover:border-primary/50 hover:bg-primary hover:text-primary-foreground"
+                className="h-11 w-11 border border-border bg-black/60 p-0 text-white transition-interactive duration-200 hover:border-primary hover:bg-primary hover:text-primary-foreground"
                 title="Show chat"
               >
                 <MessageCircle className="h-5 w-5" />
@@ -549,7 +549,7 @@ export function VideoControls({
               variant="secondary"
               size={isFullscreen ? 'default' : 'sm'}
               onClick={handleFullscreen}
-              className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-white/20 bg-black/60 p-0 text-white transition-all duration-200 hover:border-primary/50 hover:bg-primary hover:text-primary-foreground`}
+              className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-border bg-black/60 p-0 text-white transition-interactive duration-200 hover:border-primary hover:bg-primary hover:text-primary-foreground`}
               title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
             >
               <Maximize className={isFullscreen ? 'h-5 w-5' : 'h-4 w-4'} />

@@ -124,15 +124,7 @@ export function VideoPlayerContainer({
       try {
         const isSourceValid = await validateVideoSource(videoUrl);
         if (isValid) {
-          // Check if component is still mounted and this validation is still relevant
           setVideoSourceValid(isSourceValid);
-
-          if (!isSourceValid) {
-            console.error('❌ Video source validation failed for:', videoUrl);
-            toast.error('Video Source Error', {
-              description: 'The video source appears to be invalid or inaccessible. Please check the URL.',
-            });
-          }
         }
       } catch (error) {
         console.error('❌ Error during video source validation:', error);
@@ -324,13 +316,13 @@ export function VideoPlayerContainer({
     if (videoSourceValid === false && videoType !== 'youtube') {
       return (
         <div className="flex h-full w-full items-center justify-center bg-primary">
-          <div className="text-center text-primary-foreground">
+          <div className="text-primary-foreground">
             <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-destructive" />
-            <h3 className="mb-2 text-lg font-semibold">Video Source Error</h3>
-            <p className="mb-4 text-sm text-primary-foreground">
+            <h3 className="text-center text-lg font-semibold">Video Source Error</h3>
+            <p className="mb-6 text-center text-primary-foreground">
               The video source appears to be invalid or inaccessible.
             </p>
-            <div className="text-xs text-primary-foreground">
+            <div className="text-primary-foreground">
               <p>Possible causes:</p>
               <ul className="mt-1 list-inside list-disc text-left">
                 <li>URL is incorrect or video has been removed</li>
@@ -385,7 +377,7 @@ export function VideoPlayerContainer({
 
   return (
     <Card className="border-0 py-0">
-      <CardContent className="p-6">
+      <CardContent>
         <div
           className={`relative aspect-video overflow-hidden rounded-lg bg-black ${
             controlsVisible ? 'video-container-with-controls' : ''
@@ -445,7 +437,7 @@ export function VideoPlayerContainer({
         <div className="mt-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Video className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">{getVideoTypeName()}</span>
+            <span className="font-mono text-sm tracking-tighter text-muted-foreground">{getVideoTypeName()}</span>
           </div>
           <div className="flex items-center space-x-2">
             {isHost && onVideoChange && (
@@ -456,45 +448,44 @@ export function VideoPlayerContainer({
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="fixed left-[50%] top-[50%] flex max-h-[85vh] w-[95vw] max-w-md translate-x-[-50%] translate-y-[-50%] flex-col gap-0 overflow-hidden p-0 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
-                  <DialogHeader className="flex-shrink-0 px-6 pb-4 pt-6">
+                  <DialogHeader className="flex-shrink-0 px-6 pt-6">
                     <DialogTitle className="flex items-center space-x-2 text-base sm:text-lg">
                       <Edit3 className="h-5 w-5 text-primary" />
-                      <span>Change Video</span>
+                      <span className="text-xl font-semibold tracking-tighter">Change Video</span>
                     </DialogTitle>
-                    <DialogDescription className="text-sm">
+                    <DialogDescription className="text-sm tracking-tight text-neutral">
                       Enter a new YouTube, MP4, or M3U8 (HLS) video URL to change what everyone is watching.
                     </DialogDescription>
                   </DialogHeader>
 
-                  <ScrollArea className="min-h-0 flex-1 px-6">
+                  <ScrollArea className="min-h-0 flex-1 px-6 py-2">
                     <div className="space-y-4 py-4">
                       {!showConfirmation ? (
                         <form onSubmit={handleSubmit} className="space-y-4">
                           <div className="space-y-2">
-                            <Label htmlFor="newVideoUrl">Video URL</Label>
+                            <Label htmlFor="newVideoUrl" className="tracking-tight">
+                              Video URL
+                            </Label>
                             <Input
                               id="newVideoUrl"
                               placeholder="Enter YouTube, MP4, or M3U8 URL"
                               value={newUrl}
                               onChange={e => setNewUrl(e.target.value)}
                             />
+                            {error && <div className="text-sm text-destructive">{error}</div>}
                           </div>
-
-                          {error && (
-                            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
-                          )}
                         </form>
                       ) : (
-                        <div className="rounded-lg bg-amber-50 p-3 dark:bg-amber-950 sm:p-4">
-                          <h4 className="flex items-center gap-2 text-sm font-medium text-amber-900 dark:text-amber-100 sm:text-base">
-                            <AlertTriangle className="h-4 w-4" />
-                            Confirm Video Change
+                        <div className="rounded-lg bg-destructive-100 p-3 sm:p-4">
+                          <h4 className="flex items-center gap-2 text-destructive-800 sm:text-base">
+                            <AlertTriangle className="h-5 w-5" />
+                            <span className="text-xl font-semibold tracking-tighter">Confirm Video Change</span>
                           </h4>
-                          <p className="mt-2 text-xs text-amber-700 dark:text-amber-300 sm:text-sm">
+                          <p className="mt-2 text-xs tracking-tight text-destructive-800 sm:text-sm">
                             This will change the video for everyone in the room. The current video playback will stop
                             and the new video will be loaded.
                           </p>
-                          <div className="mt-3 rounded bg-amber-100 p-2 text-xs text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                          <div className="mt-4 rounded-sm bg-destructive-400 p-2 text-xs text-destructive-900">
                             <div className="font-medium">New video:</div>
                             <div className="mt-1 text-wrap break-all">{pendingUrl}</div>
                           </div>
@@ -503,17 +494,17 @@ export function VideoPlayerContainer({
                     </div>
                   </ScrollArea>
 
-                  <div className="flex flex-shrink-0 justify-end gap-3 border-t bg-gray-50 p-6 pt-4 dark:bg-black">
+                  <div className="flex flex-shrink-0 justify-end gap-3 border-t bg-black px-6 py-4">
                     {!showConfirmation ? (
-                      <Button onClick={handleChangeVideoClick} size="sm" disabled={isLoading}>
+                      <Button onClick={handleChangeVideoClick} disabled={isLoading}>
                         {isLoading ? 'Setting Video...' : 'Change Video'}
                       </Button>
                     ) : (
                       <>
-                        <Button onClick={handleCancelChange} variant="outline" size="sm" disabled={isLoading}>
+                        <Button onClick={handleCancelChange} variant="outline" disabled={isLoading}>
                           Cancel
                         </Button>
-                        <Button onClick={handleConfirmChange} size="sm" disabled={isLoading}>
+                        <Button onClick={handleConfirmChange} disabled={isLoading}>
                           {isLoading ? 'Changing...' : 'Confirm Change'}
                         </Button>
                       </>

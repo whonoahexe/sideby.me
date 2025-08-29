@@ -25,7 +25,7 @@ export function RoomHeader({
   onShareRoom,
 }: RoomHeaderProps) {
   return (
-    <Card className="border-0">
+    <Card className="mt-6 border-0">
       <CardHeader>
         {/* Room info */}
         <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
@@ -37,9 +37,9 @@ export function RoomHeader({
             <div className="flex gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-2 text-primary-700">
                 <Crown className="h-4 w-4 flex-shrink-0" />
-                <span className="font-bold">by {hostName}</span>
+                <span className="font-bold tracking-tight">by {hostName}</span>
               </div>
-              <span className="text-neutral">
+              <span className="tracking-tight text-neutral">
                 {hostCount} host{hostCount !== 1 ? 's' : ''}
               </span>
             </div>

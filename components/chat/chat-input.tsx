@@ -69,10 +69,10 @@ export function ChatInput({ inputMessage, onInputChange, onSubmit, voice, mode =
   const spacing = mode === 'overlay' ? 'gap-2' : 'space-x-2';
 
   return (
-    <div className={`border-t ${mode === 'overlay' ? 'border-border p-3' : 'p-4'}`}>
+    <div className={`border-t border-border ${mode === 'overlay' ? 'border-border p-4' : 'mt-1 pt-8'}`}>
       <form onSubmit={onSubmit} className={`flex ${spacing}`}>
         <Input
-          placeholder="Type a message..."
+          placeholder="Don't be shy..."
           value={inputMessage}
           onChange={onInputChange}
           className={`flex-1 ${inputSize} ${mode === 'overlay' ? 'text-sm' : ''}`}
@@ -115,6 +115,7 @@ export function ChatInput({ inputMessage, onInputChange, onSubmit, voice, mode =
         )}
         <Button
           type="submit"
+          variant={inputMessage.trim() ? 'default' : 'secondary'}
           size={mode === 'overlay' ? 'sm' : 'icon'}
           disabled={!inputMessage.trim()}
           className={buttonSize ? `${buttonSize} p-0` : ''}

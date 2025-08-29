@@ -14,7 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { parseVideoUrl } from '@/lib/video-utils';
-import { Video, Youtube, FileVideo, ExternalLink } from 'lucide-react';
+import { Video, Youtube, FileVideo, ExternalLink, ArrowRight, Link } from 'lucide-react';
 
 interface VideoSetupProps {
   onVideoSet: (url: string) => void;
@@ -110,7 +110,7 @@ export function VideoSetup({ onVideoSet, isHost, hasVideo, videoUrl }: VideoSetu
 
   if (!isHost) {
     return (
-      <Card>
+      <Card className="flex h-full flex-col justify-center border-0">
         <CardHeader className="text-center">
           <Video className="mx-auto mb-2 h-12 w-12 text-muted-foreground" />
           <CardTitle>Waiting for Video</CardTitle>
@@ -121,34 +121,15 @@ export function VideoSetup({ onVideoSet, isHost, hasVideo, videoUrl }: VideoSetu
   }
 
   return (
-    <Card>
+    <Card className="flex h-full flex-col justify-center border-0">
       <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <Video className="h-5 w-5" />
-          <span>Set Up Video</span>
+        <CardTitle className="flex items-center space-x-4">
+          <Video className="h-8 w-8" />
+          <span className="text-3xl font-semibold tracking-tighter">Set Up Video</span>
         </CardTitle>
-        <CardDescription>Add a YouTube, MP4, or M3U8 (HLS) video URL to start watching together</CardDescription>
       </CardHeader>
       <CardContent>
         <VideoUrlForm url={url} setUrl={setUrl} error={error} onSubmit={handleSubmit} />
-
-        <div className="mt-6 space-y-3">
-          <div className="text-sm font-medium">Supported formats:</div>
-          <div className="space-y-2 text-sm text-muted-foreground">
-            <div className="flex items-center space-x-2">
-              <Youtube className="h-4 w-4 text-red-500" />
-              <span>YouTube videos (youtube.com, youtu.be)</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <FileVideo className="h-4 w-4 text-blue-500" />
-              <span>Direct video files (MP4, WebM, OGG)</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Video className="h-4 w-4 text-green-500" />
-              <span>HLS streams (M3U8, live streams)</span>
-            </div>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
@@ -166,21 +147,28 @@ function VideoUrlForm({
   onSubmit: (e: React.FormEvent) => void;
 }) {
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={onSubmit} className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="videoUrl">Video URL</Label>
-        <Input
-          id="videoUrl"
-          placeholder="https://www.youtube.com/watch?v=... or https://example.com/video.mp4"
-          value={url}
-          onChange={e => setUrl(e.target.value)}
-        />
+        <Label htmlFor="videoUrl" className="text-base font-bold tracking-tight">
+          Video URL
+        </Label>
+        <div className="relative">
+          <Link className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-neutral" />
+          <Input
+            id="videoUrl"
+            placeholder="https://www.youtube.com/watch?v=... or https://example.com/video.mp4"
+            value={url}
+            onChange={e => setUrl(e.target.value)}
+            className="p-6 pl-10 !text-base"
+          />
+        </div>
+
+        {error && <div className="rounded-md text-sm text-destructive">{error}</div>}
       </div>
 
-      {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
-
-      <Button type="submit" className="w-full">
-        Set Video
+      <Button type="submit" variant="secondary" className="w-full py-6 text-lg">
+        Stream
+        <ArrowRight className="!h-6 !w-6 text-lg text-primary" />
       </Button>
     </form>
   );

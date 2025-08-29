@@ -95,7 +95,7 @@ export default function RootLayout({
             {/* <div className="min-h-screen bg-background bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-background to-background"> */}
             <div className="mx-auto flex min-h-screen max-w-screen-2xl flex-col bg-background">
               <Navigation />
-              <main className="container mx-auto flex-1 px-4 py-6">{children}</main>
+              <main className="container mx-auto flex-1 px-2 py-6">{children}</main>
               <Footer />
             </div>
             <Toaster richColors />

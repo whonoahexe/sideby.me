@@ -230,7 +230,7 @@ export default function RoomPage() {
 
       <div className="grid gap-6 lg:grid-cols-4">
         {/* Main Content */}
-        <div className="space-y-6 lg:col-span-3">
+        <div className="h-full lg:col-span-3">
           {/* Video Player */}
           {room.videoUrl && parsedVideo && room.videoType ? (
             <VideoPlayerContainer
@@ -284,17 +284,18 @@ export default function RoomPage() {
             onDisable: voice.disable,
             onToggleMute: voice.toggleMute,
           }}
-          className="border-0"
+          className="border-0 p-0"
         />
 
-        {/* <UserList
-            users={room.users}
-            currentUserId={currentUser.id}
-            currentUserIsHost={currentUser.isHost}
-            onPromoteUser={handlePromoteUser}
-            onKickUser={handleKickUser}
-            speakingUserIds={voice.speakingUserIds}
-          /> */}
+        <UserList
+          users={room.users}
+          currentUserId={currentUser.id}
+          currentUserIsHost={currentUser.isHost}
+          onPromoteUser={handlePromoteUser}
+          onKickUser={handleKickUser}
+          speakingUserIds={voice.speakingUserIds}
+          className="col-span-4 mt-4 rounded-md"
+        />
       </div>
 
       {/* Host Control Dialog */}
