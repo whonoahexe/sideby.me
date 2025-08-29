@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Space_Grotesk, Space_Mono } from 'next/font/google';
 import './globals.css';
 import { Navigation } from '@/components/layout/navigation';
+import { Footer } from '@/components/layout/footer';
 import { SocketProvider } from '@/contexts/socket-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/contexts/theme-provider';
@@ -17,10 +18,67 @@ const spaceMono = Space_Mono({
   weight: ['400', '700'],
 });
 
-// Todo: add more metadata & proper branding
 export const metadata: Metadata = {
-  title: 'Sideby.me - A real-time solution?',
-  description: 'Browser share & video streaming suck, a custom solution for watching videos together?',
+  // Core Metadata
+  title: {
+    default: 'sideby.me - built by hermits, for recovering hermits',
+    template: '%s - sideby.me',
+  },
+  description:
+    'The ridiculously simple way to host watch parties. Create a room, share a link, and watch anything with friends in perfect sync. No sign-ups, no nonsense.',
+  applicationName: 'sideby.me',
+  // SEO
+  keywords: ['watch party', 'watch together', 'video sync', 'no signup', 'sideby.me', 'realtime'],
+  // Author & Brand
+  authors: [{ name: 'whonoahexe', url: 'https://github.com/whonoahexe' }],
+  creator: 'Noah',
+  publisher: 'sideby.me',
+  metadataBase: new URL('https://sideby.me'),
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon-32x32.png',
+    apple: '/apple-touch-icon.png',
+    other: [{ rel: 'manifest', url: '/site.webmanifest' }],
+  },
+  // Open Graph Metadata
+  openGraph: {
+    title: 'sideby.me',
+    description:
+      'The ridiculously simple way to host watch parties. Create a room, share a link, and watch anything with friends in perfect sync.',
+    url: new URL('https://sideby.me'),
+    siteName: 'sideby.me',
+    images: [
+      {
+        url: '/android-chrome-512x512.png',
+        width: 512,
+        height: 512,
+        alt: 'sideby.me logo',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'sideby.me',
+    description:
+      'The ridiculously simple way to host watch parties. Create a room, share a link, and watch anything with friends in perfect sync.',
+    images: ['/android-chrome-512x512.png'],
+    site: '@whonoah_exe',
+    creator: '@whonoah_exe',
+  },
+  // Robots & Crawlers
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
 };
 
 export default function RootLayout({
@@ -33,11 +91,12 @@ export default function RootLayout({
       <body className={`${spaceGrotesk.variable} ${spaceMono.variable} antialiased`}>
         <ThemeProvider>
           <SocketProvider>
-            {/* Old gradient effect */}
+            {/* Legacy gradient effect */}
             {/* <div className="min-h-screen bg-background bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-background to-background"> */}
-            <div className="min-h-screen bg-background">
+            <div className="mx-auto flex min-h-screen max-w-screen-2xl flex-col bg-background">
               <Navigation />
-              <main className="container mx-auto px-4 py-6">{children}</main>
+              <main className="container mx-auto flex-1 px-2 py-6">{children}</main>
+              <Footer />
             </div>
             <Toaster richColors />
           </SocketProvider>

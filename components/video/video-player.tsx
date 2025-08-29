@@ -131,12 +131,36 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
       };
 
       const handleError = () => {
-        console.error('Video error:', video.error);
-        console.error('Error details:', {
-          code: video.error?.code,
-          message: video.error?.message,
-          src: video.src,
-        });
+        const error = video.error;
+        console.error('❌ Video error:', error);
+
+        if (error) {
+          const errorMessages = {
+            1: 'MEDIA_ERR_ABORTED - Video loading was aborted',
+            2: 'MEDIA_ERR_NETWORK - Network error occurred while loading video',
+            3: 'MEDIA_ERR_DECODE - Video decoding error',
+            4: 'MEDIA_ERR_SRC_NOT_SUPPORTED - Video format not supported or source not found',
+          };
+
+          const errorMessage = errorMessages[error.code as keyof typeof errorMessages] || 'Unknown video error';
+
+          console.error('Error details:', {
+            code: error.code,
+            message: error.message || errorMessage,
+            src: video.src,
+            networkState: video.networkState,
+            readyState: video.readyState,
+          });
+
+          // Log additional context for unsupported sources
+          if (error.code === 4) {
+            console.error('🔍 Possible causes:');
+            console.error('- Video URL is incorrect or inaccessible');
+            console.error('- Video format is not supported by this browser');
+            console.error('- CORS issues preventing video access');
+            console.error('- Server is not responding or video has been removed');
+          }
+        }
       };
 
       const handleCanPlay = () => {

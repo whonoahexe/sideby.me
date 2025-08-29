@@ -48,32 +48,25 @@ export function ChatHeader({
 
   if (mode === 'sidebar') {
     return (
-      <div className="pb-3">
+      <div className="rounded-md border border-border p-4">
         <div className="flex items-center space-x-2">
-          <MessageCircle className="h-5 w-5" />
-          <span>Chat</span>
-          <div className="ml-auto flex w-full items-center justify-between space-x-2">
-            {voice?.isEnabled && (
-              <Badge variant="outline" className="flex items-center gap-1 text-xs">
-                {voice.isMuted ? <MicOff className="h-2 w-2" /> : <Mic className="h-2 w-2" />}
-                {voice.participantCount}
-              </Badge>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSoundToggle}
-              className="h-8 w-8 p-0 hover:bg-muted"
-              title={soundEnabled ? 'Disable notification sound' : 'Enable notification sound'}
-              aria-label={soundEnabled ? 'Disable notification sound' : 'Enable notification sound'}
-            >
+          <MessageCircle className="h-6 w-6" />
+          <span className="text-xl font-semibold tracking-tighter">Chat</span>
+          <div className="flex w-full items-center justify-between space-x-2 pl-4">
+            <div className="flex items-center gap-4">
               {soundEnabled ? (
-                <Volume2 className="h-4 w-4 text-muted-foreground" />
+                <Volume2 className="h-5 w-5 cursor-pointer" onClick={handleSoundToggle} />
               ) : (
-                <VolumeX className="h-4 w-4 text-muted-foreground" />
+                <VolumeX className="h-5 w-5 cursor-pointer" onClick={handleSoundToggle} />
               )}
-            </Button>
-            <Badge variant="secondary">{messageCount}</Badge>
+              {voice?.isEnabled && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  {voice.isMuted ? <MicOff className="h-2 w-2" /> : <Mic className="h-2 w-2" />}
+                  {voice.participantCount}
+                </Badge>
+              )}
+            </div>
+            <Badge>{messageCount}</Badge>
           </div>
         </div>
       </div>
@@ -98,7 +91,7 @@ export function ChatHeader({
           </Badge>
         )}
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center">
         <Button variant="ghost" size="sm" onClick={handleSoundToggle} className="h-8 w-8 p-0">
           {soundEnabled ? <Volume2 className="h-3 w-3" /> : <VolumeX className="h-3 w-3" />}
         </Button>

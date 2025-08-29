@@ -25,26 +25,29 @@ export function TypingIndicator({ typingUsers, mode = 'sidebar' }: TypingIndicat
 
   return (
     <div className="flex space-x-3">
+      {/* Avatar */}
       <Avatar className={`${avatarSize} flex-shrink-0`}>
-        <AvatarFallback className="text-xs">
+        <AvatarFallback className="font-mono text-primary-800">
           {typingUsers.length === 1 ? getInitials(typingUsers[0].userName) : '...'}
         </AvatarFallback>
       </Avatar>
 
+      {/* Message Info */}
       <div className="flex-1 space-y-1">
         <div className="flex items-center space-x-2">
-          <span className={`${textSize} font-medium text-muted-foreground`}>
+          <span className={`${textSize} font-bold tracking-tight text-neutral`}>
             {typingUsers.length === 1
               ? `${typingUsers[0].userName} is typing`
               : `${typingUsers.length} people are typing`}
           </span>
         </div>
 
-        <div className="inline-block rounded-lg bg-muted px-3 py-2">
+        {/* Typing Indicator */}
+        <div className="inline-block rounded-md bg-muted px-3 py-2">
           <div className="flex space-x-1">
-            <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:0ms]" />
-            <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:150ms]" />
-            <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:300ms]" />
+            <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:0ms]" />
+            <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:150ms]" />
+            <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:300ms]" />
           </div>
         </div>
       </div>

@@ -160,7 +160,7 @@ export function Chat({
 
   // Empty state component
   const EmptyState = () => (
-    <div className="py-8 text-center text-muted-foreground">
+    <div className="py-6 text-center text-muted-foreground">
       <MessageCircle className="mx-auto mb-2 h-8 w-8 opacity-50" />
       <p>No messages yet :/ Start the conversation!</p>
     </div>
@@ -169,8 +169,8 @@ export function Chat({
   // Render sidebar mode
   if (mode === 'sidebar') {
     return (
-      <Card className={className}>
-        <CardHeader>
+      <Card className={`ml-6 mr-6 lg:ml-0 ${className}`}>
+        <CardHeader className="p-0">
           <CardTitle>
             <ChatHeader
               mode="sidebar"

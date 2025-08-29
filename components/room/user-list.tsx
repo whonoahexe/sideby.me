@@ -49,58 +49,59 @@ export function UserList({
   });
 
   return (
-    <Card className={className}>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center space-x-2">
+    <Card className={`mx-6 ${className}`}>
+      <CardHeader>
+        <CardTitle className="flex items-center space-x-4">
           <Users className="h-5 w-5" />
-          <span>Participants</span>
-          <Badge variant="secondary" className="ml-auto">
-            {users.length}
-          </Badge>
+          <span className="text-xl font-semibold tracking-tighter">Participants</span>
+          <Badge className="ml-auto">{users.length}</Badge>
         </CardTitle>
       </CardHeader>
 
       <CardContent>
-        <div className="space-y-3">
+        <div className="space-y-6">
           {sortedUsers.map(user => (
             <div
               key={user.id}
-              className={`flex items-center space-x-3 rounded-lg p-2 transition-colors ${
-                user.id === currentUserId ? 'border border-primary/20 bg-primary/10' : 'hover:bg-muted/50'
+              className={`flex items-center space-x-4 rounded-md p-4 transition-colors ${
+                user.id === currentUserId ? 'border border-primary bg-primary-50' : 'hover:bg-muted/50'
               }`}
             >
               <Avatar
-                className={`h-8 w-8 ${speakingUserIds?.has(user.id) ? 'ring-2 ring-green-500 ring-offset-2' : ''}`}
+                className={`${speakingUserIds?.has(user.id) ? 'ring-2 ring-success-700 ring-offset-2' : ''}`}
+                size="lg"
               >
-                <AvatarFallback className="text-xs">{getInitials(user.name)}</AvatarFallback>
+                <AvatarFallback variant={user.id === currentUserId ? 'secondary' : 'default'}>
+                  {getInitials(user.name)}
+                </AvatarFallback>
               </Avatar>
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center space-x-2">
-                  <span className="truncate text-sm font-medium">
+                  <span className="truncate font-bold tracking-tight">
                     {user.name}
                     {user.id === currentUserId && <span className="ml-1 text-muted-foreground">(You)</span>}
                   </span>
-                  {user.isHost && <Crown className="h-3 w-3 flex-shrink-0 text-yellow-500" />}
+                  {user.isHost && <Crown className="h-4 w-4 flex-shrink-0 text-primary" />}
                 </div>
 
-                <div className="mt-1 flex items-center space-x-1">
-                  <User className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">{user.isHost ? 'Host' : 'Guest'}</span>
+                <div className="mt-1 flex items-center space-x-2">
+                  <User className="h-4 w-4 text-neutral" />
+                  <span className="tracking-tight text-neutral">{user.isHost ? 'Host' : 'Guest'}</span>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-4">
                 {/* Promote button for hosts to promote guests */}
                 {currentUserIsHost && !user.isHost && user.id !== currentUserId && onPromoteUser && (
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => onPromoteUser(user.id)}
-                    className="h-6 px-2 text-xs"
+                    className="h-8 px-2"
                     title={`Promote ${user.name} to host`}
                   >
-                    <Crown className="h-3 w-3" />
+                    <Crown className="h-4 w-4" />
                   </Button>
                 )}
 
@@ -110,14 +111,12 @@ export function UserList({
                     size="sm"
                     variant="destructive"
                     onClick={() => onKickUser(user.id)}
-                    className="h-6 px-2 text-xs"
+                    className="h-8 px-2"
                     title={`Kick ${user.name} from room`}
                   >
-                    <UserX className="h-3 w-3" />
+                    <UserX className="h-4 w-4" />
                   </Button>
                 )}
-
-                <div className="h-2 w-2 rounded-full bg-green-500" title="Online" />
               </div>
             </div>
           ))}

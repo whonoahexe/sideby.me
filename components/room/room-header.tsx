@@ -3,7 +3,7 @@
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, Copy, Share2, Check } from 'lucide-react';
+import { Copy, Check, Crown, Share } from 'lucide-react';
 
 interface RoomHeaderProps {
   roomId: string;
@@ -25,27 +25,36 @@ export function RoomHeader({
   onShareRoom,
 }: RoomHeaderProps) {
   return (
-    <Card>
+    <Card className="mt-6 border-0">
       <CardHeader>
+        {/* Room info */}
         <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
           <div className="space-y-1">
-            <CardTitle className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <Users className="h-5 w-5 flex-shrink-0" />
-              <span className="break-all sm:break-normal">Room {roomId}</span>
+            <CardTitle className="flex w-full flex-wrap items-center justify-between gap-x-2 gap-y-1 md:w-auto md:justify-start">
+              <span className="break-all text-2xl font-semibold tracking-tighter sm:break-normal md:text-3xl">
+                Room {roomId}
+              </span>
               {isHost && <Badge variant="default">Host</Badge>}
             </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Created by {hostName} • {hostCount} host{hostCount !== 1 ? 's' : ''}
-            </p>
+            <div className="flex w-full justify-between gap-4 text-sm text-muted-foreground md:w-auto md:justify-start">
+              <div className="flex items-center gap-2 text-primary-700">
+                <Crown className="h-4 w-4 flex-shrink-0" />
+                <span className="font-bold tracking-tight">by {hostName}</span>
+              </div>
+              <span className="tracking-tight text-neutral">
+                {hostCount} host{hostCount !== 1 ? 's' : ''}
+              </span>
+            </div>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button variant="outline" size="sm" onClick={onCopyRoomId} className="relative overflow-hidden">
+          {/* Room actions */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Button variant="ghost" onClick={onCopyRoomId}>
               {showCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
               {showCopied ? 'Copied!' : 'Copy ID'}
             </Button>
-            <Button variant="outline" size="sm" onClick={onShareRoom}>
-              <Share2 className="mr-2 h-4 w-4" />
+            <Button variant="default" onClick={onShareRoom}>
+              <Share className="mr-2 h-4 w-4" />
               Share
             </Button>
           </div>
