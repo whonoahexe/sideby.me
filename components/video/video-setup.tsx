@@ -32,13 +32,13 @@ export function VideoSetup({ onVideoSet, isHost, hasVideo, videoUrl }: VideoSetu
     e.preventDefault();
 
     if (!url.trim()) {
-      setError('Please enter a video URL');
+      setError('Hello? you forgot the link??!?');
       return;
     }
 
     const parsed = parseVideoUrl(url.trim());
     if (!parsed) {
-      setError('Please enter a valid YouTube, MP4, or M3U8 video URL');
+      setError("Hmm, that link doesn't look right. We can handle YouTube, .mp4, and .m3u8 links.");
       return;
     }
 
@@ -62,13 +62,14 @@ export function VideoSetup({ onVideoSet, isHost, hasVideo, videoUrl }: VideoSetu
     return <FileVideo className="h-4 w-4 text-blue-500" />;
   };
 
+  // Probably won't be very useful, but just in case
   if (hasVideo && videoUrl) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Video className="h-5 w-5" />
-            <span>Current Video</span>
+            <span>Now Playing</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -95,7 +96,7 @@ export function VideoSetup({ onVideoSet, isHost, hasVideo, videoUrl }: VideoSetu
                   <DialogHeader>
                     <DialogTitle>Change Video</DialogTitle>
                     <DialogDescription>
-                      Enter a new YouTube, MP4, or M3U8 (HLS) video URL to change what everyone is watching.
+                      Found something better? Drop in a new link to instantly change the video for everyone in the room.
                     </DialogDescription>
                   </DialogHeader>
                   <VideoUrlForm url={url} setUrl={setUrl} error={error} onSubmit={handleSubmit} />
@@ -108,18 +109,20 @@ export function VideoSetup({ onVideoSet, isHost, hasVideo, videoUrl }: VideoSetu
     );
   }
 
+  // For the guests
   if (!isHost) {
     return (
       <Card className="flex h-full flex-col justify-center border-0">
         <CardHeader className="text-center">
           <Video className="mx-auto mb-2 h-12 w-12 text-muted-foreground" />
-          <CardTitle>Waiting for Video</CardTitle>
-          <CardDescription>The host will set up a video for everyone to watch together.</CardDescription>
+          <CardTitle>The host is choosing a video</CardTitle>
+          <CardDescription>Just hang tight! The host is taking a moment.</CardDescription>
         </CardHeader>
       </Card>
     );
   }
 
+  // For the hosts
   return (
     <Card className="flex h-full flex-col justify-center border-0">
       <CardHeader>
@@ -150,13 +153,13 @@ function VideoUrlForm({
     <form onSubmit={onSubmit} className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="videoUrl" className="text-base font-bold tracking-tight">
-          Video URL
+          What are we watching?
         </Label>
         <div className="relative">
           <Link className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-neutral" />
           <Input
             id="videoUrl"
-            placeholder="https://www.youtube.com/watch?v=... or https://example.com/video.mp4"
+            placeholder="Paste a YouTube, MP4, or M3U8 or any video link..."
             value={url}
             onChange={e => setUrl(e.target.value)}
             className="p-6 pl-10 !text-base"

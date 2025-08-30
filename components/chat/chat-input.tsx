@@ -37,7 +37,7 @@ export function ChatInput({ inputMessage, onInputChange, onSubmit, voice, mode =
     longPressTimerRef.current = setTimeout(() => {
       longPressTriggeredRef.current = true;
       voice.onDisable();
-      toast.success('Left voice chat');
+      toast.success("Voice chat disconnected. It's quiet again!");
     }, 600);
   };
 
@@ -47,11 +47,11 @@ export function ChatInput({ inputMessage, onInputChange, onSubmit, voice, mode =
 
   const handleVoiceButtonClick = () => {
     if (!voice) return;
-    if (longPressTriggeredRef.current) return; // ignore click right after long-press
+    if (longPressTriggeredRef.current) return; // Ignore click right after long-press
     if (voice.isEnabled) {
       voice.onToggleMute();
     } else if (voice.overCap) {
-      toast.error('Voice chat is full (max 5 participants).');
+      toast.error("Whoa, it's a full house! The voice channel is at its max of 5 people.");
     } else {
       voice.onEnable();
     }
@@ -78,6 +78,8 @@ export function ChatInput({ inputMessage, onInputChange, onSubmit, voice, mode =
           className={`flex-1 ${inputSize} ${mode === 'overlay' ? 'text-sm' : ''}`}
           maxLength={500}
         />
+
+        {/* Voice button */}
         {voice && (
           <Button
             type="button"
@@ -96,9 +98,9 @@ export function ChatInput({ inputMessage, onInputChange, onSubmit, voice, mode =
             title={
               voice.isEnabled
                 ? voice.isMuted
-                  ? 'Unmute (long-press/right-click to leave)'
-                  : 'Mute (long-press/right-click to leave)'
-                : 'Join Voice'
+                  ? 'Go live (hold to leave voice)'
+                  : 'Go silent (hold to leave voice)'
+                : 'Hop on voice chat'
             }
             aria-label={voice.isEnabled ? (voice.isMuted ? 'Unmute' : 'Mute') : 'Join Voice'}
           >
@@ -113,6 +115,8 @@ export function ChatInput({ inputMessage, onInputChange, onSubmit, voice, mode =
             )}
           </Button>
         )}
+
+        {/* Send button */}
         <Button
           type="submit"
           variant={inputMessage.trim() ? 'default' : 'secondary'}

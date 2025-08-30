@@ -10,18 +10,31 @@ import { Icon } from '../../components/ui/icon';
 import HowItWorks from '@/components/pages/how-it-works';
 import Link from 'next/link';
 
+const QUIRKY_USERNAMES = [
+  'The Friend Who Picked The Movie',
+  'Person With The Stable Wi-Fi',
+  'Probably Muted',
+  'The One With The Link',
+  'The Dungeon Master',
+  'That Friend From Discord',
+  'Not-A-Bot-I-Swear',
+] as const;
+
+// Pick a random username on page load
+const getRandomUsername = () => QUIRKY_USERNAMES[Math.floor(Math.random() * QUIRKY_USERNAMES.length)];
+
 const HOST_FEATURES = [
   {
     icon: Play,
-    title: 'Control video playback',
+    title: 'You have the remote',
   },
   {
     icon: PenLine,
-    title: 'Pause, seek video controls',
+    title: 'Skip to the good parts',
   },
   {
     icon: User,
-    title: 'Manage room settings',
+    title: 'Set the rules of the room',
   },
 ] as const;
 
@@ -56,10 +69,10 @@ export default function CreateRoomPage() {
             <div className="flex w-full shrink-0 grow basis-0 flex-col items-center justify-center gap-4">
               <div className="flex w-full flex-col items-start justify-center gap-2 sm:gap-4">
                 <h2 className="text-2xl font-extrabold tracking-tighter text-primary sm:text-3xl lg:text-4xl">
-                  Step 1
+                  Player 1
                 </h2>
                 <p className="text-sm font-bold tracking-tight text-neutral-400 sm:text-base">
-                  Start a new room and invite friends to watch videos together.
+                  {`Every good watch party needs a host with a name. That's you.`}
                 </p>
               </div>
 
@@ -67,7 +80,7 @@ export default function CreateRoomPage() {
                 {/* Name Input */}
                 <div className="w-full space-y-2">
                   <Label htmlFor="hostName" className="text-sm font-bold tracking-tight sm:text-base">
-                    Your Name
+                    Your Callsign
                   </Label>
                   <div className="relative">
                     <AtSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-neutral" />
@@ -77,9 +90,9 @@ export default function CreateRoomPage() {
                       type="text"
                       value={hostName}
                       onChange={e => setHostName(e.target.value)}
-                      placeholder="Enter your name"
+                      placeholder={`e.g., ${getRandomUsername()}`}
                       className="pl-10 text-base tracking-tight sm:text-lg"
-                      maxLength={20}
+                      maxLength={21}
                       required
                       disabled={isLoading || !isConnected}
                       aria-describedby={error ? 'error-message' : undefined}
@@ -95,9 +108,11 @@ export default function CreateRoomPage() {
                 )}
 
                 {/* Connection Status */}
-                {!isInitialized && <div className="text-sm font-medium text-yellow-500">Connecting to server...</div>}
+                {!isInitialized && <div className="text-sm font-medium text-yellow-500">Waking up the servers...</div>}
                 {isInitialized && !isConnected && (
-                  <div className="text-sm font-medium text-red-500">Connection lost. Please refresh the page.</div>
+                  <div className="text-sm font-medium text-red-500">
+                    Whoops, looks like you lost connection. Try a quick refresh?
+                  </div>
                 )}
 
                 {/* Action Buttons */}
@@ -111,7 +126,7 @@ export default function CreateRoomPage() {
                     {isLoading ? 'Creating Room...' : 'Create Room'}
                   </Button>
                   <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
-                    <Link href="/join">Need to Join?</Link>
+                    <Link href="/join">Have a Room Code?</Link>
                   </Button>
                 </div>
               </form>

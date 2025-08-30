@@ -1,4 +1,4 @@
-// list of feature flags
+// List of feature flags
 export const FEATURE_FLAGS = {
   SUBTITLES_SUPPORT: true,
 } as const;
@@ -16,7 +16,7 @@ export function isEnabled(flag: FeatureFlag): boolean {
   return FEATURE_FLAGS[flag];
 }
 
-// debugging utility
+// Debugging utility
 export function getAllFeatureFlags(): Record<FeatureFlag, boolean> {
   return Object.keys(FEATURE_FLAGS).reduce(
     (acc, flag) => {

@@ -204,7 +204,8 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
         disablePictureInPicture={!isHost}
         crossOrigin="anonymous"
       >
-        Your browser does not support the video tag.
+        Looks like your browser is a bit of a fossil! To watch videos here, you might need to update or switch to a
+        newer browser like Chrome or Firefox.
       </video>
     );
   }

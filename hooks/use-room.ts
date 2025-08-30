@@ -160,7 +160,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
       // Only show toast if the current user didn't initiate the kick
       setCurrentUser(currentUser => {
         if (currentUser && kickedBy && currentUser.id !== kickedBy) {
-          toast.info(`${userName} has been kicked from the room`);
+          toast.info(`Awkward, ${userName} has been kicked from the room!`);
         }
         return currentUser;
       });
@@ -227,8 +227,8 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
         }
         hasShownClosureToastRef.current = true;
 
-        toast.error('Room Closed', {
-          description: 'All hosts have left the room. You will be redirected to the home page.',
+        toast.error(`Party's Over!`, {
+          description: `Looks like all the hosts have left, so this room is closing. We're sending you back home.`,
           duration: 4000,
         });
 
@@ -362,7 +362,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
 
     // Prompt for name if no stored data
     console.log('❓ No stored user data, prompting for name');
-    const userName = prompt('Enter your name to join the room:');
+    const userName = prompt(`What's your callname?`);
     if (!userName || !userName.trim()) {
       console.log('❌ No name provided, redirecting to join page');
       setIsJoining(false);
@@ -373,15 +373,15 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
 
     const trimmedName = userName.trim();
     if (trimmedName.length < 2) {
-      alert('Name must be at least 2 characters long. Please try again.');
+      alert("Hmm, that name's a little brief. We need a callsign that's at least 2 characters long.");
       setIsJoining(false);
       hasAttemptedJoinRef.current = false;
       router.push('/join');
       return;
     }
 
-    if (trimmedName.length > 50) {
-      alert('Name must be 50 characters or less. Please try again.');
+    if (trimmedName.length > 20) {
+      alert('Whoa, what an epic name! Sadly, our little callsign tags can only fit 20 characters.');
       setIsJoining(false);
       hasAttemptedJoinRef.current = false;
       router.push('/join');
@@ -389,7 +389,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
     }
 
     if (!/^[a-zA-Z0-9\s\-_.!?]+$/.test(trimmedName)) {
-      alert('Name can only contain letters, numbers, spaces, and basic punctuation (- _ . ! ?). Please try again.');
+      alert('Easy on the fancy characters! Our system is a bit sensitive with those special characters.');
       setIsJoining(false);
       hasAttemptedJoinRef.current = false;
       router.push('/join');
@@ -438,7 +438,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
       const targetUser = room?.users.find(u => u.id === userId);
       if (targetUser) {
         socket.emit('kick-user', { roomId, userId });
-        toast.success(`${targetUser.name} has been kicked from the room`);
+        toast.success(`Awkward, ${targetUser.name} has been kicked from the room!`);
       }
     },
     [socket, currentUser?.isHost, roomId, room?.users]
@@ -472,8 +472,8 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
     const url = `${window.location.origin}/room/${roomId}`;
     if (navigator.share) {
       navigator.share({
-        title: 'Join my Sideby.me room',
-        text: `Join me to watch videos together! Room ID: ${roomId}`,
+        title: `You're invited! Yay?`,
+        text: `Come watch this with me ;) Here's the room code: ${roomId}`,
         url,
       });
     } else {

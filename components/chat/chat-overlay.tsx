@@ -91,6 +91,7 @@ export function ChatOverlay({
             size="sm"
             onClick={onToggleMinimize}
             className="relative h-8 w-8 p-0 hover:bg-background/50"
+            title="Expand chat"
           >
             <MessageCircle className="h-4 w-4" />
             {unreadCount > 0 && (

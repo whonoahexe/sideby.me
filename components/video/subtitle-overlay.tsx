@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { SubtitleTrack } from '@/types/schemas';
+import { SubtitleParser, type SubtitleCue as ParsedSubtitleCue } from '@/lib/subtitle-utils';
 
 interface SubtitleCue {
   text: string;
@@ -17,59 +18,12 @@ interface SubtitleOverlayProps {
   isFullscreen: boolean;
 }
 
-// Parse timestamp string to seconds
-const parseTimestamp = (timestamp: string): number => {
-  const parts = timestamp.split(':');
-  if (parts.length === 3) {
-    const hours = parseInt(parts[0]);
-    const minutes = parseInt(parts[1]);
-    const secondsParts = parts[2].split('.');
-    const seconds = parseInt(secondsParts[0]);
-    const milliseconds = secondsParts[1] ? parseInt(secondsParts[1].padEnd(3, '0')) : 0;
-
-    return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
-  }
-  return 0;
-};
-
-// Parse WebVTT content
-const parseWebVTT = (content: string): SubtitleCue[] => {
-  const lines = content.split('\n');
-  const cues: SubtitleCue[] = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-
-    // Look for timestamp lines (format: 00:00:00.000 --> 00:00:00.000)
-    if (line.includes(' --> ')) {
-      const [startStr, endStr] = line.split(' --> ');
-      const startTime = parseTimestamp(startStr);
-      const endTime = parseTimestamp(endStr);
-
-      // Get the text lines that follow
-      const textLines: string[] = [];
-      i++; // Move to next line after timestamp
-
-      while (i < lines.length && lines[i].trim() !== '' && !lines[i].includes(' --> ')) {
-        if (lines[i].trim()) {
-          textLines.push(lines[i].trim());
-        }
-        i++;
-      }
-      i--; // Back up one line since the outer loop will increment
-
-      if (textLines.length > 0) {
-        cues.push({
-          text: textLines.join('\n'),
-          startTime,
-          endTime,
-        });
-      }
-    }
-  }
-
-  return cues;
-};
+// Helper function to convert parsed subtitle cue to component's expected format
+const convertSubtitleCue = (parsedCue: ParsedSubtitleCue): SubtitleCue => ({
+  text: parsedCue.text,
+  startTime: parsedCue.start,
+  endTime: parsedCue.end,
+});
 
 export function SubtitleOverlay({
   videoRef,
@@ -100,7 +54,8 @@ export function SubtitleOverlay({
     fetch(activeTrack.url)
       .then(response => response.text())
       .then(content => {
-        const cues = parseWebVTT(content);
+        const parsedCues = SubtitleParser.parseVTT(content);
+        const cues = parsedCues.map(convertSubtitleCue);
         setParsedCues(cues);
       })
       .catch(error => {
@@ -144,10 +99,10 @@ export function SubtitleOverlay({
 
   // Calculate positioning
   const getPositionStyles = () => {
-    let bottomOffset = 40; // Base offset from bottom (moved up from 20)
+    let bottomOffset = 40;
 
     if (controlsVisible) {
-      bottomOffset = isFullscreen ? 160 : 120; // Push up when controls are visible (increased)
+      bottomOffset = isFullscreen ? 160 : 120; // Push up when controls are visible
     }
 
     return {

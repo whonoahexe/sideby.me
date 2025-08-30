@@ -41,7 +41,7 @@ export function Footer() {
         {/* Product Links */}
         <div className="flex flex-col justify-between gap-6 tracking-tight md:flex-row">
           <div className="flex min-w-36 flex-1 flex-col gap-6">
-            <span className="text-sm font-bold">Product</span>
+            <span className="text-sm font-bold">Jump In</span>
             <div className="flex flex-col items-start gap-4">
               {productLinks.map(l => (
                 <Link key={l.href} href={l.href} className={footerLink}>
@@ -51,7 +51,7 @@ export function Footer() {
             </div>
           </div>
           <div className="flex min-w-36 flex-1 flex-col gap-6">
-            <span className="text-sm font-bold">Follow me</span>
+            <span className="text-sm font-bold">Stay Connected</span>
             <div className="flex gap-4">
               {socialLinks.map(s => {
                 const Icon = s.Icon;

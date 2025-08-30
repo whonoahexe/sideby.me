@@ -56,7 +56,7 @@ export function useJoinRoom(): UseJoinRoomReturn {
         const validatedData = JoinRoomDataSchema.parse(joinData);
 
         if (!socket || !isConnected) {
-          setError('Not connected to server. Please try again.');
+          setError(`Oof, couldn't reach the server on that one.`);
           return;
         }
 
@@ -84,7 +84,7 @@ export function useJoinRoom(): UseJoinRoomReturn {
         if (error instanceof z.ZodError) {
           setError(error.issues[0].message);
         } else {
-          setError('Invalid input. Please check your entries.');
+          setError(`Hmm, something's not quite right. Could you double-check the room code and your name?`);
         }
       }
     },
