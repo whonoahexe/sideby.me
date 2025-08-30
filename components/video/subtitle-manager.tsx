@@ -90,6 +90,7 @@ export function SubtitleManager({
               size={isFullscreen ? 'default' : 'sm'}
               className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-white/20 bg-black/60 p-0 text-white transition-interactive duration-200 hover:border-primary/50 hover:bg-primary hover:text-primary-foreground`}
               title="Subtitles"
+              onClick={e => e.stopPropagation()}
             >
               <Subtitles className={isFullscreen ? 'h-5 w-5' : 'h-4 w-4'} />
             </Button>
@@ -251,7 +252,10 @@ function FullscreenSubtitleDropdown({
       <Button
         variant="secondary"
         size="default"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={e => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
         className="h-11 w-11 border border-white/20 bg-black/60 p-0 text-white transition-interactive duration-200 hover:border-primary/50 hover:bg-primary hover:text-primary-foreground"
         title="Subtitles"
       >

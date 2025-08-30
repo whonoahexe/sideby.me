@@ -353,12 +353,12 @@ export function VideoControls({
   };
 
   const handleMouseLeave = () => {
-    // Clear timeout and hide controls when mouse leaves
-    if (hideControlsTimeoutRef.current) {
-      clearTimeout(hideControlsTimeoutRef.current);
-    }
-    setShowControls(false);
-    onControlsVisibilityChange?.(false);
+    // Don't immediately hide controls on mouse leave, allow inactivity timer to handle it
+    if (hideControlsTimeoutRef.current) clearTimeout(hideControlsTimeoutRef.current);
+    hideControlsTimeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+      onControlsVisibilityChange?.(false);
+    }, 2000);
   };
   const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -370,18 +370,15 @@ export function VideoControls({
     const isMobile = window.innerWidth < 768 || 'ontouchstart' in window;
     if (isMobile) return;
 
-    // Prevent click if it's on a control button or slider
-    const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('.seek-slider')) {
-      return;
-    }
+    // Only trigger play/pause if user clicked directly on the backdrop layer
+    if (e.target !== e.currentTarget) return;
 
     handlePlayPause();
   };
 
   return (
     <div
-      className={`absolute inset-0 ${className}`}
+      className={`absolute inset-0 ${className} ${isFullscreen && !showControls ? 'cursor-none' : ''}`}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       onMouseEnter={showControlsWithAutoHide}

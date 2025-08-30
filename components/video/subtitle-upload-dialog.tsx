@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -267,12 +267,12 @@ export function SubtitleUploadDialog({ open, onOpenChange, onSubtitleSelected }:
 
         {/* Bottom Actions */}
         <div className="flex justify-between border-t bg-gray-50 p-6 pt-4 dark:bg-black">
-          <Button variant="outline" onClick={() => onOpenChange(false)} size="sm">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Never mind
           </Button>
           <div className="flex gap-2">
             {uploadedFiles.length > 0 && processedTracks.length === 0 && (
-              <Button onClick={processFiles} disabled={isProcessing} size="sm">
+              <Button onClick={processFiles} disabled={isProcessing}>
                 {isProcessing ? (
                   <>
                     <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white" />
@@ -287,7 +287,7 @@ export function SubtitleUploadDialog({ open, onOpenChange, onSubtitleSelected }:
               </Button>
             )}
             {processedTracks.length > 0 && (
-              <Button onClick={handleAddSubtitles} size="sm">
+              <Button onClick={handleAddSubtitles}>
                 <CheckCircle className="mr-2 h-4 w-4" />
                 Add Subtitles
               </Button>

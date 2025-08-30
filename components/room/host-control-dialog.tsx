@@ -4,7 +4,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Crown, Users, Lightbulb } from 'lucide-react';
-import { useEffect } from 'react';
 
 interface HostControlDialogProps {
   open: boolean;
