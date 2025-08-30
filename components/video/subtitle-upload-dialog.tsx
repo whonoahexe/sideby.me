@@ -23,17 +23,14 @@ export function SubtitleUploadDialog({ open, onOpenChange, onSubtitleSelected }:
 
   useEffect(() => {
     if (open) {
-      // Get current scrollbar width
       const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
       // Temporarily add padding to prevent layout shift
       document.body.style.paddingRight = `${scrollbarWidth}px`;
     } else {
-      // Remove padding when modal closes
       document.body.style.paddingRight = '';
     }
 
     return () => {
-      // Cleanup on unmount
       document.body.style.paddingRight = '';
     };
   }, [open]);
@@ -46,7 +43,7 @@ export function SubtitleUploadDialog({ open, onOpenChange, onSubtitleSelected }:
     });
 
     if (validFiles.length !== files.length) {
-      alert('Some files were skipped. Only .vtt, .srt, and .ass files are supported.');
+      alert('Heads-up: Some files were skipped because we can only process .vtt, .srt, and .ass subtitle formats.');
     }
 
     setUploadedFiles(prev => [...prev, ...validFiles]);
@@ -112,7 +109,9 @@ export function SubtitleUploadDialog({ open, onOpenChange, onSubtitleSelected }:
       console.log('Successfully processed subtitle files:', tracks);
     } catch (error) {
       console.error('Error processing subtitle files:', error);
-      alert('Error processing some subtitle files. Please check the file formats and try again.');
+      alert(
+        'Oof, we hit our head trying to process one of your files. It might be corrupted. Could you check it and try again?'
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -164,7 +163,7 @@ export function SubtitleUploadDialog({ open, onOpenChange, onSubtitleSelected }:
         <DialogHeader className="px-6 pb-4 pt-6">
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
-            Upload Subtitle Files
+            Upload Your Own Subtitles
           </DialogTitle>
         </DialogHeader>
 
@@ -172,9 +171,9 @@ export function SubtitleUploadDialog({ open, onOpenChange, onSubtitleSelected }:
           {/* Upload Area */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Select Subtitle Files</CardTitle>
+              <CardTitle className="text-lg">Grab Your Subtitle Files</CardTitle>
               <CardDescription>
-                Upload subtitle files in VTT, SRT, or ASS format. Multiple files are supported.
+                Got a .vtt, .srt, or .ass file? We can handle those. You can even upload multiple at once.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -183,8 +182,8 @@ export function SubtitleUploadDialog({ open, onOpenChange, onSubtitleSelected }:
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="mx-auto mb-4 h-12 w-12 text-gray-400" />
-                <p className="mb-2 text-lg font-medium">Click to select subtitle files</p>
-                <p className="text-sm text-gray-500">or drag and drop files here</p>
+                <p className="mb-2 text-lg font-medium">{`Click here to browse your collection...`}</p>
+                <p className="text-sm text-gray-500">{`...or just drag 'em right in here.`}</p>
                 <div className="mt-4 flex justify-center gap-2">
                   <Badge variant="outline">.vtt</Badge>
                   <Badge variant="outline">.srt</Badge>
@@ -283,7 +282,7 @@ export function SubtitleUploadDialog({ open, onOpenChange, onSubtitleSelected }:
         {/* Bottom Actions */}
         <div className="flex justify-between border-t bg-gray-50 p-6 pt-4 dark:bg-black">
           <Button variant="outline" onClick={() => onOpenChange(false)} size="sm">
-            Cancel
+            Never mind
           </Button>
           <div className="flex gap-2">
             {uploadedFiles.length > 0 && processedTracks.length === 0 && (

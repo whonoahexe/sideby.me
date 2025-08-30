@@ -118,7 +118,7 @@ export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, 
           if (!hostToken || hostToken !== room.hostToken) {
             console.log(`Host impersonation attempt by ${userName} - existing user but invalid token`);
             socket.emit('room-error', {
-              error: 'Invalid host credentials. Only the room creator can join as host.',
+              error: `We don't allow copycats. Please choose a different callsign.`,
             });
             return;
           }
@@ -138,7 +138,7 @@ export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, 
         } else {
           console.log(`Duplicate name attempt by ${userName} - name already taken by guest`);
           socket.emit('room-error', {
-            error: `The name "${userName}" is already taken in this room. Please choose a different name.`,
+            error: `Looks like the name "${userName}" is already in use here. Could you pick another one?`,
           });
           return;
         }
@@ -159,7 +159,7 @@ export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, 
         } else {
           console.log(`Host impersonation attempt by ${userName} - invalid or missing token`);
           socket.emit('room-error', {
-            error: 'Invalid host credentials. Only the room creator can join as host.',
+            error: `We don't allow copycats. Please choose a different callsign.`,
           });
           return;
         }
@@ -167,7 +167,7 @@ export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, 
         if (room.hostName === userName) {
           console.log(`Guest attempting to use host name: ${userName}`);
           socket.emit('room-error', {
-            error: `The name "${userName}" is reserved for the room host. Please choose a different name.`,
+            error: `We don't allow copycats. Please choose a different callsign.`,
           });
           return;
         }
@@ -224,7 +224,7 @@ export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, 
   socket.on('promote-host', async ({ roomId, userId }) => {
     try {
       if (!socket.data.userId) {
-        socket.emit('error', { error: 'Not authenticated' });
+        socket.emit('error', { error: 'Hmm, we lost your connection details.' });
         return;
       }
 
@@ -247,7 +247,7 @@ export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, 
       }
 
       if (targetUser.isHost) {
-        socket.emit('error', { error: 'User is already a host' });
+        socket.emit('error', { error: 'Looks like that user is already a host!' });
         return;
       }
 
@@ -274,7 +274,7 @@ export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, 
       const { roomId, userId } = validatedData;
 
       if (!socket.data.userId) {
-        socket.emit('error', { error: 'Not authenticated' });
+        socket.emit('error', { error: 'Hmm, we lost your connection details.' });
         return;
       }
 
@@ -297,12 +297,12 @@ export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, 
       }
 
       if (targetUser.isHost) {
-        socket.emit('error', { error: 'Cannot kick another host' });
+        socket.emit('error', { error: "Whoa there! You can't kick another host. That's just not cool." });
         return;
       }
 
       if (targetUser.id === currentUser.id) {
-        socket.emit('error', { error: 'Cannot kick yourself' });
+        socket.emit('error', { error: "As much as you might want to, you can't kick yourself from the room." });
         return;
       }
 
@@ -381,7 +381,7 @@ export async function handleLeaveRoom(
 
       // Notify all remaining users that the room is being closed
       socket.to(roomId).emit('room-error', {
-        error: 'All hosts have left the room. Redirecting to home page...',
+        error: "Looks like all the hosts have left, so this room is closing. We're sending you back home.",
       });
 
       // Delete the room entirely

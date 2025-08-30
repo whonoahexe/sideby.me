@@ -31,13 +31,13 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
 
     const { roomId } = validated;
     if (!socket.data.userId) {
-      socket.emit('voice-error', { error: 'Not authenticated' });
+      socket.emit('voice-error', { error: `Hmm, we lost your connection details.` });
       return;
     }
 
     const room = await redisService.rooms.getRoom(roomId);
     if (!room) {
-      socket.emit('voice-error', { error: 'Room not found' });
+      socket.emit('voice-error', { error: `Hmm, we couldn't find a room with that code. Maybe a typo?` });
       return;
     }
 
@@ -46,7 +46,9 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
     // Enforce soft cap
     if (currentVoiceUserIds.length >= VOICE_MAX_PARTICIPANTS) {
       slog('voice-join rejected: full');
-      socket.emit('voice-error', { error: 'Voice chat is full (max 5 participants).' });
+      socket.emit('voice-error', {
+        error: `Whoa, it's a full house! The voice channel is at its max of 5 people, unless Hulk's in the room.`,
+      });
       return;
     }
 
@@ -97,7 +99,7 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
     const targetSocket = await findSocketByUserId(io, targetUserId);
     if (!targetSocket) {
       slog('voice-offer target not found', { targetUserId });
-      socket.emit('voice-error', { error: 'Target user not found' });
+      socket.emit('voice-error', { error: `Couldn't connect to that user. They might have just left.` });
       return;
     }
     targetSocket.emit('voice-offer-received', { fromUserId: socket.data.userId!, sdp });
@@ -112,7 +114,7 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
     const targetSocket = await findSocketByUserId(io, targetUserId);
     if (!targetSocket) {
       slog('voice-answer target not found', { targetUserId });
-      socket.emit('voice-error', { error: 'Target user not found' });
+      socket.emit('voice-error', { error: `Couldn't connect to that user. They might have just left.` });
       return;
     }
     targetSocket.emit('voice-answer-received', { fromUserId: socket.data.userId!, sdp });
@@ -127,7 +129,7 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
     const targetSocket = await findSocketByUserId(io, targetUserId);
     if (!targetSocket) {
       slog('voice-ice target not found', { targetUserId });
-      socket.emit('voice-error', { error: 'Target user not found' });
+      socket.emit('voice-error', { error: `Couldn't connect to that user. They might have just left.` });
       return;
     }
     targetSocket.emit('voice-ice-candidate-received', { fromUserId: socket.data.userId!, candidate });

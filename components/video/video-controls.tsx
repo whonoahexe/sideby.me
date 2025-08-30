@@ -57,8 +57,8 @@ export function VideoControls({
 
   // Handle client-side hydration and initial control visibility
   useEffect(() => {
-    setShowControls(true); // Ensure controls are visible after hydration
-    onControlsVisibilityChange?.(true); // Notify parent immediately
+    setShowControls(true);
+    onControlsVisibilityChange?.(true);
 
     // Start the auto-hide timer on mount
     const timeout = setTimeout(() => {
@@ -73,7 +73,6 @@ export function VideoControls({
     setShowControls(true);
     onControlsVisibilityChange?.(true);
 
-    // Clear existing timeout
     if (hideControlsTimeoutRef.current) {
       clearTimeout(hideControlsTimeoutRef.current);
     }
@@ -94,8 +93,6 @@ export function VideoControls({
         (document as Document & { msFullscreenElement?: Element }).msFullscreenElement
       );
       setIsFullscreen(isCurrentlyFullscreen);
-
-      // Notify parent component about fullscreen change
       onFullscreenChange?.(isCurrentlyFullscreen);
 
       // Show controls when entering/exiting fullscreen
@@ -113,7 +110,7 @@ export function VideoControls({
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.removeEventListener('msfullscreenchange', handleFullscreenChange);
     };
-  }, [isFullscreen, onFullscreenChange, showControlsWithAutoHide]); // Update video state
+  }, [isFullscreen, onFullscreenChange, showControlsWithAutoHide]);
   useEffect(() => {
     const video = videoRef?.current;
     if (!video) return;
@@ -176,7 +173,7 @@ export function VideoControls({
     setIsMuted(video.muted);
     setDuration(video.duration || 0);
     setCurrentTime(video.currentTime || 0);
-    setIsVideoLoading(video.readyState < 3); // HAVE_FUTURE_DATA or less means loading
+    setIsVideoLoading(video.readyState < 3);
 
     return () => {
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
@@ -192,7 +189,6 @@ export function VideoControls({
     };
   }, [videoRef, isDragging]);
 
-  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (hideControlsTimeoutRef.current) {
@@ -225,7 +221,6 @@ export function VideoControls({
       }
     } else {
       // Enter fullscreen
-      // Get the video container (parent element) instead of the video element
       const videoContainer = videoRef?.current?.closest('[data-video-container]') as HTMLElement;
 
       if (videoContainer) {
@@ -261,7 +256,7 @@ export function VideoControls({
   const handlePlayPause = () => {
     if (!videoRef?.current) return;
 
-    programmaticActionRef.current = false; // This is user action
+    programmaticActionRef.current = false;
 
     if (isPlaying) {
       videoRef.current.pause();
@@ -280,7 +275,6 @@ export function VideoControls({
         // Handle specific error types
         if (error.name === 'NotSupportedError') {
           console.error('Video format not supported or source unavailable');
-          // You could emit an event here to show a toast notification
         } else if (error.name === 'NotAllowedError') {
           console.error('Video play blocked by browser policy');
         } else if (error.name === 'AbortError') {
@@ -398,7 +392,7 @@ export function VideoControls({
         <div className="absolute inset-0 flex items-center justify-center bg-black/30">
           <div className="flex items-center space-x-2 rounded-lg bg-black/70 px-4 py-2 text-white">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Loading...</span>
+            <span className="text-sm">Getting on the same page...</span>
           </div>
         </div>
       )}

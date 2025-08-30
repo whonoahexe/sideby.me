@@ -15,7 +15,7 @@ export function registerChatHandlers(socket: Socket<SocketEvents, SocketEvents, 
       const { roomId } = validatedData;
 
       if (!socket.data.userId || !socket.data.userName) {
-        socket.emit('error', { error: 'Not authenticated' });
+        socket.emit('error', { error: 'Hmm, we lost your connection details.' });
         return;
       }
 
@@ -28,7 +28,7 @@ export function registerChatHandlers(socket: Socket<SocketEvents, SocketEvents, 
       console.log(`${socket.data.userName} started typing in room ${roomId}`);
     } catch (error) {
       console.error('Error handling typing start:', error);
-      socket.emit('error', { error: 'Failed to handle typing start' });
+      socket.emit('error', { error: `Just a heads-up: your 'typing...' indicator might not be working right now.` });
     }
   });
 
@@ -40,7 +40,7 @@ export function registerChatHandlers(socket: Socket<SocketEvents, SocketEvents, 
       const { roomId } = validatedData;
 
       if (!socket.data.userId) {
-        socket.emit('error', { error: 'Not authenticated' });
+        socket.emit('error', { error: 'Hmm, we lost your connection details.' });
         return;
       }
 
@@ -52,7 +52,9 @@ export function registerChatHandlers(socket: Socket<SocketEvents, SocketEvents, 
       console.log(`${socket.data.userName} stopped typing in room ${roomId}`);
     } catch (error) {
       console.error('Error handling typing stop:', error);
-      socket.emit('error', { error: 'Failed to handle typing stop' });
+      socket.emit('error', {
+        error: `We're having a little trouble with the typing notifications. Your messages should still send fine!`,
+      });
     }
   });
 
@@ -65,7 +67,7 @@ export function registerChatHandlers(socket: Socket<SocketEvents, SocketEvents, 
       const { roomId, message } = validatedData;
 
       if (!socket.data.userId || !socket.data.userName) {
-        socket.emit('error', { error: 'Not authenticated' });
+        socket.emit('error', { error: 'Hmm, we lost your connection details.' });
         return;
       }
 
@@ -86,7 +88,9 @@ export function registerChatHandlers(socket: Socket<SocketEvents, SocketEvents, 
       console.log(`Message sent in room ${roomId} by ${socket.data.userName}`);
     } catch (error) {
       console.error('Error sending message:', error);
-      socket.emit('error', { error: 'Failed to send message' });
+      socket.emit('error', {
+        error: 'Your message got lost in the void! Sorry about that. Please try sending it one more time.',
+      });
     }
   });
 }

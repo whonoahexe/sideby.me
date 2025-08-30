@@ -11,19 +11,19 @@ export default function HowItWorks() {
           <Icon variant="secondary" size="xl" className="shrink-0">
             <Pencil />
           </Icon>
-          <span className="font-bold tracking-tight">{'Create a new room or join an existing one.'}</span>
+          <span className="font-bold tracking-tight">{'Start a room or jump into one with a code.'}</span>
         </div>
         <div className="flex min-w-60 max-w-sm flex-1 items-center gap-4">
           <Icon variant="secondary" size="xl" className="shrink-0">
             <Plus />
           </Icon>
-          <span className="font-bold tracking-tight">{'Paste a Youtube or supported URL.'}</span>
+          <span className="font-bold tracking-tight">{'Feed it any video link. Seriously, go nuts.'}</span>
         </div>
         <div className="flex min-w-60 max-w-sm flex-1 items-center gap-4">
           <Icon variant="secondary" size="xl" className="shrink-0">
             <PartyPopper />
           </Icon>
-          <span className="font-bold tracking-tight">Watch in perfect sync while chatting with your friends.</span>
+          <span className="font-bold tracking-tight">{`Roast the video together, perfectly in sync.`}</span>
         </div>
       </div>
     </section>

@@ -3,9 +3,12 @@ import { z } from 'zod';
 // Common validation patterns
 export const UserNameSchema = z
   .string()
-  .min(2, 'Name must be at least 2 characters long')
-  .max(50, 'Name must be 50 characters or less')
-  .regex(/^[a-zA-Z0-9\s\-_.!?]+$/, 'Name can only contain letters, numbers, spaces, and basic punctuation (- _ . ! ?)');
+  .min(2, "Hmm, that name's a little brief. We need a callsign that's at least 2 characters long.")
+  .max(20, 'Whoa, what an epic name! Sadly, our little callsign tags can only fit 20 characters.')
+  .regex(
+    /^[a-zA-Z0-9\s\-_.!?]+$/,
+    'Easy on the fancy characters! Our system is a bit sensitive with those special characters.'
+  );
 
 export const RoomIdSchema = z
   .string()

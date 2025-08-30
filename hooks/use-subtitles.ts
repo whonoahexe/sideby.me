@@ -24,10 +24,8 @@ interface UseSubtitlesReturn {
   updateSubtitleTracksAndActive: (tracks: SubtitleTrack[], activeTrackId?: string) => void;
 }
 
-/**
- * Hook for managing subtitles locally without socket synchronization.
- * Subtitles are stored per room/video combination in localStorage.
- */
+// Hook for managing subtitles locally without socket synchronization
+// Subtitles are stored per room/video combination in localStorage
 export function useSubtitles({ roomId, videoId }: UseSubtitlesOptions): UseSubtitlesReturn {
   const [subtitleTracks, setSubtitleTracks] = useState<SubtitleTrack[]>([]);
   const [activeTrackId, setActiveTrackId] = useState<string | undefined>();

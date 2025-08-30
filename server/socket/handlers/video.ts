@@ -14,7 +14,7 @@ export function registerVideoHandlers(socket: Socket<SocketEvents, SocketEvents,
       const { roomId, videoUrl } = validatedData;
       const room = await redisService.rooms.getRoom(roomId);
       if (!room) {
-        socket.emit('room-error', { error: 'Room not found' });
+        socket.emit('room-error', { error: `Hmm, we couldn't find a room with that code. Maybe a typo?` });
         return;
       }
 
@@ -51,7 +51,7 @@ export function registerVideoHandlers(socket: Socket<SocketEvents, SocketEvents,
       const { roomId, currentTime } = validatedData;
       const room = await redisService.rooms.getRoom(roomId);
       if (!room) {
-        socket.emit('room-error', { error: 'Room not found' });
+        socket.emit('room-error', { error: `Hmm, we couldn't find a room with that code. Maybe a typo?` });
         return;
       }
 
@@ -91,7 +91,7 @@ export function registerVideoHandlers(socket: Socket<SocketEvents, SocketEvents,
       const { roomId, currentTime } = validatedData;
       const room = await redisService.rooms.getRoom(roomId);
       if (!room) {
-        socket.emit('room-error', { error: 'Room not found' });
+        socket.emit('room-error', { error: `Hmm, we couldn't find a room with that code. Maybe a typo?` });
         return;
       }
 
@@ -131,7 +131,7 @@ export function registerVideoHandlers(socket: Socket<SocketEvents, SocketEvents,
       const { roomId, currentTime } = validatedData;
       const room = await redisService.rooms.getRoom(roomId);
       if (!room) {
-        socket.emit('room-error', { error: 'Room not found' });
+        socket.emit('room-error', { error: `Hmm, we couldn't find a room with that code. Maybe a typo?` });
         return;
       }
 
@@ -170,13 +170,13 @@ export function registerVideoHandlers(socket: Socket<SocketEvents, SocketEvents,
       const { roomId, currentTime, isPlaying, timestamp } = validatedData;
 
       if (!socket.data.userId) {
-        socket.emit('error', { error: 'Not authenticated' });
+        socket.emit('error', { error: `Hmm, we lost your connection details.` });
         return;
       }
 
       const room = await redisService.rooms.getRoom(roomId);
       if (!room) {
-        socket.emit('room-error', { error: 'Room not found' });
+        socket.emit('room-error', { error: `Hmm, we couldn't find a room with that code. Maybe a typo?` });
         return;
       }
 

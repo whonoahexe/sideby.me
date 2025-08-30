@@ -67,6 +67,7 @@ export function UserList({
                 user.id === currentUserId ? 'border border-primary bg-primary-50' : 'hover:bg-muted/50'
               }`}
             >
+              {/* User Info */}
               <Avatar
                 className={`${speakingUserIds?.has(user.id) ? 'ring-2 ring-success-700 ring-offset-2' : ''}`}
                 size="lg"
@@ -124,7 +125,7 @@ export function UserList({
           {users.length === 0 && (
             <div className="py-4 text-center text-muted-foreground">
               <Users className="mx-auto mb-2 h-8 w-8 opacity-50" />
-              <p>No participants yet</p>
+              <p>Got no friends?</p>
             </div>
           )}
         </div>

@@ -162,7 +162,7 @@ export function Chat({
   const EmptyState = () => (
     <div className="py-6 text-center text-muted-foreground">
       <MessageCircle className="mx-auto mb-2 h-8 w-8 opacity-50" />
-      <p>No messages yet :/ Start the conversation!</p>
+      <p>{`It's quiet in here... too quiet :/ Start the conversation!`}</p>
     </div>
   );
 
@@ -170,6 +170,7 @@ export function Chat({
   if (mode === 'sidebar') {
     return (
       <Card className={`ml-6 mr-6 lg:ml-0 ${className}`}>
+        {/* Header */}
         <CardHeader className="p-0">
           <CardTitle>
             <ChatHeader
@@ -182,6 +183,7 @@ export function Chat({
           </CardTitle>
         </CardHeader>
 
+        {/* Messages */}
         <CardContent className="p-0">
           <ScrollArea className="h-96 px-4" ref={scrollAreaRef}>
             <div className="min-w-0 space-y-4 pb-4">
@@ -198,6 +200,7 @@ export function Chat({
             </div>
           </ScrollArea>
 
+          {/* Input */}
           <ChatInput
             inputMessage={inputMessage}
             onInputChange={handleInputChange}
@@ -213,6 +216,7 @@ export function Chat({
   // Render overlay mode
   return (
     <>
+      {/* Header */}
       <ChatHeader
         mode="overlay"
         unreadCount={unreadCount}
@@ -228,7 +232,7 @@ export function Chat({
         {messages.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
             <MessageCircle className="mx-auto mb-2 h-8 w-8 opacity-50" />
-            <p>No messages yet :/ Start the conversation!</p>
+            <p>{`It's quiet in here... too quiet :/ Start the conversation!`}</p>
           </div>
         ) : (
           messages.map(message => (
@@ -240,6 +244,7 @@ export function Chat({
         <div ref={bottomRef} />
       </div>
 
+      {/* Input */}
       <ChatInput
         inputMessage={inputMessage}
         onInputChange={handleInputChange}

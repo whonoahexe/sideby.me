@@ -40,12 +40,18 @@ export function ChatHeader({
   const handleSoundToggle = () => {
     onSoundToggle();
     const newState = !soundEnabled;
-    toast.success(newState ? 'Notification sounds enabled' : 'Notification sounds disabled', {
-      duration: 2000,
-      position: 'bottom-right',
-    });
+    toast.success(
+      newState
+        ? "Message sounds on! You'll now hear that satisfying blip :)"
+        : 'Message sounds off. Enjoy the peace and quiet.',
+      {
+        duration: 2000,
+        position: 'bottom-right',
+      }
+    );
   };
 
+  // Sidebar mode header
   if (mode === 'sidebar') {
     return (
       <div className="rounded-md border border-border p-4">

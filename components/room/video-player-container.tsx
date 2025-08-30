@@ -5,7 +5,7 @@ import { VideoPlayer, VideoPlayerRef } from '@/components/video/video-player';
 import { HLSPlayer, HLSPlayerRef } from '@/components/video/hls-player';
 import { VideoControls } from '@/components/video/video-controls';
 import { SubtitleOverlay } from '@/components/video/subtitle-overlay';
-import { Video, ExternalLink, Edit3, AlertTriangle } from 'lucide-react';
+import { Video, ExternalLink, Edit3, AlertTriangle, AlertCircleIcon } from 'lucide-react';
 import type { SubtitleTrack } from '@/types/schemas';
 import {
   Dialog,
@@ -137,7 +137,7 @@ export function VideoPlayerContainer({
     validateSource();
 
     return () => {
-      isValid = false; // Cleanup flag to prevent state updates after unmount
+      isValid = false;
     };
   }, [videoUrl, videoType]);
 
@@ -169,7 +169,7 @@ export function VideoPlayerContainer({
     e.preventDefault();
 
     if (!newUrl.trim()) {
-      setError('Please enter a video URL');
+      setError('Hello? you forgot the link??!?');
       return;
     }
 
@@ -178,7 +178,7 @@ export function VideoPlayerContainer({
 
     const parsed = parseVideoUrl(newUrl.trim());
     if (!parsed) {
-      setError('Please enter a valid YouTube, MP4, WebM, OGG, MOV, or M3U8 video URL');
+      setError("Hmm, that link doesn't look right. We can handle YouTube, .mp4, and .m3u8 links.");
       setIsLoading(false);
       return;
     }
@@ -189,13 +189,17 @@ export function VideoPlayerContainer({
       try {
         const isValid = await validateVideoSource(parsed.embedUrl);
         if (!isValid) {
-          setError('Video source appears to be invalid or inaccessible. Please check the URL and try again.');
+          setError(
+            "Umm, we couldn't connect to that video. The link might be broken, private, or blocked. Maybe double-check it?"
+          );
           setIsLoading(false);
           return;
         }
       } catch (error) {
         console.error('Validation error:', error);
-        setError('Could not validate video source. The video may not be accessible.');
+        setError(
+          "Umm, we couldn't connect to that video. The link might be broken, private, or blocked. Maybe double-check it?"
+        );
         setIsLoading(false);
         return;
       }
@@ -208,7 +212,7 @@ export function VideoPlayerContainer({
 
   const handleChangeVideoClick = async () => {
     if (!newUrl.trim()) {
-      setError('Please enter a video URL');
+      setError('Hello? you forgot the link??!?');
       return;
     }
 
@@ -217,7 +221,7 @@ export function VideoPlayerContainer({
 
     const parsed = parseVideoUrl(newUrl.trim());
     if (!parsed) {
-      setError('Please enter a valid YouTube, MP4, WebM, OGG, MOV, or M3U8 video URL');
+      setError("Hmm, that link doesn't look right. We can handle YouTube, .mp4, and .m3u8 links.");
       setIsLoading(false);
       return;
     }
@@ -228,13 +232,17 @@ export function VideoPlayerContainer({
       try {
         const isValid = await validateVideoSource(parsed.embedUrl);
         if (!isValid) {
-          setError('Video source appears to be invalid or inaccessible. Please check the URL and try again.');
+          setError(
+            "Umm, we couldn't connect to that video. The link might be broken, private, or blocked. Maybe double-check it?"
+          );
           setIsLoading(false);
           return;
         }
       } catch (error) {
         console.error('Validation error:', error);
-        setError('Could not validate video source. The video may not be accessible.');
+        setError(
+          "Umm, we couldn't connect to that video. The link might be broken, private, or blocked. Maybe double-check it?"
+        );
         setIsLoading(false);
         return;
       }
@@ -254,7 +262,7 @@ export function VideoPlayerContainer({
     onVideoChange(pendingUrl);
 
     setTimeout(() => {
-      toast.success('Video changed successfully!', {
+      toast.success("And we're live!", {
         description: `Now playing: ${getVideoTypeDisplayName(pendingUrl)}`,
       });
 
@@ -296,17 +304,14 @@ export function VideoPlayerContainer({
   // Add scroll lock behavior like host-control-dialog
   useEffect(() => {
     if (isChangeDialogOpen) {
-      // Get current scrollbar width
       const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
       // Temporarily add padding to prevent layout shift
       document.body.style.paddingRight = `${scrollbarWidth}px`;
     } else {
-      // Remove padding when modal closes
       document.body.style.paddingRight = '';
     }
 
     return () => {
-      // Cleanup on unmount
       document.body.style.paddingRight = '';
     };
   }, [isChangeDialogOpen]);
@@ -317,18 +322,18 @@ export function VideoPlayerContainer({
       return (
         <div className="flex h-full w-full items-center justify-center bg-primary">
           <div className="text-primary-foreground">
-            <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-destructive" />
-            <h3 className="text-center text-lg font-semibold">Video Source Error</h3>
-            <p className="mb-6 text-center text-primary-foreground">
-              The video source appears to be invalid or inaccessible.
+            <AlertCircleIcon className="mx-auto mb-4 h-12 w-12 text-destructive" />
+            <h3 className="text-center text-base font-semibold md:text-lg">{`Couldn't load this video!`}</h3>
+            <p className="mb-6 text-center text-sm text-primary-foreground md:text-base">
+              {`Umm, we couldn't connect to that video. The link might be broken, private, or blocked.`}
             </p>
-            <div className="text-primary-foreground">
+            <div className="hidden text-sm text-primary-foreground md:block md:text-base">
               <p>Possible causes:</p>
               <ul className="mt-1 list-inside list-disc text-left">
-                <li>URL is incorrect or video has been removed</li>
-                <li>Video format not supported by your browser</li>
-                <li>Network or CORS issues</li>
-                <li>Server is not responding</li>
+                <li>The link is a typo or the video was deleted</li>
+                <li>{`It's a rare video format your browser can't decode`}</li>
+                <li>{`The video's host is blocking us (a classic CORS issue)`}</li>
+                <li>The server hosting the video is taking a nap</li>
               </ul>
             </div>
           </div>
@@ -336,6 +341,7 @@ export function VideoPlayerContainer({
       );
     }
 
+    // Render the video
     switch (videoType) {
       case 'youtube':
         return (
@@ -429,7 +435,7 @@ export function VideoPlayerContainer({
             <div
               className="absolute inset-0 z-10"
               onClick={onControlAttempt}
-              title="Only hosts can control video playback"
+              title="Just a heads-up: only the host has the remote."
             />
           )}
         </div>
@@ -440,6 +446,7 @@ export function VideoPlayerContainer({
             <span className="font-mono text-sm tracking-tighter text-muted-foreground">{getVideoTypeName()}</span>
           </div>
           <div className="flex items-center space-x-2">
+            {/* Dialog for changing video */}
             {isHost && onVideoChange && (
               <Dialog open={isChangeDialogOpen} onOpenChange={handleDialogOpenChange}>
                 <DialogTrigger asChild>
@@ -464,11 +471,11 @@ export function VideoPlayerContainer({
                         <form onSubmit={handleSubmit} className="space-y-4">
                           <div className="space-y-2">
                             <Label htmlFor="newVideoUrl" className="tracking-tight">
-                              Video URL
+                              What else can we watch?
                             </Label>
                             <Input
                               id="newVideoUrl"
-                              placeholder="Enter YouTube, MP4, or M3U8 URL"
+                              placeholder="Paste the next link here..."
                               value={newUrl}
                               onChange={e => setNewUrl(e.target.value)}
                             />
@@ -479,14 +486,13 @@ export function VideoPlayerContainer({
                         <div className="rounded-lg bg-destructive-100 p-3 sm:p-4">
                           <h4 className="flex items-center gap-2 text-destructive-800 sm:text-base">
                             <AlertTriangle className="h-5 w-5" />
-                            <span className="text-xl font-semibold tracking-tighter">Confirm Video Change</span>
+                            <span className="text-xl font-semibold tracking-tighter">Heads-up, Captain!</span>
                           </h4>
                           <p className="mt-2 text-xs tracking-tight text-destructive-800 sm:text-sm">
-                            This will change the video for everyone in the room. The current video playback will stop
-                            and the new video will be loaded.
+                            {`Just confirming: this will swap the video for *everyone* in the room right now.`}
                           </p>
                           <div className="mt-4 rounded-sm bg-destructive-400 p-2 text-xs text-destructive-900">
-                            <div className="font-medium">New video:</div>
+                            <div className="font-medium">Next up:</div>
                             <div className="mt-1 text-wrap break-all">{pendingUrl}</div>
                           </div>
                         </div>
@@ -494,15 +500,16 @@ export function VideoPlayerContainer({
                     </div>
                   </ScrollArea>
 
+                  {/* Confirm Change */}
                   <div className="flex flex-shrink-0 justify-end gap-3 border-t bg-black px-6 py-4">
                     {!showConfirmation ? (
                       <Button onClick={handleChangeVideoClick} disabled={isLoading}>
-                        {isLoading ? 'Setting Video...' : 'Change Video'}
+                        {isLoading ? 'Checking link...' : 'Change Video'}
                       </Button>
                     ) : (
                       <>
                         <Button onClick={handleCancelChange} variant="outline" disabled={isLoading}>
-                          Cancel
+                          Never mind
                         </Button>
                         <Button onClick={handleConfirmChange} disabled={isLoading}>
                           {isLoading ? 'Changing...' : 'Confirm Change'}

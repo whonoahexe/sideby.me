@@ -196,7 +196,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       return stream;
     } catch (e) {
       dlog('getUserMedia error', e);
-      setError('Microphone permission denied or unavailable');
+      setError("Whoops, we can't hear you!");
       throw e;
     }
   }, []);
@@ -245,7 +245,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
             await createPeerConnection(peerUserId, isInitiator, true);
           } catch (error) {
             dlog('TURN fallback failed', { peerUserId, error });
-            setError('Failed to establish voice connection');
+            setError('Failed to establish voice connection :/');
           }
         }, STUN_CONNECTION_TIMEOUT);
       }

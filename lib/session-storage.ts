@@ -1,7 +1,4 @@
-/**
- * Utility functions for managing session storage data
- */
-
+// Utility functions for managing session storage data
 interface RoomCreatorData {
   roomId: string;
   hostName: string;
@@ -18,9 +15,7 @@ interface JoinData {
 const SESSION_TIMEOUT = 300000; // 5 minutes
 
 export const roomSessionStorage = {
-  /**
-   * Store room creator data
-   */
+  // Store room creator data
   setRoomCreator(data: Omit<RoomCreatorData, 'timestamp'>) {
     if (typeof window === 'undefined') return;
 
@@ -32,9 +27,7 @@ export const roomSessionStorage = {
     window.sessionStorage.setItem('room-creator', JSON.stringify(storageData));
   },
 
-  /**
-   * Get room creator data if valid
-   */
+  // Get room creator data if valid
   getRoomCreator(roomId: string): RoomCreatorData | null {
     if (typeof window === 'undefined') return null;
 
@@ -59,9 +52,7 @@ export const roomSessionStorage = {
     }
   },
 
-  /**
-   * Store join data
-   */
+  // Store join data
   setJoinData(data: Omit<JoinData, 'timestamp'>) {
     if (typeof window === 'undefined') return;
 
@@ -73,9 +64,7 @@ export const roomSessionStorage = {
     window.sessionStorage.setItem('join-data', JSON.stringify(storageData));
   },
 
-  /**
-   * Get join data if valid
-   */
+  // Get join data if valid
   getJoinData(roomId: string): JoinData | null {
     if (typeof window === 'undefined') return null;
 
@@ -100,25 +89,19 @@ export const roomSessionStorage = {
     }
   },
 
-  /**
-   * Clear room creator data
-   */
+  // Clear room creator data
   clearRoomCreator() {
     if (typeof window === 'undefined') return;
     window.sessionStorage.removeItem('room-creator');
   },
 
-  /**
-   * Clear join data
-   */
+  // Clear join data
   clearJoinData() {
     if (typeof window === 'undefined') return;
     window.sessionStorage.removeItem('join-data');
   },
 
-  /**
-   * Clear all room-related data
-   */
+  // Clear all room-related data
   clearAll() {
     if (typeof window === 'undefined') return;
     window.sessionStorage.removeItem('room-creator');

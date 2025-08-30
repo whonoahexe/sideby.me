@@ -32,7 +32,7 @@ export function RoomHeader({
           <div className="space-y-1">
             <CardTitle className="flex w-full flex-wrap items-center justify-between gap-x-2 gap-y-1 md:w-auto md:justify-start">
               <span className="break-all text-2xl font-semibold tracking-tighter sm:break-normal md:text-3xl">
-                Room {roomId}
+                {`You're in: ${roomId}`}
               </span>
               {isHost && <Badge variant="default">Host</Badge>}
             </CardTitle>

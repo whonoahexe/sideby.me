@@ -36,7 +36,7 @@ export function useCreateRoom(): UseCreateRoomReturn {
         });
 
         if (!socket || !isConnected) {
-          setError('Not connected to server. Please try again.');
+          setError(`Oof, couldn't reach the server on that one.`);
           return;
         }
 
@@ -66,7 +66,7 @@ export function useCreateRoom(): UseCreateRoomReturn {
         if (error instanceof z.ZodError) {
           setError(error.issues[0].message);
         } else {
-          setError('Invalid input. Please check your name.');
+          setError("Our system is a bit picky with names. Let's try a different one.");
         }
       }
     },

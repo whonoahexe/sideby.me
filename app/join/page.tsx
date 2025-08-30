@@ -10,18 +10,32 @@ import { Icon } from '../../components/ui/icon';
 import HowItWorks from '@/components/pages/how-it-works';
 import Link from 'next/link';
 
+const QUIRKY_USERNAMES = [
+  'The Plus One',
+  'The Latecomer',
+  'Friend Of The Host',
+  'Spawning In',
+  'The Audience',
+  'The NPC',
+  'Crashing Couch',
+  'The Reinforcements',
+] as const;
+
+// Pick a random username on page load
+const getRandomUsername = () => QUIRKY_USERNAMES[Math.floor(Math.random() * QUIRKY_USERNAMES.length)];
+
 const JOIN_FEATURES = [
   {
     icon: Eye,
-    title: 'Synchronized videos',
+    title: 'Gasp at the exact moment',
   },
   {
     icon: MessageCircle,
-    title: 'Chat with friends',
+    title: 'Share your hot takes',
   },
   {
     icon: Crown,
-    title: 'Ask for host permissions',
+    title: 'Politely ask for the remote',
   },
 ] as const;
 
@@ -66,10 +80,10 @@ export default function JoinRoomPage() {
             <div className="flex w-full shrink-0 grow basis-0 flex-col items-center justify-center gap-4">
               <div className="flex w-full flex-col items-start justify-center gap-2 sm:gap-4">
                 <h2 className="text-2xl font-extrabold tracking-tighter text-primary sm:text-3xl lg:text-4xl">
-                  Step 2
+                  Player +1
                 </h2>
                 <p className="text-sm font-bold tracking-tight text-neutral-400 sm:text-base">
-                  Enter a room ID to join friends and watch videos together.
+                  Just need the room code and your callsign to get you in.
                 </p>
               </div>
 
@@ -95,13 +109,13 @@ export default function JoinRoomPage() {
                       aria-describedby={error ? 'error-message' : undefined}
                     />
                   </div>
-                  <p className="text-xs text-neutral-400">6-character room code (letters and numbers)</p>
+                  <p className="text-xs text-neutral-400">{`It's case-sensitive, so get it right!`}</p>
                 </div>
 
                 {/* Name Input */}
                 <div className="w-full space-y-2">
                   <Label htmlFor="userName" className="text-sm font-bold tracking-tight sm:text-base">
-                    Your Name
+                    Your Callsign
                   </Label>
                   <div className="relative">
                     <AtSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-neutral" />
@@ -111,7 +125,7 @@ export default function JoinRoomPage() {
                       type="text"
                       value={userName}
                       onChange={e => setUserName(e.target.value)}
-                      placeholder="Enter your name"
+                      placeholder={`e.g., ${getRandomUsername()}`}
                       className="pl-10 text-base tracking-tight sm:text-lg"
                       maxLength={50}
                       required
@@ -129,9 +143,11 @@ export default function JoinRoomPage() {
                 )}
 
                 {/* Connection Status */}
-                {!isInitialized && <div className="text-sm font-medium text-yellow-500">Connecting to server...</div>}
+                {!isInitialized && <div className="text-sm font-medium text-yellow-500">Waking up the servers...</div>}
                 {isInitialized && !isConnected && (
-                  <div className="text-sm font-medium text-red-500">Connection lost. Please refresh the page.</div>
+                  <div className="text-sm font-medium text-red-500">
+                    Whoops, looks like you lost connection. Try a quick refresh?
+                  </div>
                 )}
 
                 {/* Action Buttons */}
@@ -155,7 +171,7 @@ export default function JoinRoomPage() {
                     )}
                   </Button>
                   <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
-                    <Link href="/create">Need to Create?</Link>
+                    <Link href="/create">Want to host?</Link>
                   </Button>
                 </div>
               </form>
