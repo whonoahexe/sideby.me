@@ -66,6 +66,13 @@ export interface SocketEvents {
   'video-seeked': (data: VideoEventResponse) => void;
   'sync-update': (data: SyncUpdateResponse) => void;
   'sync-video': (data: { videoState: VideoState }) => void;
+  'video-error-report': (data: {
+    roomId: string;
+    code?: number;
+    message?: string;
+    currentSrc: string;
+    currentTime?: number;
+  }) => void;
 
   // Chat events
   'send-message': (data: SendMessageData) => void;

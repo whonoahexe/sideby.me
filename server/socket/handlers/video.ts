@@ -3,8 +3,11 @@ import { redisService } from '@/server/redis';
 import { SetVideoDataSchema, VideoControlDataSchema, SyncCheckDataSchema } from '@/types';
 import { SocketEvents, SocketData } from '../types';
 import { validateData } from '../utils';
+import { resolveSource } from '@/server/video/resolve-source';
 
 export function registerVideoHandlers(socket: Socket<SocketEvents, SocketEvents, object, SocketData>, io: IOServer) {
+  // Debounce map per room to avoid spam re-resolution
+  const lastErrorReport: Record<string, number> = {};
   // Set video URL
   socket.on('set-video', async data => {
     try {
@@ -24,18 +27,18 @@ export function registerVideoHandlers(socket: Socket<SocketEvents, SocketEvents,
         return;
       }
 
-      // Determine video type
-      let videoType: 'youtube' | 'mp4' | 'm3u8' = 'mp4';
-      if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
-        videoType = 'youtube';
-      } else if (videoUrl.match(/\.(m3u8)(\?.*)?$/i) || videoUrl.includes('/live/') || videoUrl.includes('.m3u8')) {
-        videoType = 'm3u8';
-      }
+      // Resolve source centrally
+      const meta = await resolveSource(videoUrl);
+      // Map delivery types to legacy videoType for backward compatibility
+      let legacyVideoType: 'youtube' | 'mp4' | 'm3u8' = 'mp4';
+      if (meta.videoType === 'youtube') legacyVideoType = 'youtube';
+      else if (meta.videoType === 'm3u8') legacyVideoType = 'm3u8';
+      else legacyVideoType = 'mp4';
 
-      await redisService.rooms.setVideoUrl(roomId, videoUrl, videoType);
+      await redisService.rooms.setVideoUrl(roomId, meta.playbackUrl, legacyVideoType, meta);
 
-      io.to(roomId).emit('video-set', { videoUrl, videoType });
-      console.log(`Video set in room ${roomId}: ${videoUrl}`);
+      io.to(roomId).emit('video-set', { videoUrl: meta.playbackUrl, videoType: legacyVideoType, videoMeta: meta });
+      console.log(`Video set in room ${roomId}: ${videoUrl} -> playback: ${meta.playbackUrl} (${meta.deliveryType})`);
     } catch (error) {
       console.error('Error setting video:', error);
       socket.emit('error', { error: 'Failed to set video' });
@@ -193,6 +196,51 @@ export function registerVideoHandlers(socket: Socket<SocketEvents, SocketEvents,
     } catch (error) {
       console.error('Error sending sync check:', error);
       socket.emit('error', { error: 'Failed to send sync check' });
+    }
+  });
+
+  // Late failure error report (client indicates playback failure mid-session)
+  socket.on('video-error-report', async ({ roomId, code, message, currentSrc, currentTime: _currentTime }) => {
+    try {
+      const now = Date.now();
+      if (lastErrorReport[roomId] && now - lastErrorReport[roomId] < 8000) {
+        return; // Ignore rapid repeats
+      }
+      lastErrorReport[roomId] = now;
+
+      const room = await redisService.rooms.getRoom(roomId);
+      if (!room) return;
+
+      const videoMeta = (room as unknown as { videoMeta?: unknown }).videoMeta as
+        | {
+            originalUrl?: string;
+            playbackUrl: string;
+            requiresProxy?: boolean;
+          }
+        | undefined;
+      if (!videoMeta) return;
+
+      // Ignore if already proxying or report src doesn't match current playback
+      if (videoMeta.requiresProxy) return;
+      if (currentSrc && currentSrc !== videoMeta.playbackUrl) {
+        return;
+      }
+
+      console.log(`Late video error reported in room ${roomId}: code=${code} msg=${message}`);
+
+      // Re-resolve using originalUrl (not the playbackUrl) to see if we now need proxy
+      const meta = await resolveSource(videoMeta.originalUrl || currentSrc);
+      if (meta.playbackUrl !== videoMeta.playbackUrl) {
+        // Update stored room video url & meta
+        let legacyVideoType: 'youtube' | 'mp4' | 'm3u8' = 'mp4';
+        if (meta.videoType === 'youtube') legacyVideoType = 'youtube';
+        else if (meta.videoType === 'm3u8') legacyVideoType = 'm3u8';
+        await redisService.rooms.setVideoUrl(roomId, meta.playbackUrl, legacyVideoType, meta);
+        io.to(roomId).emit('video-set', { videoUrl: meta.playbackUrl, videoType: legacyVideoType, videoMeta: meta });
+        console.log(`Re-resolved video source for room ${roomId} -> ${meta.deliveryType}`);
+      }
+    } catch (err) {
+      console.error('Error handling video-error-report:', err);
     }
   });
 }

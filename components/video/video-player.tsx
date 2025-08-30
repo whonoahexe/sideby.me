@@ -11,6 +11,7 @@ interface VideoPlayerProps {
   onPause?: () => void;
   onTimeUpdate?: (currentTime: number, duration: number) => void;
   onSeeked?: () => void;
+  onError?: (info: { code?: number; message?: string; src: string }) => void;
   className?: string;
   isHost?: boolean;
   subtitleTracks?: SubtitleTrack[];
@@ -37,6 +38,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
       onPause,
       onTimeUpdate,
       onSeeked,
+      onError,
       className,
       isHost = false,
       subtitleTracks = [],
@@ -160,6 +162,9 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
             console.error('- CORS issues preventing video access');
             console.error('- Server is not responding or video has been removed');
           }
+
+          // Notify container for potential fallback like proxy
+          onError?.({ code: error.code, message: error.message || errorMessage, src: video.src });
         }
       };
 
@@ -190,7 +195,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
         video.removeEventListener('canplay', handleCanPlay);
         video.removeEventListener('loadstart', handleLoadStart);
       };
-    }, [onReady, onPlay, onPause, onTimeUpdate, onSeeked, isHost]);
+    }, [onReady, onPlay, onPause, onTimeUpdate, onSeeked, onError, isHost]);
 
     return (
       <video
@@ -202,7 +207,9 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
         playsInline
         controlsList="nodownload noremoteplayback"
         disablePictureInPicture={!isHost}
-        crossOrigin="anonymous"
+        {...(typeof window !== 'undefined' && src.startsWith(window.location.origin)
+          ? { crossOrigin: 'anonymous' as const }
+          : {})}
       >
         Looks like your browser is a bit of a fossil! To watch videos here, you might need to update or switch to a
         newer browser like Chrome or Firefox.

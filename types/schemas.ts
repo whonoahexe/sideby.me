@@ -69,6 +69,25 @@ export const RoomSchema = z.object({
   videoState: VideoStateSchema,
   users: z.array(UserSchema),
   createdAt: z.date(),
+  // New enriched video metadata
+  videoMeta: z
+    .object({
+      originalUrl: VideoUrlSchema,
+      playbackUrl: VideoUrlSchema,
+      deliveryType: z.enum(['youtube', 'file-direct', 'file-proxy', 'hls']),
+      videoType: z.enum(['youtube', 'mp4', 'm3u8']).nullable(),
+      containerHint: z.string().optional(),
+      codecWarning: z.string().optional(),
+      requiresProxy: z.boolean(),
+      decisionReasons: z.array(z.string()),
+      probe: z.object({
+        status: z.number(),
+        contentType: z.string().optional(),
+        acceptRanges: z.boolean().optional(),
+      }),
+      timestamp: z.number(),
+    })
+    .optional(),
 });
 
 // Socket event schemas
@@ -211,6 +230,7 @@ export const UserKickedResponseSchema = z.object({
 export const VideoSetResponseSchema = z.object({
   videoUrl: VideoUrlSchema,
   videoType: z.enum(['youtube', 'mp4', 'm3u8']),
+  videoMeta: RoomSchema.shape.videoMeta.optional(),
 });
 
 export const VideoEventResponseSchema = z.object({
@@ -235,6 +255,15 @@ export const TypingEventResponseSchema = z.object({
 
 export const ErrorResponseSchema = z.object({
   error: z.string().min(1),
+});
+
+// Video error report (client -> server for late failure handling)
+export const VideoErrorReportSchema = z.object({
+  roomId: RoomIdSchema,
+  code: z.number().int().optional(),
+  message: z.string().optional(),
+  currentSrc: VideoUrlSchema,
+  currentTime: z.number().min(0).optional(),
 });
 
 // Type inference from schemas
@@ -270,6 +299,7 @@ export type SyncUpdateResponse = z.infer<typeof SyncUpdateResponseSchema>;
 export type NewMessageResponse = z.infer<typeof NewMessageResponseSchema>;
 export type TypingEventResponse = z.infer<typeof TypingEventResponseSchema>;
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+export type VideoErrorReport = z.infer<typeof VideoErrorReportSchema>;
 
 // Voice chat types
 export type VoiceJoinData = z.infer<typeof VoiceJoinDataSchema>;

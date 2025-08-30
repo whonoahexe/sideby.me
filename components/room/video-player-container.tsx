@@ -5,7 +5,7 @@ import { VideoPlayer, VideoPlayerRef } from '@/components/video/video-player';
 import { HLSPlayer, HLSPlayerRef } from '@/components/video/hls-player';
 import { VideoControls } from '@/components/video/video-controls';
 import { SubtitleOverlay } from '@/components/video/subtitle-overlay';
-import { Video, ExternalLink, Edit3, AlertTriangle, AlertCircleIcon } from 'lucide-react';
+import { Video, ExternalLink, Edit3, AlertTriangle } from 'lucide-react';
 import type { SubtitleTrack } from '@/types/schemas';
 import {
   Dialog,
@@ -16,13 +16,15 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { parseVideoUrl, validateVideoSource, getSupportedVideoFormats } from '@/lib/video-utils';
+import { parseVideoUrl, getSupportedVideoFormats } from '@/lib/video-utils';
 import { toast } from 'sonner';
+import { useSocket } from '@/hooks/use-socket';
 
 interface VideoPlayerContainerProps {
+  roomId?: string;
   videoUrl: string;
   videoType: 'youtube' | 'mp4' | 'm3u8';
   videoId?: string;
@@ -46,6 +48,7 @@ interface VideoPlayerContainerProps {
 }
 
 export function VideoPlayerContainer({
+  roomId,
   videoUrl,
   videoType,
   videoId,
@@ -67,6 +70,7 @@ export function VideoPlayerContainer({
   videoPlayerRef,
   hlsPlayerRef,
 }: VideoPlayerContainerProps) {
+  const { socket } = useSocket();
   const [isChangeDialogOpen, setIsChangeDialogOpen] = useState(false);
   const [newUrl, setNewUrl] = useState('');
   const [error, setError] = useState('');
@@ -76,7 +80,10 @@ export function VideoPlayerContainer({
   const [videoRefReady, setVideoRefReady] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true); // Start with controls visible
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [videoSourceValid, setVideoSourceValid] = useState<boolean | null>(null);
+  const [videoSourceValid, setVideoSourceValid] = useState<boolean | null>(true);
+  const [usingProxy, setUsingProxy] = useState(false);
+  const lastErrorReportRef = useRef<number>(0);
+  const ERROR_REPORT_DEBOUNCE_MS = 4000;
 
   // Check if video ref is ready
   useEffect(() => {
@@ -106,39 +113,11 @@ export function VideoPlayerContainer({
       setVideoSourceValid(true);
       return;
     }
-
-    let isValid = true;
-
-    const validateSource = async () => {
-      console.log('🔍 Validating video source:', videoUrl);
-
-      // Check browser support first
-      const supportedFormats = getSupportedVideoFormats();
-      console.log('📋 Browser supported formats:', supportedFormats);
-
-      // For HLS streams, check if HLS is supported
-      if (videoType === 'm3u8' && !supportedFormats.hls) {
-        console.warn('⚠️ HLS streams not natively supported, will use HLS.js');
-      }
-
-      try {
-        const isSourceValid = await validateVideoSource(videoUrl);
-        if (isValid) {
-          setVideoSourceValid(isSourceValid);
-        }
-      } catch (error) {
-        console.error('❌ Error during video source validation:', error);
-        if (isValid) {
-          setVideoSourceValid(false);
-        }
-      }
-    };
-
-    validateSource();
-
-    return () => {
-      isValid = false;
-    };
+    const supportedFormats = getSupportedVideoFormats();
+    if (videoType === 'm3u8' && !supportedFormats.hls) {
+      console.warn('⚠️ HLS not natively supported; using HLS.js');
+    }
+    setVideoSourceValid(true);
   }, [videoUrl, videoType]);
 
   // Get video element ref for guest controls
@@ -187,14 +166,7 @@ export function VideoPlayerContainer({
     if (parsed.type !== 'youtube') {
       console.log('🔍 Validating new video source...');
       try {
-        const isValid = await validateVideoSource(parsed.embedUrl);
-        if (!isValid) {
-          setError(
-            "Umm, we couldn't connect to that video. The link might be broken, private, or blocked. Maybe double-check it?"
-          );
-          setIsLoading(false);
-          return;
-        }
+        // Server-side validation now
       } catch (error) {
         console.error('Validation error:', error);
         setError(
@@ -230,14 +202,7 @@ export function VideoPlayerContainer({
     if (parsed.type !== 'youtube') {
       console.log('🔍 Validating new video source...');
       try {
-        const isValid = await validateVideoSource(parsed.embedUrl);
-        if (!isValid) {
-          setError(
-            "Umm, we couldn't connect to that video. The link might be broken, private, or blocked. Maybe double-check it?"
-          );
-          setIsLoading(false);
-          return;
-        }
+        // Server-side validation now
       } catch (error) {
         console.error('Validation error:', error);
         setError(
@@ -303,36 +268,38 @@ export function VideoPlayerContainer({
 
   const renderPlayer = () => {
     // Show error state if video source validation failed
-    if (videoSourceValid === false && videoType !== 'youtube') {
-      return (
-        <div className="flex h-full w-full items-center justify-center bg-primary">
-          <div className="text-primary-foreground">
-            <AlertCircleIcon className="mx-auto mb-4 h-12 w-12 text-destructive" />
-            <h3 className="text-center text-base font-semibold md:text-lg">{`Couldn't load this video!`}</h3>
-            <p className="mb-6 text-center text-sm text-primary-foreground md:text-base">
-              {`Umm, we couldn't connect to that video. The link might be broken, private, or blocked.`}
-            </p>
-            <div className="hidden text-sm text-primary-foreground md:block md:text-base">
-              <p>Possible causes:</p>
-              <ul className="mt-1 list-inside list-disc text-left">
-                <li>The link is a typo or the video was deleted</li>
-                <li>{`It's a rare video format your browser can't decode`}</li>
-                <li>{`The video's host is blocking us (a classic CORS issue)`}</li>
-                <li>The server hosting the video is taking a nap</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      );
-    }
+    // If server provided URL fails, onError path will trigger proxy or report.
 
     // Render the video
     switch (videoType) {
       case 'youtube':
+        // Fallback extraction if videoId not explicitly provided
+        let effectiveId = videoId || '';
+        if (!effectiveId && videoUrl) {
+          try {
+            if (/^[a-zA-Z0-9_-]{11}$/.test(videoUrl)) {
+              effectiveId = videoUrl;
+            } else {
+              const u = new URL(videoUrl);
+              if (u.hostname.includes('youtu.be')) {
+                effectiveId = u.pathname.slice(1);
+              } else {
+                const v = u.searchParams.get('v');
+                if (v) effectiveId = v;
+                else {
+                  const m = u.pathname.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
+                  if (m) effectiveId = m[1];
+                }
+              }
+            }
+          } catch {
+            // ignore parse errors
+          }
+        }
         return (
           <YouTubePlayer
             ref={youtubePlayerRef}
-            videoId={videoId || ''}
+            videoId={effectiveId}
             onStateChange={onYouTubeStateChange}
             className="h-full w-full"
           />
@@ -361,6 +328,34 @@ export function VideoPlayerContainer({
             subtitleTracks={subtitleTracks}
             activeSubtitleTrack={activeSubtitleTrack}
             className="h-full w-full"
+            onError={err => {
+              console.log('🎯 VideoPlayer reported error:', err);
+              const now = Date.now();
+              if (socket && now - lastErrorReportRef.current > ERROR_REPORT_DEBOUNCE_MS) {
+                lastErrorReportRef.current = now;
+                try {
+                  const effectiveRoomId =
+                    roomId || (typeof window !== 'undefined' ? window.location.pathname.split('/').pop() || '' : '');
+                  if (effectiveRoomId) {
+                    socket.emit('video-error-report', {
+                      roomId: effectiveRoomId,
+                      code: err.code,
+                      message: err.message,
+                      currentSrc: videoUrl,
+                      currentTime:
+                        (videoPlayerRef.current?.getCurrentTime && videoPlayerRef.current.getCurrentTime()) || 0,
+                    });
+                  }
+                } catch (e) {
+                  console.warn('Failed to emit video-error-report', e);
+                }
+              }
+              if (err.code === 4 && !usingProxy && onVideoChange) {
+                console.log('🔁 Switching to proxy due to player error code 4');
+                onVideoChange(`/api/video-proxy?url=${encodeURIComponent(videoUrl)}`);
+                setUsingProxy(true);
+              }
+            }}
           />
         );
     }

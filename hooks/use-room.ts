@@ -7,6 +7,19 @@ import { Room, User, ChatMessage, TypingUser } from '@/types';
 import { toast } from 'sonner';
 import { roomSessionStorage } from '@/lib/session-storage';
 
+type ClientVideoMeta = {
+  originalUrl: string;
+  playbackUrl: string;
+  deliveryType: 'youtube' | 'file-direct' | 'file-proxy' | 'hls';
+  videoType: 'youtube' | 'mp4' | 'm3u8' | null;
+  containerHint?: string;
+  codecWarning?: string;
+  requiresProxy: boolean;
+  decisionReasons: string[];
+  probe: { status: number; contentType?: string; acceptRanges?: boolean };
+  timestamp: number;
+};
+
 interface UseRoomOptions {
   roomId: string;
 }
@@ -166,13 +179,24 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
       });
     };
 
-    const handleVideoSet = ({ videoUrl, videoType }: { videoUrl: string; videoType: 'youtube' | 'mp4' | 'm3u8' }) => {
+    const handleVideoSet = ({
+      videoUrl,
+      videoType,
+      videoMeta,
+    }: {
+      videoUrl: string;
+      videoType: 'youtube' | 'mp4' | 'm3u8';
+      videoMeta?: unknown;
+    }) => {
       setRoom(prev =>
         prev
           ? {
               ...prev,
               videoUrl,
               videoType,
+              videoMeta:
+                (videoMeta as ClientVideoMeta | undefined) ||
+                (prev as unknown as { videoMeta?: ClientVideoMeta }).videoMeta,
               videoState: {
                 isPlaying: false,
                 currentTime: 0,

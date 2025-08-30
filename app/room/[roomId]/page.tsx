@@ -18,8 +18,20 @@ import { ErrorDisplay, LoadingDisplay, SyncError, GuestInfoBanner } from '@/comp
 import { VideoPlayerContainer } from '@/components/room/video-player-container';
 import { HostControlDialog } from '@/components/room/host-control-dialog';
 import { useFullscreenChatOverlay } from '@/hooks/use-fullscreen-chat-overlay';
-import { parseVideoUrl } from '@/lib/video-utils';
 import { useVoiceChat } from '@/hooks/use-voice-chat';
+
+type ClientVideoMeta = {
+  originalUrl: string;
+  playbackUrl: string;
+  deliveryType: 'youtube' | 'file-direct' | 'file-proxy' | 'hls';
+  videoType: 'youtube' | 'mp4' | 'm3u8' | null;
+  containerHint?: string;
+  codecWarning?: string;
+  requiresProxy: boolean;
+  decisionReasons: string[];
+  probe: { status: number; contentType?: string; acceptRanges?: boolean };
+  timestamp: number;
+};
 
 export default function RoomPage() {
   const params = useParams();
@@ -205,7 +217,32 @@ export default function RoomPage() {
     return <LoadingDisplay roomId={roomId} />;
   }
 
-  const parsedVideo = room?.videoUrl ? parseVideoUrl(room.videoUrl) : null;
+  const meta = (room as unknown as { videoMeta?: ClientVideoMeta }).videoMeta;
+  const effectiveVideoUrl = meta?.playbackUrl || room.videoUrl;
+  const effectiveVideoType = meta?.videoType || room.videoType;
+
+  const extractYouTubeId = (url: string | undefined): string | undefined => {
+    if (!url) return undefined;
+    try {
+      // Handle already an ID (rare) by length heuristic
+      if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
+      const u = new URL(url);
+      if (u.hostname.includes('youtu.be')) {
+        const id = u.pathname.slice(1);
+        return id || undefined;
+      }
+      // /watch?v=ID
+      const v = u.searchParams.get('v');
+      if (v) return v;
+      // /embed/ID
+      const embedMatch = u.pathname.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
+      if (embedMatch) return embedMatch[1];
+      return undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const youTubeId = effectiveVideoType === 'youtube' ? extractYouTubeId(effectiveVideoUrl) : undefined;
 
   return (
     <div className="space-y-6">
@@ -232,11 +269,12 @@ export default function RoomPage() {
         {/* Main Content */}
         <div className="col-span-full lg:col-span-3">
           {/* Video Player */}
-          {room.videoUrl && parsedVideo && room.videoType ? (
+          {effectiveVideoUrl && effectiveVideoType ? (
             <VideoPlayerContainer
-              videoUrl={room.videoUrl}
-              videoType={room.videoType}
-              videoId={parsedVideo.embedUrl.split('/embed/')[1]?.split('?')[0]}
+              roomId={roomId}
+              videoUrl={effectiveVideoUrl}
+              videoType={effectiveVideoType}
+              videoId={youTubeId}
               isHost={currentUser.isHost}
               onPlay={handleVideoPlay}
               onPause={handleVideoPause}
