@@ -218,7 +218,12 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
       console.error('🚨 Room error:', error);
 
       // Handle room closure (all hosts left)
-      if (error.includes('All hosts have left') || error.includes('Redirecting to home page')) {
+      if (
+        error.includes('All hosts have left') ||
+        error.includes('Redirecting to home page') ||
+        error.includes('closing room') ||
+        error.includes('sending you back home')
+      ) {
         console.log('🚪 Room closed by host departure, redirecting to home...');
 
         if (hasShownClosureToastRef.current) {

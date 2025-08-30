@@ -115,7 +115,7 @@ export function VideoSetup({ onVideoSet, isHost, hasVideo, videoUrl }: VideoSetu
       <Card className="flex h-full flex-col justify-center border-0">
         <CardHeader className="text-center">
           <Video className="mx-auto mb-2 h-12 w-12 text-muted-foreground" />
-          <CardTitle>The host is choosing a video</CardTitle>
+          <CardTitle className="pb-2">The host is choosing a video</CardTitle>
           <CardDescription>Just hang tight! The host is taking a moment.</CardDescription>
         </CardHeader>
       </Card>
