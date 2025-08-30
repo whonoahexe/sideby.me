@@ -12,7 +12,6 @@
 html,
 body {
   max-width: 100vw;
-  overflow-x: hidden;
 }
 
 body {
@@ -40,6 +39,7 @@ a {
 @layer base {
   :root {
     --radius: 0.75rem;
+    --scrollbar-width: calc(100vw - 100%);
     --background: 0, 0%, 4%;
     --foreground: 0 0% 98%;
     --card: 0, 0%, 4%;
@@ -129,15 +129,27 @@ a {
     scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
   }
 
-  /* Overlay scrollbars for supported browsers */
+  /* Always reserve scrollbar space to prevent layout shifts */
   html {
-    scrollbar-gutter: stable both-edges;
+    scrollbar-gutter: stable;
+    overflow-x: hidden;
+    width: 100vw;
   }
 
-  /* Prevent layout shift when modals open */
-  body[data-scroll-locked] {
-    padding-right: 0 !important;
-    margin-right: 0 !important;
+  body {
+    scrollbar-gutter: stable;
+    overflow-x: hidden;
+    width: 100vw;
+    box-sizing: border-box;
+  }
+
+  /* When dialogs are open, prevent scrolling */
+  html:has([data-state='open'][data-slot='dialog-overlay']) {
+    overflow: hidden;
+  }
+
+  body:has([data-state='open'][data-slot='dialog-overlay']) {
+    overflow: hidden;
   }
 }
 
