@@ -14,6 +14,28 @@ import { SocketEvents, SocketData } from '../types';
 import { validateData } from '../utils';
 
 export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, object, SocketData>, io: IOServer) {
+  // Voice participant count helpers (so late joiners immediately see current voice occupancy)
+  function computeVoiceParticipantCount(roomId: string): number {
+    const voiceRoomKey = `voice:${roomId}`;
+    const rawIds = Array.from(io.sockets.adapter.rooms.get(voiceRoomKey) || new Set<string>());
+    let count = 0;
+    for (const id of rawIds) {
+      const s = io.sockets.sockets.get(id) as Socket<SocketEvents, SocketEvents, object, SocketData> | undefined;
+      if (s && s.data.userId && s.data.roomId === roomId) count++;
+    }
+    return count;
+  }
+
+  function emitVoiceParticipantCountToSocket(roomId: string) {
+    try {
+      const count = computeVoiceParticipantCount(roomId);
+      if (count >= 0) {
+        socket.emit('voice-participant-count', { roomId, count, max: 5 });
+      }
+    } catch (err) {
+      console.warn('Failed to emit voice participant count on room join', { roomId, err });
+    }
+  }
   // Create room
   socket.on('create-room', async data => {
     try {
@@ -60,6 +82,7 @@ export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, 
 
       socket.emit('room-created', { roomId, room, hostToken: room.hostToken });
       socket.emit('room-joined', { room, user });
+      emitVoiceParticipantCountToSocket(roomId);
       console.log(`Room ${roomId} created by ${hostName} with token ${room.hostToken}`);
     } catch (error) {
       console.error('Error creating room:', error);
@@ -85,12 +108,14 @@ export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, 
           if (existingUser.isHost && data?.hostToken === room.hostToken) {
             console.log(`✅ Room creator ${data.userName} already in room, emitting join success`);
             socket.emit('room-joined', { room, user: existingUser });
+            emitVoiceParticipantCountToSocket(data.roomId);
             return;
           }
 
           if (!existingUser.isHost) {
             console.log(`✅ Guest ${data.userName} already in room, emitting join success`);
             socket.emit('room-joined', { room, user: existingUser });
+            emitVoiceParticipantCountToSocket(data.roomId);
             return;
           }
         }
@@ -134,6 +159,7 @@ export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, 
           await redisService.userMapping.setUserSocket(existingUser.id, socket.id);
           console.log(`${userName} rejoined room ${roomId} (existing user, isHost: ${existingUser.isHost})`);
           socket.emit('room-joined', { room, user: existingUser });
+          emitVoiceParticipantCountToSocket(roomId);
           return;
         } else {
           console.log(`Duplicate name attempt by ${userName} - name already taken by guest`);
@@ -203,6 +229,7 @@ export function registerRoomHandlers(socket: Socket<SocketEvents, SocketEvents, 
 
       socket.emit('room-joined', { room: updatedRoom!, user });
       socket.to(roomId).emit('user-joined', { user });
+      emitVoiceParticipantCountToSocket(roomId);
 
       console.log(`${userName} joined room ${roomId} as ${isRoomHost ? 'host' : 'guest'}`);
     } catch (error) {

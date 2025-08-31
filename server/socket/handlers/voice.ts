@@ -129,6 +129,18 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
     // Notify others about this peer
     socket.to(`voice:${roomId}`).emit('voice-peer-joined', { userId: socket.data.userId });
     slog('broadcasted peer-joined');
+
+    // Broadcast updated count (to whole main room, so non-joined users can see occupancy)
+    try {
+      const { sockets: participants } = computeValidVoiceParticipants(io, roomId);
+      io.to(roomId).emit('voice-participant-count', {
+        roomId,
+        count: participants.length,
+        max: VOICE_MAX_PARTICIPANTS,
+      });
+    } catch (err) {
+      slog('error broadcasting participant count after join', { err: String(err) });
+    }
   });
 
   // Leave voice
@@ -145,6 +157,16 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
       const after = computeValidVoiceParticipants(io, roomId).sockets.length;
       socket.to(voiceRoom).emit('voice-peer-left', { userId: socket.data.userId });
       slog('left voice room and broadcasted peer-left', { before, after });
+      // Broadcast updated count to main room
+      try {
+        io.to(roomId).emit('voice-participant-count', {
+          roomId,
+          count: after,
+          max: VOICE_MAX_PARTICIPANTS,
+        });
+      } catch (err) {
+        slog('error broadcasting participant count after leave', { err: String(err) });
+      }
     } else {
       slog('voice-leave ignored: not in voice room');
     }
@@ -214,6 +236,13 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
           setTimeout(() => {
             const after = computeValidVoiceParticipants(io, rid).sockets.length;
             slog('broadcasted peer-left on disconnect', { room, before, after });
+            try {
+              io.to(rid).emit('voice-participant-count', {
+                roomId: rid,
+                count: after,
+                max: VOICE_MAX_PARTICIPANTS,
+              });
+            } catch {}
           }, 10);
         }
       }

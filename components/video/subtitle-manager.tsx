@@ -88,7 +88,7 @@ export function SubtitleManager({
             <Button
               variant="secondary"
               size={isFullscreen ? 'default' : 'sm'}
-              className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-white/20 bg-black/60 p-0 text-white transition-interactive duration-200 hover:border-primary/50 hover:bg-primary hover:text-primary-foreground`}
+              className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-white/20 bg-black/60 p-0 text-white duration-200 transition-interactive hover:border-primary/50 hover:bg-primary hover:text-primary-foreground`}
               title="Subtitles"
               onClick={e => e.stopPropagation()}
             >
@@ -256,7 +256,7 @@ function FullscreenSubtitleDropdown({
           e.stopPropagation();
           setIsOpen(!isOpen);
         }}
-        className="h-11 w-11 border border-white/20 bg-black/60 p-0 text-white transition-interactive duration-200 hover:border-primary/50 hover:bg-primary hover:text-primary-foreground"
+        className="h-11 w-11 border border-white/20 bg-black/60 p-0 text-white duration-200 transition-interactive hover:border-primary/50 hover:bg-primary hover:text-primary-foreground"
         title="Subtitles"
       >
         <Subtitles className="h-5 w-5" />

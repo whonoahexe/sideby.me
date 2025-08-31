@@ -65,9 +65,17 @@ export function ChatHeader({
               ) : (
                 <VolumeX className="h-5 w-5 cursor-pointer" onClick={handleSoundToggle} />
               )}
-              {voice?.isEnabled && (
+              {voice && (
                 <Badge variant="secondary" className="flex items-center gap-1">
-                  {voice.isMuted ? <MicOff className="h-2 w-2" /> : <Mic className="h-2 w-2" />}
+                  {voice.isEnabled ? (
+                    voice.isMuted ? (
+                      <MicOff className="h-2 w-2" />
+                    ) : (
+                      <Mic className="h-2 w-2" />
+                    )
+                  ) : (
+                    <Volume2 className="h-2 w-2" />
+                  )}
                   {voice.participantCount}
                 </Badge>
               )}
@@ -90,9 +98,17 @@ export function ChatHeader({
             {unreadCount}
           </Badge>
         )}
-        {voice?.isEnabled && (
-          <Badge variant="outline" className="flex items-center gap-1 text-xs">
-            {voice.isMuted ? <MicOff className="h-2 w-2" /> : <Mic className="h-2 w-2" />}
+        {voice && (
+          <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+            {voice.isEnabled ? (
+              voice.isMuted ? (
+                <MicOff className="h-2 w-2" />
+              ) : (
+                <Mic className="h-2 w-2" />
+              )
+            ) : (
+              <Volume2 className="h-2 w-2" />
+            )}
             {voice.participantCount}
           </Badge>
         )}

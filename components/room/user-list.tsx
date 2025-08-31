@@ -77,7 +77,7 @@ export function UserList({
                       isSpeaking
                         ? 'shadow-sm ring-2 ring-success ring-offset-2 ring-offset-background transition-interactive'
                         : ''
-                    } transition-interactive duration-150`}
+                    } duration-150 transition-interactive`}
                     size="lg"
                   >
                     <AvatarFallback variant={user.id === currentUserId ? 'secondary' : 'default'}>

@@ -27,6 +27,7 @@ interface UseVoiceChatReturn {
   isConnecting: boolean;
   error: string;
   activePeerIds: string[]; // userIds
+  publicParticipantCount: number;
   speakingUserIds: Set<string>;
   enable: () => Promise<void>;
   disable: () => Promise<void>;
@@ -57,6 +58,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState('');
   const [activePeerIds, setActivePeerIds] = useState<string[]>([]);
+  const [publicParticipantCount, setPublicParticipantCount] = useState(0);
   const [speakingUserIds, setSpeakingUserIds] = useState<Set<string>>(new Set());
 
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -658,9 +660,26 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
     isEnabled,
   ]);
 
+  // Public voice participant count listener
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleParticipantCount = ({ roomId: r, count }: { roomId: string; count: number }) => {
+      if (r === roomId) {
+        dlog('voice-participant-count', { count });
+        setPublicParticipantCount(count);
+      }
+    };
+
+    socket.on('voice-participant-count', handleParticipantCount);
+    return () => {
+      socket.off('voice-participant-count', handleParticipantCount);
+    };
+  }, [socket, roomId, dlog]);
+
   const enable = useCallback(async () => {
     if (!socket || !currentUser) return;
-    if (isEnabled || joinAttemptRef.current) return; // prevent duplicate attempts
+    if (isEnabled || joinAttemptRef.current) return; // Prevent duplicate attempts
     dlog('enable start');
     setIsConnecting(true);
     joinAttemptRef.current = true;
@@ -725,6 +744,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
     error,
     activePeerIds,
     speakingUserIds,
+    publicParticipantCount,
     enable,
     disable,
     toggleMute,

@@ -206,6 +206,12 @@ export const VoiceExistingPeersResponseSchema = z.object({
   userIds: z.array(z.string().uuid()),
 });
 
+export const VoiceParticipantCountResponseSchema = z.object({
+  roomId: RoomIdSchema,
+  count: z.number().int().min(0),
+  max: z.number().int().min(1).optional(),
+});
+
 // Incoming signaling event payloads (from server)
 export const VoiceOfferEventResponseSchema = z.object({
   fromUserId: z.string().uuid(),
@@ -351,3 +357,4 @@ export type VoiceExistingPeersResponse = z.infer<typeof VoiceExistingPeersRespon
 export type VoiceOfferEventResponse = z.infer<typeof VoiceOfferEventResponseSchema>;
 export type VoiceAnswerEventResponse = z.infer<typeof VoiceAnswerEventResponseSchema>;
 export type VoiceIceCandidateEventResponse = z.infer<typeof VoiceIceCandidateEventResponseSchema>;
+export type VoiceParticipantCountResponse = z.infer<typeof VoiceParticipantCountResponseSchema>;

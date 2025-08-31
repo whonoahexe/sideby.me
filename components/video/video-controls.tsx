@@ -423,7 +423,7 @@ export function VideoControls({
             >
               {/* Progress bar */}
               <div
-                className="h-full rounded-full bg-primary shadow-sm transition-interactive duration-100"
+                className="h-full rounded-full bg-primary shadow-sm duration-100 transition-interactive"
                 style={{ width: `${progressPercentage}%` }}
               />
 
@@ -495,7 +495,7 @@ export function VideoControls({
               variant="secondary"
               size={isFullscreen ? 'default' : 'sm'}
               onClick={handleMuteToggle}
-              className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-border p-0 transition-interactive duration-200 ${
+              className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-border p-0 duration-200 transition-interactive ${
                 isMuted
                   ? 'border-0 bg-destructive-100 text-destructive-800'
                   : 'bg-black/60 text-primary-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground'
@@ -529,7 +529,7 @@ export function VideoControls({
                 variant="secondary"
                 size="default"
                 onClick={onShowChatOverlay}
-                className="h-11 w-11 border border-border bg-black/60 p-0 text-white transition-interactive duration-200 hover:border-primary hover:bg-primary hover:text-primary-foreground"
+                className="h-11 w-11 border border-border bg-black/60 p-0 text-white duration-200 transition-interactive hover:border-primary hover:bg-primary hover:text-primary-foreground"
                 title="Show chat"
               >
                 <MessageCircle className="h-5 w-5" />
@@ -540,7 +540,7 @@ export function VideoControls({
               variant="secondary"
               size={isFullscreen ? 'default' : 'sm'}
               onClick={handleFullscreen}
-              className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-border bg-black/60 p-0 text-white transition-interactive duration-200 hover:border-primary hover:bg-primary hover:text-primary-foreground`}
+              className={`${isFullscreen ? 'h-11 w-11' : 'h-9 w-9'} border border-border bg-black/60 p-0 text-white duration-200 transition-interactive hover:border-primary hover:bg-primary hover:text-primary-foreground`}
               title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
             >
               <Maximize className={isFullscreen ? 'h-5 w-5' : 'h-4 w-4'} />

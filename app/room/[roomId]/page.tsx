@@ -128,7 +128,8 @@ export default function RoomPage() {
   const voice = useVoiceChat({ roomId, currentUser });
   // Voice capacity logic should be based on current voice participants, not total room users
   const VOICE_MAX = 5;
-  const voiceParticipantCount = voice.activePeerIds.length + (voice.isEnabled ? 1 : 0);
+  // If user is in voice, derive from activePeerIds + self; else use public broadcasted count
+  const voiceParticipantCount = voice.isEnabled ? voice.activePeerIds.length + 1 : voice.publicParticipantCount;
   const overCap = voiceParticipantCount >= VOICE_MAX;
 
   // Handle video control attempts by guests

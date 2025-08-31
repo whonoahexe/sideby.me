@@ -37,6 +37,7 @@ import type {
   VoiceOfferEventResponse,
   VoiceAnswerEventResponse,
   VoiceIceCandidateEventResponse,
+  VoiceParticipantCountResponse,
   ReactionUpdatedResponse,
 } from './schemas';
 
@@ -105,4 +106,5 @@ export interface SocketEvents {
   'voice-ice-candidate-received': (data: VoiceIceCandidateEventResponse) => void;
   'voice-peer-left': (data: VoicePeerLeaveResponse) => void;
   'voice-error': (data: VoiceErrorResponse) => void;
+  'voice-participant-count': (data: VoiceParticipantCountResponse) => void;
 }
