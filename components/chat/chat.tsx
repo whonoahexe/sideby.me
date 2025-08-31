@@ -232,6 +232,13 @@ export function Chat({
             onSubmit={handleSendMessage}
             voice={voice}
             mode="sidebar"
+            onEmojiSelect={emoji => {
+              setInputMessage(prev => (prev + emoji).slice(0, 500));
+              if (!isTyping) {
+                setIsTyping(true);
+                onTypingStart?.();
+              }
+            }}
           />
         </CardContent>
       </Card>
@@ -276,6 +283,13 @@ export function Chat({
         onSubmit={handleSendMessage}
         voice={voice}
         mode="overlay"
+        onEmojiSelect={emoji => {
+          setInputMessage(prev => (prev + emoji).slice(0, 500));
+          if (!isTyping) {
+            setIsTyping(true);
+            onTypingStart?.();
+          }
+        }}
       />
     </>
   );

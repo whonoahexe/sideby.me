@@ -1,10 +1,12 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Mic, MicOff, Phone } from 'lucide-react';
+import { Send, Mic, MicOff, Phone, Smile } from 'lucide-react';
 import { toast } from 'sonner';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { EmojiPicker, EmojiPickerSearch, EmojiPickerContent, EmojiPickerFooter } from '@/components/ui/emoji-picker';
 
 interface VoiceConfig {
   isEnabled: boolean;
@@ -23,11 +25,40 @@ interface ChatInputProps {
   onSubmit: (e: React.FormEvent) => void;
   voice?: VoiceConfig;
   mode?: 'sidebar' | 'overlay';
+  onEmojiSelect?: (emoji: string) => void;
 }
 
-export function ChatInput({ inputMessage, onInputChange, onSubmit, voice, mode = 'sidebar' }: ChatInputProps) {
+export function ChatInput({
+  inputMessage,
+  onInputChange,
+  onSubmit,
+  voice,
+  mode = 'sidebar',
+  onEmojiSelect,
+}: ChatInputProps) {
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const longPressTriggeredRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const ignoreNextCloseRef = useRef(false);
+  const caretWasAtEndRef = useRef(true);
+  const lastValueRef = useRef(inputMessage);
+
+  // When the external value changes, if caret was at end, keep scroll at end
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    const prev = lastValueRef.current;
+    lastValueRef.current = inputMessage;
+    if (inputMessage.length >= prev.length && caretWasAtEndRef.current) {
+      requestAnimationFrame(() => {
+        try {
+          el.selectionStart = el.selectionEnd = el.value.length;
+          el.scrollLeft = el.scrollWidth;
+        } catch {}
+      });
+    }
+  }, [inputMessage]);
 
   // Voice button handlers
   const handleVoiceButtonMouseDown = () => {
@@ -71,13 +102,100 @@ export function ChatInput({ inputMessage, onInputChange, onSubmit, voice, mode =
   return (
     <div className={`border-t border-border ${mode === 'overlay' ? 'border-border p-4' : 'mt-1 pt-8'}`}>
       <form onSubmit={onSubmit} className={`flex ${spacing}`}>
-        <Input
-          placeholder="Don't be shy..."
-          value={inputMessage}
-          onChange={onInputChange}
-          className={`flex-1 ${inputSize} ${mode === 'overlay' ? 'text-sm' : ''}`}
-          maxLength={500}
-        />
+        <div className="relative flex-1">
+          <Input
+            placeholder="Don't be shy..."
+            value={inputMessage}
+            onChange={onInputChange}
+            className={`pr-9 ${inputSize} ${mode === 'overlay' ? 'text-sm' : ''}`}
+            maxLength={500}
+            ref={inputRef}
+            onFocus={() => {
+              const el = inputRef.current;
+              if (!el) return;
+              if (caretWasAtEndRef.current) {
+                requestAnimationFrame(() => {
+                  try {
+                    el.selectionStart = el.selectionEnd = el.value.length;
+                    el.scrollLeft = el.scrollWidth;
+                  } catch {}
+                });
+              }
+            }}
+            onSelect={() => {
+              const el = inputRef.current;
+              if (!el) return;
+              caretWasAtEndRef.current = el.selectionStart === el.value.length && el.selectionEnd === el.value.length;
+            }}
+            onKeyUp={() => {
+              const el = inputRef.current;
+              if (!el) return;
+              caretWasAtEndRef.current = el.selectionStart === el.value.length && el.selectionEnd === el.value.length;
+            }}
+            onClick={() => {
+              const el = inputRef.current;
+              if (!el) return;
+              caretWasAtEndRef.current = el.selectionStart === el.value.length && el.selectionEnd === el.value.length;
+            }}
+          />
+          <Popover
+            open={emojiOpen}
+            onOpenChange={next => {
+              if (!next && ignoreNextCloseRef.current) {
+                // Skip closing triggered by focus shift back to input
+                ignoreNextCloseRef.current = false;
+                return;
+              }
+              setEmojiOpen(next);
+            }}
+          >
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="Add emoji"
+                title="Add emoji"
+                className={`absolute inset-y-0 right-2 hidden items-center text-muted-foreground hover:text-foreground focus:outline-none md:inline-flex ${mode === 'overlay' ? 'text-[0.65rem]' : ''}`}
+                onMouseDown={e => {
+                  e.preventDefault();
+                }}
+              >
+                <Smile className={iconSize} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-full max-w-[270px] p-0" sideOffset={4}>
+              <div
+                className="h-[320px] w-full"
+                onClick={e => {
+                  const target = e.target as HTMLElement;
+                  if (target?.dataset?.slot === 'emoji-picker-emoji') {
+                    const emojiChar = target.textContent?.trim();
+                    if (emojiChar) {
+                      onEmojiSelect?.(emojiChar);
+                      // Keep popover open, refocus input but ignore the close it might trigger
+                      ignoreNextCloseRef.current = true;
+                      requestAnimationFrame(() => {
+                        const el = inputRef.current;
+                        if (el) {
+                          el.focus();
+                          try {
+                            el.selectionStart = el.selectionEnd = el.value.length;
+                            el.scrollLeft = el.scrollWidth;
+                          } catch {}
+                        }
+                      });
+                    }
+                  }
+                }}
+              >
+                <EmojiPicker className="h-full">
+                  <EmojiPickerSearch placeholder="Search" autoFocus />
+                  <EmojiPickerContent />
+                  <EmojiPickerFooter />
+                </EmojiPicker>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
 
         {/* Voice button */}
         {voice && (
