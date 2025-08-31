@@ -1,16 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { lookup } from 'node:dns/promises';
+import net from 'node:net';
+import ip from 'ip';
 
-// Basic allowlist and validation to prevent SSRF.
+// Basic allowlist and validation to prevent SSRF
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
 
-function validateTarget(urlStr: string): URL | null {
-  try {
-    const u = new URL(urlStr);
-    if (!ALLOWED_PROTOCOLS.has(u.protocol)) return null;
+// Disallowed hostnames (immediately rejected before DNS)
+const DISALLOWED_HOST_PATTERNS: RegExp[] = [/^(?:localhost|ip6-localhost)$/i, /\.local$/i];
+
+function isHostnameDisallowed(host: string) {
+  if (host === '0.0.0.0') return true;
+  return DISALLOWED_HOST_PATTERNS.some(re => re.test(host));
+}
+
+function isPrivateAddress(address: string): boolean {
+  if (ip.isPrivate(address)) return true;
+  if (address === '127.0.0.1' || address === '::1') return true;
+  if (address.startsWith('127.')) return true;
+  if (address.startsWith('169.254.')) return true; // IPv4 link-local
+  if (address === '0.0.0.0') return true;
+  const lower = address.toLowerCase();
+  if (lower.startsWith('fe80:')) return true; // IPv6 link-local
+  if (lower.startsWith('fc') || lower.startsWith('fd')) return true; // IPv6 unique local (should already be caught by ip.isPrivate but explicit)
+  if (lower === '::' || lower === '0:0:0:0:0:0:0:0') return true; // unspecified
+  return false;
+}
+
+async function resolveAndValidate(u: URL): Promise<URL | null> {
+  if (!ALLOWED_PROTOCOLS.has(u.protocol)) return null;
+  const host = u.hostname;
+  if (isHostnameDisallowed(host)) return null;
+
+  // If direct IP literal, validate immediately.
+  if (net.isIP(host)) {
+    if (isPrivateAddress(host)) return null;
     return u;
-  } catch {
-    return null;
   }
+
+  // DNS lookup (A/AAAA) we restrict number of records examined.
+  let records: { address: string }[] = [];
+  try {
+    records = await lookup(host, { all: true, verbatim: false });
+  } catch (_e) {
+    return null; // DNS failure -> treat as invalid
+  }
+  if (!records.length) return null;
+  // Reject if any resolved address is private for prevents dual-homed / DNS rebinding scenarios.
+  for (const r of records) {
+    if (isPrivateAddress(r.address)) return null;
+  }
+  return u;
 }
 
 export async function GET(req: NextRequest) {
@@ -19,7 +59,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing url parameter' }, { status: 400 });
   }
 
-  const validated = validateTarget(target);
+  const parsed = (() => {
+    try {
+      return new URL(target);
+    } catch {
+      return null;
+    }
+  })();
+  if (!parsed) {
+    return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });
+  }
+
+  const validated = await resolveAndValidate(parsed);
   if (!validated) {
     return NextResponse.json({ error: 'Invalid or disallowed URL' }, { status: 400 });
   }
@@ -151,4 +202,4 @@ export async function GET(req: NextRequest) {
   return new NextResponse(upstream.body, { status, headers });
 }
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
