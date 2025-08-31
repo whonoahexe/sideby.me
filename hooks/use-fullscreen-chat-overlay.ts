@@ -12,8 +12,8 @@ export function useFullscreenChatOverlay() {
     const handleFullscreenChange = () => {
       const isCurrentlyFullscreen = !!(
         document.fullscreenElement ||
-        (document as any).webkitFullscreenElement ||
-        (document as any).msFullscreenElement
+        (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement ||
+        (document as Document & { msFullscreenElement?: Element }).msFullscreenElement
       );
 
       console.log('Fullscreen state changed:', isCurrentlyFullscreen);

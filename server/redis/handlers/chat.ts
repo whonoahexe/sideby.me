@@ -18,6 +18,28 @@ export class ChatRepository {
     await redis.expire(key, 86400); // 24 hours TTL
   }
 
+  async updateMessageReactions(
+    roomId: string,
+    messageId: string,
+    updater: (message: ChatMessage) => ChatMessage
+  ): Promise<ChatMessage | null> {
+    const key = `chat:${roomId}`;
+    const messages = await redis.lrange(key, 0, -1);
+    let updated: ChatMessage | null = null;
+    for (let i = 0; i < messages.length; i++) {
+      const parsed = JSON.parse(messages[i]) as ChatMessage;
+      if (parsed.id === messageId) {
+        // Ensure date type
+        parsed.timestamp = new Date(parsed.timestamp);
+        const newMessage = updater(parsed);
+        await redis.lset(key, i, JSON.stringify(newMessage));
+        updated = newMessage;
+        break;
+      }
+    }
+    return updated;
+  }
+
   async getChatMessages(roomId: string, limit: number = 20): Promise<ChatMessage[]> {
     const messages = await redis.lrange(`chat:${roomId}`, 0, limit - 1);
     return messages

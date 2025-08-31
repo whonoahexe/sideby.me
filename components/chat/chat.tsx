@@ -25,9 +25,13 @@ interface VoiceConfig {
 export interface ChatProps {
   messages: ChatMessage[];
   currentUserId: string;
-  onSendMessage: (message: string) => void;
+  onSendMessage: (
+    message: string,
+    replyTo?: { messageId: string; userId: string; userName: string; message: string }
+  ) => void;
   onTypingStart?: () => void;
   onTypingStop?: () => void;
+  onToggleReaction?: (messageId: string, emoji: string) => void;
   typingUsers?: TypingUser[];
   className?: string;
   voice?: VoiceConfig;
@@ -44,6 +48,7 @@ export function Chat({
   onSendMessage,
   onTypingStart,
   onTypingStop,
+  onToggleReaction,
   typingUsers = [],
   className,
   voice,
@@ -55,9 +60,11 @@ export function Chat({
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [previousMessageCount, setPreviousMessageCount] = useState(0);
+  const [replyTo, setReplyTo] = useState<{ messageId: string; userName: string; message: string } | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Notification sound hook
   const { enabled: soundEnabled, toggleEnabled: toggleSound, playNotification } = useNotificationSound();
@@ -169,8 +176,18 @@ export function Chat({
     e.preventDefault();
 
     if (inputMessage.trim()) {
-      onSendMessage(inputMessage.trim());
+      const replyData = replyTo
+        ? {
+            messageId: replyTo.messageId,
+            userId: messages.find(m => m.id === replyTo.messageId)?.userId || '',
+            userName: replyTo.userName,
+            message: replyTo.message,
+          }
+        : undefined;
+
+      onSendMessage(inputMessage.trim(), replyData);
       setInputMessage('');
+      setReplyTo(null); // Clear reply after sending
 
       // Stop typing indicator when message is sent
       if (isTyping) {
@@ -180,6 +197,36 @@ export function Chat({
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
+    }
+  };
+
+  const handleReply = (messageId: string, userName: string, messageText: string) => {
+    const truncatedMessage = messageText.length > 150 ? messageText.slice(0, 150) + '...' : messageText;
+    setReplyTo({
+      messageId,
+      userName,
+      message: truncatedMessage,
+    });
+    // Focus the input after setting reply
+    setTimeout(() => {
+      const input = document.querySelector('input[placeholder="Don\'t be shy..."]') as HTMLInputElement;
+      input?.focus();
+    }, 100);
+  };
+
+  const handleCancelReply = () => {
+    setReplyTo(null);
+  };
+
+  const handleQuoteClick = (messageId: string) => {
+    const messageRef = messageRefs.current.get(messageId);
+    if (messageRef) {
+      messageRef.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Add a temporary highlight effect
+      messageRef.classList.add('bg-primary/20');
+      setTimeout(() => {
+        messageRef.classList.remove('bg-primary/20');
+      }, 2000);
     }
   };
 
@@ -216,7 +263,26 @@ export function Chat({
                 <EmptyState />
               ) : (
                 messages.map(message => (
-                  <ChatMessageItem key={message.id} message={message} currentUserId={currentUserId} mode="sidebar" />
+                  <div
+                    key={message.id}
+                    ref={el => {
+                      if (el) {
+                        messageRefs.current.set(message.id, el);
+                      } else {
+                        messageRefs.current.delete(message.id);
+                      }
+                    }}
+                    className="rounded-lg transition-colors duration-300"
+                  >
+                    <ChatMessageItem
+                      message={message}
+                      currentUserId={currentUserId}
+                      mode="sidebar"
+                      onToggleReaction={onToggleReaction}
+                      onReply={handleReply}
+                      onQuoteClick={handleQuoteClick}
+                    />
+                  </div>
                 ))
               )}
 
@@ -232,6 +298,15 @@ export function Chat({
             onSubmit={handleSendMessage}
             voice={voice}
             mode="sidebar"
+            replyTo={replyTo}
+            onCancelReply={handleCancelReply}
+            onEmojiSelect={emoji => {
+              setInputMessage(prev => (prev + emoji).slice(0, 500));
+              if (!isTyping) {
+                setIsTyping(true);
+                onTypingStart?.();
+              }
+            }}
           />
         </CardContent>
       </Card>
@@ -261,7 +336,26 @@ export function Chat({
           </div>
         ) : (
           messages.map(message => (
-            <ChatMessageItem key={message.id} message={message} currentUserId={currentUserId} mode="overlay" />
+            <div
+              key={message.id}
+              ref={el => {
+                if (el) {
+                  messageRefs.current.set(message.id, el);
+                } else {
+                  messageRefs.current.delete(message.id);
+                }
+              }}
+              className="transition-colors duration-500"
+            >
+              <ChatMessageItem
+                message={message}
+                currentUserId={currentUserId}
+                mode="overlay"
+                onToggleReaction={onToggleReaction}
+                onReply={handleReply}
+                onQuoteClick={handleQuoteClick}
+              />
+            </div>
           ))
         )}
 
@@ -276,6 +370,15 @@ export function Chat({
         onSubmit={handleSendMessage}
         voice={voice}
         mode="overlay"
+        replyTo={replyTo}
+        onCancelReply={handleCancelReply}
+        onEmojiSelect={emoji => {
+          setInputMessage(prev => (prev + emoji).slice(0, 500));
+          if (!isTyping) {
+            setIsTyping(true);
+            onTypingStart?.();
+          }
+        }}
       />
     </>
   );

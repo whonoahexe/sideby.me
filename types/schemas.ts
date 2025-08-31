@@ -42,6 +42,17 @@ export const ChatMessageSchema = z.object({
   timestamp: z.date(),
   roomId: RoomIdSchema,
   isRead: z.boolean().default(false),
+  // Reactions: emoji
+  reactions: z.record(z.string(), z.array(z.string().uuid())).optional().default({}),
+  // Reply information
+  replyTo: z
+    .object({
+      messageId: z.string().uuid(),
+      userId: z.string().uuid(),
+      userName: UserNameSchema,
+      message: z.string().max(150),
+    })
+    .optional(),
 });
 
 export const TypingUserSchema = z.object({
@@ -119,6 +130,21 @@ export const PromoteHostDataSchema = z.object({
 export const SendMessageDataSchema = z.object({
   roomId: RoomIdSchema,
   message: z.string().min(1).max(1000),
+  replyTo: z
+    .object({
+      messageId: z.string().uuid(),
+      userId: z.string().uuid(),
+      userName: UserNameSchema,
+      message: z.string().max(150), // Truncated version for display
+    })
+    .optional(),
+});
+
+// Message reaction (client -> server)
+export const MessageReactionDataSchema = z.object({
+  roomId: RoomIdSchema,
+  messageId: z.string().uuid(),
+  emoji: z.string().min(1).max(8), // allow multi codepoint emoji clusters
 });
 
 export const SyncCheckDataSchema = z.object({
@@ -248,6 +274,15 @@ export const NewMessageResponseSchema = z.object({
   message: ChatMessageSchema,
 });
 
+export const ReactionUpdatedResponseSchema = z.object({
+  messageId: z.string().uuid(),
+  emoji: z.string(),
+  userId: z.string().uuid(),
+  // Full reactions map after update (allows client to stay in sync)
+  reactions: z.record(z.string(), z.array(z.string().uuid())),
+  action: z.enum(['added', 'removed']),
+});
+
 export const TypingEventResponseSchema = z.object({
   userId: z.string().uuid(),
   userName: UserNameSchema,
@@ -282,6 +317,7 @@ export type SetVideoData = z.infer<typeof SetVideoDataSchema>;
 export type VideoControlData = z.infer<typeof VideoControlDataSchema>;
 export type PromoteHostData = z.infer<typeof PromoteHostDataSchema>;
 export type SendMessageData = z.infer<typeof SendMessageDataSchema>;
+export type MessageReactionData = z.infer<typeof MessageReactionDataSchema>;
 export type SyncCheckData = z.infer<typeof SyncCheckDataSchema>;
 export type RoomActionData = z.infer<typeof RoomActionDataSchema>;
 export type KickUserData = z.infer<typeof KickUserDataSchema>;
@@ -297,6 +333,7 @@ export type VideoSetResponse = z.infer<typeof VideoSetResponseSchema>;
 export type VideoEventResponse = z.infer<typeof VideoEventResponseSchema>;
 export type SyncUpdateResponse = z.infer<typeof SyncUpdateResponseSchema>;
 export type NewMessageResponse = z.infer<typeof NewMessageResponseSchema>;
+export type ReactionUpdatedResponse = z.infer<typeof ReactionUpdatedResponseSchema>;
 export type TypingEventResponse = z.infer<typeof TypingEventResponseSchema>;
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 export type VideoErrorReport = z.infer<typeof VideoErrorReportSchema>;

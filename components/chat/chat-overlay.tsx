@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { MessageCircle } from 'lucide-react';
 import { ChatMessage, TypingUser } from '@/types';
 import { Chat } from '@/components/chat/chat';
+import { useFullscreenPortalContainer } from '@/hooks/use-fullscreen-portal-container';
 
 interface VoiceConfig {
   isEnabled: boolean;
@@ -22,9 +23,13 @@ interface VoiceConfig {
 interface ChatOverlayProps {
   messages: ChatMessage[];
   currentUserId: string;
-  onSendMessage: (message: string) => void;
+  onSendMessage: (
+    message: string,
+    replyTo?: { messageId: string; userId: string; userName: string; message: string }
+  ) => void;
   onTypingStart?: () => void;
   onTypingStop?: () => void;
+  onToggleReaction?: (messageId: string, emoji: string) => void;
   typingUsers?: TypingUser[];
   voice?: VoiceConfig;
   isVisible: boolean;
@@ -40,6 +45,7 @@ export function ChatOverlay({
   onSendMessage,
   onTypingStart,
   onTypingStop,
+  onToggleReaction,
   typingUsers = [],
   voice,
   isVisible,
@@ -49,6 +55,7 @@ export function ChatOverlay({
   onMarkMessagesAsRead,
 }: ChatOverlayProps) {
   const [isClient, setIsClient] = useState(false);
+  const portalContainer = useFullscreenPortalContainer();
 
   // Calculate unread messages
   const unreadMessages = messages.filter(msg => msg.userId !== currentUserId && !msg.isRead);
@@ -70,16 +77,9 @@ export function ChatOverlay({
     return null;
   }
 
-  // Get the fullscreen element - this is key for proper portal rendering
-  const fullscreenElement =
-    document.fullscreenElement ||
-    (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement ||
-    (document as Document & { mozFullScreenElement?: Element }).mozFullScreenElement ||
-    (document as Document & { msFullscreenElement?: Element }).msFullscreenElement;
-
   const overlayContent = (
     <div
-      className={`fixed right-6 top-6 z-[2147483647] border border-border bg-background/95 shadow-lg backdrop-blur-sm ${
+      className={`fixed right-6 top-6 z-[2147483647] border border-border bg-background shadow-lg ${
         isMinimized ? 'h-12 w-12 rounded-full' : 'h-96 w-80 rounded-lg'
       }`}
     >
@@ -112,6 +112,7 @@ export function ChatOverlay({
           onSendMessage={onSendMessage}
           onTypingStart={onTypingStart}
           onTypingStop={onTypingStop}
+          onToggleReaction={onToggleReaction}
           typingUsers={typingUsers}
           voice={voice}
           unreadCount={unreadCount}
@@ -123,6 +124,6 @@ export function ChatOverlay({
   );
 
   // Render to fullscreen element if available, otherwise document.body
-  const portalTarget = fullscreenElement || document.body;
+  const portalTarget = portalContainer || document.body;
   return createPortal(overlayContent, portalTarget);
 }

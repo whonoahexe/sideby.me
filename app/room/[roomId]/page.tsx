@@ -65,6 +65,7 @@ export default function RoomPage() {
     markMessagesAsRead,
     copyRoomId,
     shareRoom,
+    handleToggleReaction,
   } = useRoom({ roomId });
 
   // Helper function to extract video ID from URL for subtitle storage
@@ -312,6 +313,7 @@ export default function RoomPage() {
             onSendMessage={handleSendMessage}
             onTypingStart={handleTypingStart}
             onTypingStop={handleTypingStop}
+            onToggleReaction={handleToggleReaction}
             typingUsers={typingUsers}
             voice={{
               isEnabled: voice.isEnabled,
@@ -347,6 +349,7 @@ export default function RoomPage() {
         onSendMessage={handleSendMessage}
         onTypingStart={handleTypingStart}
         onTypingStop={handleTypingStop}
+        onToggleReaction={handleToggleReaction}
         typingUsers={typingUsers}
         isVisible={showChatOverlay}
         isMinimized={isChatMinimized}

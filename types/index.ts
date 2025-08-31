@@ -37,6 +37,7 @@ import type {
   VoiceOfferEventResponse,
   VoiceAnswerEventResponse,
   VoiceIceCandidateEventResponse,
+  ReactionUpdatedResponse,
 } from './schemas';
 
 export interface SocketEvents {
@@ -78,6 +79,8 @@ export interface SocketEvents {
   'send-message': (data: SendMessageData) => void;
   'message-sent': (data: NewMessageResponse) => void;
   'new-message': (data: NewMessageResponse) => void;
+  'toggle-reaction': (data: { roomId: string; messageId: string; emoji: string }) => void;
+  'reaction-updated': (data: ReactionUpdatedResponse) => void;
   'typing-start': (data: RoomActionData) => void;
   'typing-stop': (data: RoomActionData) => void;
   'user-typing': (data: TypingEventResponse) => void;
