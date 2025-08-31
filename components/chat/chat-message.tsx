@@ -2,6 +2,7 @@
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ChatMessage } from '@/types';
+import { MarkdownMessage } from './markdown-message';
 
 interface ChatMessageItemProps {
   message: ChatMessage;
@@ -56,7 +57,7 @@ export function ChatMessageItem({ message, currentUserId, mode = 'sidebar' }: Ch
           }`}
           style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
         >
-          {message.message}
+          <MarkdownMessage content={message.message} />
         </div>
       </div>
     </div>
