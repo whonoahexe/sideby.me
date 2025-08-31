@@ -126,7 +126,10 @@ export default function RoomPage() {
 
   // Voice chat hook (must be before any early returns)
   const voice = useVoiceChat({ roomId, currentUser });
-  const overCap = (room?.users.length ?? 0) > 5;
+  // Voice capacity logic should be based on current voice participants, not total room users
+  const VOICE_MAX = 5;
+  const voiceParticipantCount = voice.activePeerIds.length + (voice.isEnabled ? 1 : 0);
+  const overCap = voiceParticipantCount >= VOICE_MAX;
 
   // Handle video control attempts by guests
   const handleVideoControlAttempt = () => {
@@ -319,7 +322,7 @@ export default function RoomPage() {
               isEnabled: voice.isEnabled,
               isMuted: voice.isMuted,
               isConnecting: voice.isConnecting,
-              participantCount: voice.activePeerIds.length + (voice.isEnabled ? 1 : 0),
+              participantCount: voiceParticipantCount,
               overCap,
               onEnable: voice.enable,
               onDisable: voice.disable,
@@ -360,7 +363,7 @@ export default function RoomPage() {
           isEnabled: voice.isEnabled,
           isMuted: voice.isMuted,
           isConnecting: voice.isConnecting,
-          participantCount: voice.activePeerIds.length + (voice.isEnabled ? 1 : 0),
+          participantCount: voiceParticipantCount,
           overCap,
           onEnable: voice.enable,
           onDisable: voice.disable,

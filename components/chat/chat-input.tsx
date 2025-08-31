@@ -108,7 +108,7 @@ export function ChatInput({
     if (!voice?.isEnabled) return;
     e.preventDefault();
     voice.onDisable();
-    toast.success('Voice chat disconnected.');
+    toast.success("Voice chat disconnected. It's quiet again!");
     longPressTriggeredRef.current = false;
   };
 

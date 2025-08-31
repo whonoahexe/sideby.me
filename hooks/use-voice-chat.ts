@@ -45,9 +45,13 @@ const MAX_RECONNECT_DELAY = 30000;
 export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVoiceChatOptions): UseVoiceChatReturn {
   const { socket } = useSocket();
   const isDebug = process.env.NODE_ENV !== 'production';
-  const dlog = (...args: unknown[]) => {
-    if (isDebug) console.log('[VOICE]', ...args);
-  };
+  const dlog = useCallback(
+    (...args: unknown[]) => {
+      if (isDebug) console.log('[VOICE]', ...args);
+    },
+    [isDebug]
+  );
+
   const [isEnabled, setIsEnabled] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -62,30 +66,34 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
   const analyserNodesRef = useRef<
     Map<string, { analyser: AnalyserNode; source: MediaStreamAudioSourceNode; rafId: number | null }>
   >(new Map());
+  const scheduleReconnectionRef = useRef<((peerUserId: string, wasInitiator: boolean) => void) | null>(null);
   const soloTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const joinAttemptRef = useRef(false);
 
-  const cleanupPeer = useCallback((userId: string) => {
-    dlog('cleanupPeer', { userId });
-    const entry = peersRef.current.get(userId);
-    if (!entry) return;
+  const cleanupPeer = useCallback(
+    (userId: string) => {
+      dlog('cleanupPeer', { userId });
+      const entry = peersRef.current.get(userId);
+      if (!entry) return;
 
-    // Clear reconnection timeout if it exists
-    if (entry.reconnectTimeoutId) {
-      clearTimeout(entry.reconnectTimeoutId);
-    }
+      if (entry.reconnectTimeoutId) {
+        clearTimeout(entry.reconnectTimeoutId);
+      }
 
-    entry.peerConnection.onicecandidate = null;
-    entry.peerConnection.ontrack = null;
-    entry.peerConnection.onconnectionstatechange = null;
-    try {
-      entry.peerConnection.close();
-    } catch {}
-    entry.remoteAudioEl.srcObject = null;
-    entry.remoteAudioEl.remove();
-    peersRef.current.delete(userId);
-    appliedRemoteAnswerRef.current.delete(userId);
-    setActivePeerIds(prev => prev.filter(id => id !== userId));
-  }, []);
+      entry.peerConnection.onicecandidate = null;
+      entry.peerConnection.ontrack = null;
+      entry.peerConnection.onconnectionstatechange = null;
+      try {
+        entry.peerConnection.close();
+      } catch {}
+      entry.remoteAudioEl.srcObject = null;
+      entry.remoteAudioEl.remove();
+      peersRef.current.delete(userId);
+      appliedRemoteAnswerRef.current.delete(userId);
+      setActivePeerIds(prev => prev.filter(id => id !== userId));
+    },
+    [dlog]
+  );
 
   const cleanupAll = useCallback(async () => {
     dlog('cleanupAll');
@@ -102,7 +110,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
     setIsMuted(false);
     setError('');
     setActivePeerIds([]);
-  }, [cleanupPeer]);
+  }, [cleanupPeer, dlog]);
 
   // Bandwidth Patrol: Auto-disconnect solo users to save bandwidth
   const startSoloUserTimeout = useCallback(() => {
@@ -141,7 +149,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
         setError(''); // Clear error after disconnect
       }, 3000);
     }, SOLO_USER_TIMEOUT);
-  }, [socket, roomId, cleanupAll]);
+  }, [socket, roomId, cleanupAll, dlog]);
 
   const clearSoloUserTimeout = useCallback(() => {
     if (soloTimeoutRef.current) {
@@ -150,7 +158,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       clearTimeout(soloTimeoutRef.current);
       soloTimeoutRef.current = null;
     }
-  }, []);
+  }, [dlog]);
 
   const ensureLocalStream = useCallback(async () => {
     if (localStreamRef.current) return localStreamRef.current;
@@ -162,6 +170,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       // Initialize Web Audio for speaking detection (local)
       if (!audioContextRef.current) {
         try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
         } catch {}
       }
@@ -199,7 +208,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       setError("Whoops, we can't hear you!");
       throw e;
     }
-  }, []);
+  }, [currentUser?.id, dlog]);
 
   const createPeerConnection = useCallback(
     async (peerUserId: string, isInitiator: boolean, useTurn: boolean = false) => {
@@ -303,12 +312,12 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
           if (pc.connectionState === 'failed' && !useTurn) {
             // For STUN failures, first try TURN fallback instead of reconnection
             dlog('STUN connection failed, attempting TURN fallback', { peerUserId });
-            createPeerConnection(peerUserId, isInitiator, true).catch(error => {
+            createPeerConnection(peerUserId, isInitiator, true).catch((error: unknown) => {
               dlog('TURN fallback failed, starting reconnection logic', { peerUserId, error });
               // Start reconnection logic after TURN fails
               const entry = peersRef.current.get(peerUserId);
               if (entry && entry.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-                scheduleReconnection(peerUserId, isInitiator);
+                scheduleReconnectionRef.current?.(peerUserId, isInitiator);
               } else {
                 cleanupPeer(peerUserId);
               }
@@ -324,7 +333,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
                 peerUserId,
                 attempt: entry.reconnectAttempts + 1,
               });
-              scheduleReconnection(peerUserId, isInitiator);
+              scheduleReconnectionRef.current?.(peerUserId, isInitiator);
               return; // Don't cleanup immediately, let reconnection handle it
             }
           }
@@ -408,63 +417,51 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
 
       return pc;
     },
-    [socket, roomId, ensureLocalStream, cleanupPeer]
+    [socket, roomId, ensureLocalStream, cleanupPeer, dlog]
   );
 
-  // Exponential backoff reconnection logic
-  const scheduleReconnection = useCallback(
+  // Define reconnection implementation AFTER createPeerConnection so we can safely reference it
+  const scheduleReconnectionImpl = useCallback(
     (peerUserId: string, wasInitiator: boolean) => {
       const entry = peersRef.current.get(peerUserId);
       if (!entry) return;
-
       if (entry.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
         dlog('🔄 Max reconnection attempts reached for peer', { peerUserId, attempts: entry.reconnectAttempts });
         cleanupPeer(peerUserId);
         return;
       }
-
       const attempt = entry.reconnectAttempts + 1;
       const delay = Math.min(BASE_RECONNECT_DELAY * Math.pow(2, attempt - 1), MAX_RECONNECT_DELAY);
-
       dlog('🔄 Scheduling reconnection', { peerUserId, attempt, delay });
-
       const timeoutId = setTimeout(async () => {
         try {
           dlog('🔄 Attempting reconnection', { peerUserId, attempt });
-
-          // Clean up the old connection but keep the entry structure
           const oldEntry = peersRef.current.get(peerUserId);
           if (oldEntry) {
-            oldEntry.peerConnection.close();
+            try {
+              oldEntry.peerConnection.close();
+            } catch {}
             oldEntry.remoteAudioEl.remove();
           }
-
-          // Create new connection with incremented attempt count
           await createPeerConnection(peerUserId, wasInitiator, entry.isUsingTurn);
-
-          // Update the attempt count for the new connection
           const newEntry = peersRef.current.get(peerUserId);
-          if (newEntry) {
-            newEntry.reconnectAttempts = attempt;
-          }
+          if (newEntry) newEntry.reconnectAttempts = attempt;
         } catch (error) {
           dlog('🔄 Reconnection failed', { peerUserId, attempt, error });
-          // If reconnection fails, schedule another attempt
           const currentEntry = peersRef.current.get(peerUserId);
           if (currentEntry && currentEntry.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-            scheduleReconnection(peerUserId, wasInitiator);
+            scheduleReconnectionRef.current?.(peerUserId, wasInitiator);
           } else {
             cleanupPeer(peerUserId);
           }
         }
       }, delay);
-
-      // Update the entry with the new timeout
       entry.reconnectTimeoutId = timeoutId;
       entry.reconnectAttempts = attempt;
     },
-    [cleanupPeer, createPeerConnection]
+    [cleanupPeer, dlog, createPeerConnection]
   );
+  scheduleReconnectionRef.current = scheduleReconnectionImpl;
 
   // Socket signaling handlers
   useEffect(() => {
@@ -483,6 +480,13 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       } else {
         dlog('🚨 Bandwidth Patrol: Other peers detected, clearing timeout');
         clearSoloUserTimeout();
+      }
+
+      // Mark join success only now (server has accepted and sent peer list)
+      if (!isEnabled) {
+        setIsEnabled(true);
+        setIsConnecting(false);
+        joinAttemptRef.current = false;
       }
 
       // Sort to ensure deterministic offer order, reducing glare
@@ -582,8 +586,46 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
     };
 
     const handleVoiceError = ({ error }: { error: string }) => {
+      dlog('handleVoiceError', { error, joinAttempt: joinAttemptRef.current });
       setError(error);
-      dlog('handleVoiceError', { error });
+      // Provide immediate user feedback via toast for join-related errors
+      const lowered = error.toLowerCase();
+      const isCapacity = /full|capacity|max/.test(lowered);
+      if (joinAttemptRef.current || (!isEnabled && isCapacity)) {
+        toast.error(isCapacity ? 'Voice room is full' : 'Voice chat error', {
+          description: isCapacity
+            ? `Maximum of ${maxParticipants} participants reached. Try again after someone leaves.`
+            : error,
+        });
+      }
+      // If this error corresponds to a pending join
+      if (joinAttemptRef.current && !isEnabled) {
+        joinAttemptRef.current = false;
+        setIsConnecting(false);
+        // Stop local media since we never actually joined
+        if (localStreamRef.current) {
+          localStreamRef.current.getTracks().forEach(t => t.stop());
+          localStreamRef.current = null;
+        }
+        // Clear speaking detection for self
+        if (currentUser?.id) {
+          const entry = analyserNodesRef.current.get(currentUser.id);
+          if (entry) {
+            if (entry.rafId) cancelAnimationFrame(entry.rafId);
+            try {
+              entry.source.disconnect();
+            } catch {}
+            analyserNodesRef.current.delete(currentUser.id);
+          }
+          setSpeakingUserIds(prev => {
+            const next = new Set(prev);
+            next.delete(currentUser.id!);
+            return next;
+          });
+        }
+        setIsEnabled(false);
+        setActivePeerIds([]);
+      }
     };
 
     socket.on('voice-existing-peers', handleExistingPeers);
@@ -612,36 +654,53 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
     maxParticipants,
     startSoloUserTimeout,
     clearSoloUserTimeout,
+    dlog,
+    isEnabled,
   ]);
 
   const enable = useCallback(async () => {
     if (!socket || !currentUser) return;
+    if (isEnabled || joinAttemptRef.current) return; // prevent duplicate attempts
     dlog('enable start');
     setIsConnecting(true);
+    joinAttemptRef.current = true;
     try {
       await ensureLocalStream();
       socket.emit('voice-join', { roomId });
-      setIsEnabled(true);
-      setIsConnecting(false);
-      dlog('enable done');
+      // Don't set isEnabled here; wait for server acceptance via 'voice-existing-peers'
+      dlog('enable pending server acceptance');
     } catch (e) {
+      joinAttemptRef.current = false;
       setIsConnecting(false);
       setIsEnabled(false);
       dlog('enable failed', e);
     }
-  }, [socket, roomId, ensureLocalStream, currentUser]);
+  }, [socket, roomId, ensureLocalStream, currentUser, isEnabled, dlog]);
 
   const disable = useCallback(async () => {
     if (!socket) return;
     dlog('disable start');
+    // If we are just attempting to join and user cancels, abort attempt
+    if (joinAttemptRef.current && !isEnabled) {
+      joinAttemptRef.current = false;
+      setIsConnecting(false);
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(t => t.stop());
+        localStreamRef.current = null;
+      }
+      dlog('disable aborted pending join');
+      return;
+    }
 
     // Bandwidth Patrol: Clear solo timeout when disabling
     clearSoloUserTimeout();
 
-    socket.emit('voice-leave', { roomId });
+    if (isEnabled) {
+      socket.emit('voice-leave', { roomId });
+    }
     await cleanupAll();
     dlog('disable done');
-  }, [socket, roomId, cleanupAll, clearSoloUserTimeout]);
+  }, [socket, roomId, cleanupAll, clearSoloUserTimeout, isEnabled, dlog]);
 
   const toggleMute = useCallback(() => {
     const stream = localStreamRef.current;
@@ -649,7 +708,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
     stream.getAudioTracks().forEach(t => (t.enabled = !t.enabled));
     setIsMuted(prev => !prev);
     dlog('toggleMute', { next: !isMuted });
-  }, [isMuted]);
+  }, [isMuted, dlog]);
 
   // Autocleanup on unmount
   useEffect(() => {

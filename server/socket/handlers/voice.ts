@@ -7,9 +7,28 @@ import {
   VoiceOfferSchema,
   VoiceAnswerSchema,
   VoiceIceCandidateSchema,
-  RoomActionDataSchema,
 } from '@/types';
 import { redisService } from '@/server/redis';
+
+// compute valid voice participants from adapter each time
+function computeValidVoiceParticipants(
+  io: IOServer,
+  roomId: string
+): { sockets: Socket<SocketEvents, SocketEvents, object, SocketData>[]; staleSocketIds: string[] } {
+  const voiceRoomKey = `voice:${roomId}`;
+  const rawIds = Array.from(io.sockets.adapter.rooms.get(voiceRoomKey) || new Set<string>());
+  const sockets: Socket<SocketEvents, SocketEvents, object, SocketData>[] = [];
+  const stale: string[] = [];
+  for (const id of rawIds) {
+    const s = io.sockets.sockets.get(id) as Socket<SocketEvents, SocketEvents, object, SocketData> | undefined;
+    if (s && s.data.userId && s.data.roomId === roomId) {
+      sockets.push(s);
+    } else {
+      stale.push(id);
+    }
+  }
+  return { sockets, staleSocketIds: stale };
+}
 
 // Soft cap for voice participants in mesh
 const VOICE_MAX_PARTICIPANTS = 5;
@@ -41,20 +60,55 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
       return;
     }
 
-    const currentVoiceUserIds = Array.from(io.sockets.adapter.rooms.get(`voice:${roomId}`) || new Set<string>());
+    const voiceRoomKey = `voice:${roomId}`;
 
-    // Enforce soft cap
-    if (currentVoiceUserIds.length >= VOICE_MAX_PARTICIPANTS) {
-      slog('voice-join rejected: full');
-      socket.emit('voice-error', {
-        error: `Whoa, it's a full house! The voice channel is at its max of 5 people, unless Hulk's in the room.`,
-      });
-      return;
+    // If already in voice room, treat as idempotent (re-send peers later)
+    let { sockets: currentParticipants, staleSocketIds } = computeValidVoiceParticipants(io, roomId);
+
+    // Attempt cleanup of stale entries (sockets without proper metadata / membership)
+    if (staleSocketIds.length) {
+      slog('pruning stale voice sockets', { staleCount: staleSocketIds.length });
+      for (const sid of staleSocketIds) {
+        const s = io.sockets.sockets.get(sid) as Socket<SocketEvents, SocketEvents, object, SocketData> | undefined;
+        try {
+          if (s) s.leave(voiceRoomKey);
+        } catch {}
+      }
+      // Recompute after pruning
+      ({ sockets: currentParticipants } = computeValidVoiceParticipants(io, roomId));
     }
 
-    // Join a dedicated voice namespace room
-    await socket.join(`voice:${roomId}`);
-    slog('joined voice room', { voiceRoom: `voice:${roomId}` });
+    if (socket.rooms.has(voiceRoomKey)) {
+      slog('voice-join idempotent', { count: currentParticipants.length });
+    } else {
+      if (currentParticipants.length >= VOICE_MAX_PARTICIPANTS) {
+        // One more defensive recompute in case of racing leave
+        await new Promise(r => setTimeout(r, 30));
+        ({ sockets: currentParticipants, staleSocketIds } = computeValidVoiceParticipants(io, roomId));
+        if (staleSocketIds.length) {
+          slog('2nd-pass pruning stale sockets', { stale: staleSocketIds });
+          for (const sid of staleSocketIds) {
+            const s = io.sockets.sockets.get(sid) as Socket<SocketEvents, SocketEvents, object, SocketData> | undefined;
+            try {
+              if (s) s.leave(voiceRoomKey);
+            } catch {}
+          }
+          ({ sockets: currentParticipants } = computeValidVoiceParticipants(io, roomId));
+        }
+      }
+
+      if (currentParticipants.length >= VOICE_MAX_PARTICIPANTS) {
+        slog('voice-join rejected: full', { current: currentParticipants.length });
+        socket.emit('voice-error', {
+          error: `Whoa, it's a full house! The voice channel is at its max of 5 people, unless Hulk's in the room.`,
+        });
+        return;
+      }
+
+      await socket.join(voiceRoomKey);
+      ({ sockets: currentParticipants } = computeValidVoiceParticipants(io, roomId));
+      slog('joined voice room', { count: currentParticipants.length });
+    }
 
     // Provide existing peers to new joiner
     const peers = Array.from(io.sockets.adapter.rooms.get(`voice:${roomId}`) || new Set<string>()).filter(
@@ -84,9 +138,16 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
     if (!validated) return;
     const { roomId } = validated;
     if (!socket.data.userId) return;
-    await socket.leave(`voice:${roomId}`);
-    socket.to(`voice:${roomId}`).emit('voice-peer-left', { userId: socket.data.userId });
-    slog('left voice room and broadcasted peer-left');
+    const voiceRoom = `voice:${roomId}`;
+    if (socket.rooms.has(voiceRoom)) {
+      const before = computeValidVoiceParticipants(io, roomId).sockets.length;
+      await socket.leave(voiceRoom);
+      const after = computeValidVoiceParticipants(io, roomId).sockets.length;
+      socket.to(voiceRoom).emit('voice-peer-left', { userId: socket.data.userId });
+      slog('left voice room and broadcasted peer-left', { before, after });
+    } else {
+      slog('voice-leave ignored: not in voice room');
+    }
   });
 
   // Relay offer (include sender id)
@@ -94,7 +155,7 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
     slog('voice-offer relay');
     const validated = validateData(VoiceOfferSchema, data, socket);
     if (!validated) return;
-    const { roomId, targetUserId, sdp } = validated;
+    const { roomId: _roomId, targetUserId, sdp } = validated;
     // Find socket for target user in room
     const targetSocket = await findSocketByUserId(io, targetUserId);
     if (!targetSocket) {
@@ -110,7 +171,7 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
     slog('voice-answer relay');
     const validated = validateData(VoiceAnswerSchema, data, socket);
     if (!validated) return;
-    const { roomId, targetUserId, sdp } = validated;
+    const { roomId: _roomId2, targetUserId, sdp } = validated;
     const targetSocket = await findSocketByUserId(io, targetUserId);
     if (!targetSocket) {
       slog('voice-answer target not found', { targetUserId });
@@ -125,7 +186,7 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
     slog('voice-ice relay');
     const validated = validateData(VoiceIceCandidateSchema, data, socket);
     if (!validated) return;
-    const { roomId, targetUserId, candidate } = validated;
+    const { roomId: _roomId3, targetUserId, candidate } = validated;
     const targetSocket = await findSocketByUserId(io, targetUserId);
     if (!targetSocket) {
       slog('voice-ice target not found', { targetUserId });
@@ -142,18 +203,40 @@ export function registerVoiceHandlers(socket: Socket<SocketEvents, SocketEvents,
       const rooms = socket.rooms;
       for (const room of rooms) {
         if (room.startsWith('voice:') && socket.data.userId) {
+          const rid = room.slice('voice:'.length);
+          const before = computeValidVoiceParticipants(io, rid).sockets.length;
           socket.to(room).emit('voice-peer-left', { userId: socket.data.userId });
-          slog('broadcasted peer-left on disconnect', { room });
-          // Also proactively leave the voice room to update adapter state
           const maybePromise = socket.leave(room);
           if (maybePromise && typeof (maybePromise as Promise<void>).then === 'function') {
             (maybePromise as Promise<void>).catch(() => {});
           }
+          // Post-leave recount (slight delay to allow adapter update)
+          setTimeout(() => {
+            const after = computeValidVoiceParticipants(io, rid).sockets.length;
+            slog('broadcasted peer-left on disconnect', { room, before, after });
+          }, 10);
         }
       }
     } catch {
       // ignore
     }
+  });
+
+  // Debug endpoint (development aid)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- debug channel not part of strict event map
+  (socket as any).on('voice-debug', async (data: { roomId: string }) => {
+    const validated = validateData(VoiceJoinDataSchema, data, socket); // reuse roomId schema
+    if (!validated) return;
+    const { roomId } = validated;
+    const { sockets: participants, staleSocketIds } = computeValidVoiceParticipants(io, roomId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (socket as any).emit('voice-debug-response', {
+      roomId,
+      count: participants.length,
+      userIds: participants.map(s => s.data.userId),
+      staleSocketIds,
+      max: VOICE_MAX_PARTICIPANTS,
+    });
   });
 }
 
