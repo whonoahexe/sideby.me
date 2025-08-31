@@ -6,16 +6,25 @@ import { ChatMessage } from '@/types';
 import { MarkdownMessage } from './markdown-message';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { EmojiPicker, EmojiPickerSearch, EmojiPickerContent, EmojiPickerFooter } from '@/components/ui/emoji-picker';
-import { SmilePlus } from 'lucide-react';
+import { SmilePlus, Reply } from 'lucide-react';
 
 interface ChatMessageItemProps {
   message: ChatMessage;
   currentUserId: string;
   mode?: 'sidebar' | 'overlay';
   onToggleReaction?: (messageId: string, emoji: string) => void;
+  onReply?: (messageId: string, userName: string, message: string) => void;
+  onQuoteClick?: (messageId: string) => void;
 }
 
-export function ChatMessageItem({ message, currentUserId, mode = 'sidebar', onToggleReaction }: ChatMessageItemProps) {
+export function ChatMessageItem({
+  message,
+  currentUserId,
+  mode = 'sidebar',
+  onToggleReaction,
+  onReply,
+  onQuoteClick,
+}: ChatMessageItemProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const getInitials = (name: string) =>
@@ -32,6 +41,11 @@ export function ChatMessageItem({ message, currentUserId, mode = 'sidebar', onTo
       minute: '2-digit',
       hour12: false,
     }).format(new Date(timestamp));
+
+  const truncateMessage = (text: string, maxLength: number = 100) => {
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength) + '...';
+  };
 
   const isOwnMessage = message.userId === currentUserId;
   const avatarSize = mode === 'overlay' ? 'h-6 w-6' : 'h-8 w-8';
@@ -55,6 +69,22 @@ export function ChatMessageItem({ message, currentUserId, mode = 'sidebar', onTo
               {formatMessageTime(message.timestamp)}
             </span>
           </div>
+
+          {/* Reply quote */}
+          {message.replyTo && (
+            <div
+              className={`mb-2 cursor-pointer rounded-md border-l-2 border-muted-foreground bg-muted p-2 text-xs ${isOwnMessage ? 'text-right' : ''}`}
+              onClick={() => onQuoteClick?.(message.replyTo!.messageId)}
+              title="Click to jump to original message"
+            >
+              <div className={`flex items-center gap-1 ${isOwnMessage ? 'justify-end' : ''}`}>
+                <Reply className="h-3 w-3 text-muted-foreground" />
+                <span className="font-medium text-muted-foreground">{message.replyTo.userName}</span>
+              </div>
+              <div className="mt-1 text-muted-foreground">{truncateMessage(message.replyTo.message)}</div>
+            </div>
+          )}
+
           <div
             className={`group relative inline-block max-w-full break-words rounded-md px-3 py-2 tracking-tight text-primary-foreground ${textSize} ${
               isOwnMessage ? 'bg-primary' : 'bg-muted'
@@ -63,50 +93,66 @@ export function ChatMessageItem({ message, currentUserId, mode = 'sidebar', onTo
           >
             {/* Message content */}
             <MarkdownMessage content={message.message} />
-            {/* Reaction picker */}
-            {onToggleReaction && (
-              <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="Add reaction"
-                    title="Add reaction"
-                    className={`absolute -top-3 ${
-                      isOwnMessage ? 'right-2' : 'left-2'
-                    } pointer-events-none z-10 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background/80 text-[11px] text-muted-foreground opacity-0 shadow-sm backdrop-blur transition-opacity hover:text-foreground group-hover:pointer-events-auto group-hover:opacity-100`}
-                    onMouseDown={e => e.preventDefault()}
-                  >
-                    <SmilePlus className="h-3 w-3" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent
-                  align={isOwnMessage ? 'end' : 'start'}
-                  side="top"
-                  className="w-full max-w-[280px] p-0"
-                  sideOffset={6}
+
+            {/* Action buttons (Reply & Reaction picker) */}
+            <div className={`absolute -top-3 ${isOwnMessage ? 'right-2' : 'left-2'} flex gap-1`}>
+              {/* Reply button */}
+              {onReply && (
+                <button
+                  type="button"
+                  aria-label="Reply to message"
+                  title="Reply to message"
+                  className="pointer-events-none z-10 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background/80 text-[11px] text-muted-foreground opacity-0 shadow-sm backdrop-blur transition-opacity hover:text-foreground group-hover:pointer-events-auto group-hover:opacity-100"
+                  onClick={() => onReply(message.id, message.userName, message.message)}
+                  onMouseDown={e => e.preventDefault()}
                 >
-                  <div
-                    className="h-[320px] w-full"
-                    onClick={e => {
-                      const target = e.target as HTMLElement;
-                      if (target?.dataset?.slot === 'emoji-picker-emoji') {
-                        const emojiChar = target.textContent?.trim();
-                        if (emojiChar) {
-                          onToggleReaction(message.id, emojiChar);
-                          setPickerOpen(false); // close after selection
-                        }
-                      }
-                    }}
+                  <Reply className="h-3 w-3" />
+                </button>
+              )}
+
+              {/* Reaction picker */}
+              {onToggleReaction && (
+                <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Add reaction"
+                      title="Add reaction"
+                      className="pointer-events-none z-10 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background/80 text-[11px] text-muted-foreground opacity-0 shadow-sm backdrop-blur transition-opacity hover:text-foreground group-hover:pointer-events-auto group-hover:opacity-100"
+                      onMouseDown={e => e.preventDefault()}
+                    >
+                      <SmilePlus className="h-3 w-3" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align={isOwnMessage ? 'end' : 'start'}
+                    side="top"
+                    className="w-full max-w-[280px] p-0"
+                    sideOffset={6}
                   >
-                    <EmojiPicker className="h-full">
-                      <EmojiPickerSearch placeholder="Search" autoFocus />
-                      <EmojiPickerContent />
-                      <EmojiPickerFooter />
-                    </EmojiPicker>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
+                    <div
+                      className="h-[320px] w-full"
+                      onClick={e => {
+                        const target = e.target as HTMLElement;
+                        if (target?.dataset?.slot === 'emoji-picker-emoji') {
+                          const emojiChar = target.textContent?.trim();
+                          if (emojiChar) {
+                            onToggleReaction(message.id, emojiChar);
+                            setPickerOpen(false); // close after selection
+                          }
+                        }
+                      }}
+                    >
+                      <EmojiPicker className="h-full">
+                        <EmojiPickerSearch placeholder="Search" autoFocus />
+                        <EmojiPickerContent />
+                        <EmojiPickerFooter />
+                      </EmojiPicker>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
           </div>
         </div>
       </div>

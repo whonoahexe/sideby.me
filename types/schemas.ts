@@ -42,8 +42,17 @@ export const ChatMessageSchema = z.object({
   timestamp: z.date(),
   roomId: RoomIdSchema,
   isRead: z.boolean().default(false),
-  // Reactions: emoji -> array of userIds who reacted
+  // Reactions: emoji
   reactions: z.record(z.string(), z.array(z.string().uuid())).optional().default({}),
+  // Reply information
+  replyTo: z
+    .object({
+      messageId: z.string().uuid(),
+      userId: z.string().uuid(),
+      userName: UserNameSchema,
+      message: z.string().max(150),
+    })
+    .optional(),
 });
 
 export const TypingUserSchema = z.object({
@@ -121,6 +130,14 @@ export const PromoteHostDataSchema = z.object({
 export const SendMessageDataSchema = z.object({
   roomId: RoomIdSchema,
   message: z.string().min(1).max(1000),
+  replyTo: z
+    .object({
+      messageId: z.string().uuid(),
+      userId: z.string().uuid(),
+      userName: UserNameSchema,
+      message: z.string().max(150), // Truncated version for display
+    })
+    .optional(),
 });
 
 // Message reaction (client -> server)

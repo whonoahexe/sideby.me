@@ -64,7 +64,7 @@ export function registerChatHandlers(socket: Socket<SocketEvents, SocketEvents, 
       const validatedData = validateData(SendMessageDataSchema, data, socket);
       if (!validatedData) return;
 
-      const { roomId, message } = validatedData;
+      const { roomId, message, replyTo } = validatedData;
 
       if (!socket.data.userId || !socket.data.userName) {
         socket.emit('error', { error: 'Hmm, we lost your connection details.' });
@@ -80,13 +80,14 @@ export function registerChatHandlers(socket: Socket<SocketEvents, SocketEvents, 
         roomId,
         isRead: false,
         reactions: {},
+        replyTo,
       };
 
       await redisService.chat.addChatMessage(roomId, chatMessage);
 
       io.to(roomId).emit('new-message', { message: chatMessage });
 
-      console.log(`Message sent in room ${roomId} by ${socket.data.userName}`);
+      console.log(`Message sent in room ${roomId} by ${socket.data.userName}${replyTo ? ' (reply)' : ''}`);
     } catch (error) {
       console.error('Error sending message:', error);
       socket.emit('error', {

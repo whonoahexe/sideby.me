@@ -22,7 +22,10 @@ interface VoiceConfig {
 interface ChatOverlayProps {
   messages: ChatMessage[];
   currentUserId: string;
-  onSendMessage: (message: string) => void;
+  onSendMessage: (
+    message: string,
+    replyTo?: { messageId: string; userId: string; userName: string; message: string }
+  ) => void;
   onTypingStart?: () => void;
   onTypingStop?: () => void;
   onToggleReaction?: (messageId: string, emoji: string) => void;

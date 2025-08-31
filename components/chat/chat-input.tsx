@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Mic, MicOff, Phone, Smile } from 'lucide-react';
+import { Send, Mic, MicOff, Phone, Smile, X, Reply } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { EmojiPicker, EmojiPickerSearch, EmojiPickerContent, EmojiPickerFooter } from '@/components/ui/emoji-picker';
@@ -26,6 +26,12 @@ interface ChatInputProps {
   voice?: VoiceConfig;
   mode?: 'sidebar' | 'overlay';
   onEmojiSelect?: (emoji: string) => void;
+  replyTo?: {
+    messageId: string;
+    userName: string;
+    message: string;
+  } | null;
+  onCancelReply?: () => void;
 }
 
 export function ChatInput({
@@ -35,6 +41,8 @@ export function ChatInput({
   voice,
   mode = 'sidebar',
   onEmojiSelect,
+  replyTo,
+  onCancelReply,
 }: ChatInputProps) {
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const longPressTriggeredRef = useRef(false);
@@ -99,8 +107,36 @@ export function ChatInput({
   const iconSize = mode === 'overlay' ? 'h-3 w-3' : 'h-4 w-4';
   const spacing = mode === 'overlay' ? 'gap-2' : 'space-x-2';
 
+  const truncateMessage = (text: string, maxLength: number = 80) => {
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength) + '...';
+  };
+
   return (
-    <div className={`border-t border-border ${mode === 'overlay' ? 'border-border p-4' : 'mt-1 pt-8'}`}>
+    <div className={`relative border-t border-border ${mode === 'overlay' ? 'border-border p-4' : 'mt-1 pt-8'}`}>
+      {/* Reply preview */}
+      {replyTo && (
+        <div
+          className="absolute bottom-full left-0 right-0 z-10 mb-1 flex items-center gap-2 rounded-t border border-b-0 border-muted bg-background/95 p-2 text-sm shadow-lg backdrop-blur-sm"
+          style={{ marginLeft: mode === 'overlay' ? '1rem' : '0', marginRight: mode === 'overlay' ? '1rem' : '0' }}
+        >
+          <Reply className="h-4 w-4 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <div className="font-medium text-muted-foreground">{replyTo.userName}</div>
+            <div className="truncate text-xs text-muted-foreground">{truncateMessage(replyTo.message)}</div>
+          </div>
+          <button
+            type="button"
+            onClick={onCancelReply}
+            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+            aria-label="Cancel reply"
+            title="Cancel reply"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <form onSubmit={onSubmit} className={`flex ${spacing}`}>
         <div className="relative flex-1">
           <Input

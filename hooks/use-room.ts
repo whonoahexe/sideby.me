@@ -43,7 +43,10 @@ interface UseRoomReturn {
   setShowCopied: (show: boolean) => void;
   handlePromoteUser: (userId: string) => void;
   handleKickUser: (userId: string) => void;
-  handleSendMessage: (message: string) => void;
+  handleSendMessage: (
+    message: string,
+    replyTo?: { messageId: string; userId: string; userName: string; message: string }
+  ) => void;
   handleTypingStart: () => void;
   handleTypingStop: () => void;
   handleToggleReaction: (messageId: string, emoji: string) => void;
@@ -487,9 +490,9 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
   );
 
   const handleSendMessage = useCallback(
-    (message: string) => {
+    (message: string, replyTo?: { messageId: string; userId: string; userName: string; message: string }) => {
       if (!socket) return;
-      socket.emit('send-message', { roomId, message });
+      socket.emit('send-message', { roomId, message, replyTo });
     },
     [socket, roomId]
   );
