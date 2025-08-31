@@ -46,6 +46,7 @@ interface UseRoomReturn {
   handleSendMessage: (message: string) => void;
   handleTypingStart: () => void;
   handleTypingStop: () => void;
+  handleToggleReaction: (messageId: string, emoji: string) => void;
   markMessagesAsRead: () => void;
   copyRoomId: () => void;
   shareRoom: () => void;
@@ -238,6 +239,16 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
       setTypingUsers(prev => prev.filter(user => user.userId !== userId));
     };
 
+    const handleReactionUpdated = ({
+      messageId,
+      reactions,
+    }: {
+      messageId: string;
+      reactions: Record<string, string[]>;
+    }) => {
+      setMessages(prev => prev.map(m => (m.id === messageId ? { ...m, reactions } : m)));
+    };
+
     const handleRoomError = ({ error }: { error: string }) => {
       console.error('🚨 Room error:', error);
 
@@ -315,6 +326,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
     socket.on('new-message', handleNewMessage);
     socket.on('user-typing', handleUserTyping);
     socket.on('user-stopped-typing', handleUserStoppedTyping);
+    socket.on('reaction-updated', handleReactionUpdated);
     socket.on('room-error', handleRoomError);
     socket.on('error', handleSocketError);
 
@@ -328,6 +340,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
       socket.off('new-message', handleNewMessage);
       socket.off('user-typing', handleUserTyping);
       socket.off('user-stopped-typing', handleUserStoppedTyping);
+      socket.off('reaction-updated', handleReactionUpdated);
       socket.off('room-error', handleRoomError);
       socket.off('error', handleSocketError);
     };
@@ -491,6 +504,14 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
     socket.emit('typing-stop', { roomId });
   }, [socket, roomId]);
 
+  const handleToggleReaction = useCallback(
+    (messageId: string, emoji: string) => {
+      if (!socket) return;
+      socket.emit('toggle-reaction', { roomId, messageId, emoji });
+    },
+    [socket, roomId]
+  );
+
   const copyRoomId = useCallback(() => {
     navigator.clipboard.writeText(roomId);
     setShowCopied(true);
@@ -536,6 +557,7 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
     handleSendMessage,
     handleTypingStart,
     handleTypingStop,
+    handleToggleReaction,
     markMessagesAsRead,
     copyRoomId,
     shareRoom,

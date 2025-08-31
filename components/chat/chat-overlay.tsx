@@ -25,6 +25,7 @@ interface ChatOverlayProps {
   onSendMessage: (message: string) => void;
   onTypingStart?: () => void;
   onTypingStop?: () => void;
+  onToggleReaction?: (messageId: string, emoji: string) => void;
   typingUsers?: TypingUser[];
   voice?: VoiceConfig;
   isVisible: boolean;
@@ -40,6 +41,7 @@ export function ChatOverlay({
   onSendMessage,
   onTypingStart,
   onTypingStop,
+  onToggleReaction,
   typingUsers = [],
   voice,
   isVisible,
@@ -112,6 +114,7 @@ export function ChatOverlay({
           onSendMessage={onSendMessage}
           onTypingStart={onTypingStart}
           onTypingStop={onTypingStop}
+          onToggleReaction={onToggleReaction}
           typingUsers={typingUsers}
           voice={voice}
           unreadCount={unreadCount}

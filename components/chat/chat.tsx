@@ -28,6 +28,7 @@ export interface ChatProps {
   onSendMessage: (message: string) => void;
   onTypingStart?: () => void;
   onTypingStop?: () => void;
+  onToggleReaction?: (messageId: string, emoji: string) => void;
   typingUsers?: TypingUser[];
   className?: string;
   voice?: VoiceConfig;
@@ -44,6 +45,7 @@ export function Chat({
   onSendMessage,
   onTypingStart,
   onTypingStop,
+  onToggleReaction,
   typingUsers = [],
   className,
   voice,
@@ -216,7 +218,13 @@ export function Chat({
                 <EmptyState />
               ) : (
                 messages.map(message => (
-                  <ChatMessageItem key={message.id} message={message} currentUserId={currentUserId} mode="sidebar" />
+                  <ChatMessageItem
+                    key={message.id}
+                    message={message}
+                    currentUserId={currentUserId}
+                    mode="sidebar"
+                    onToggleReaction={onToggleReaction}
+                  />
                 ))
               )}
 
@@ -268,7 +276,13 @@ export function Chat({
           </div>
         ) : (
           messages.map(message => (
-            <ChatMessageItem key={message.id} message={message} currentUserId={currentUserId} mode="overlay" />
+            <ChatMessageItem
+              key={message.id}
+              message={message}
+              currentUserId={currentUserId}
+              mode="overlay"
+              onToggleReaction={onToggleReaction}
+            />
           ))
         )}
 
