@@ -73,13 +73,18 @@ export function ChatInput({
 
   // Voice button handlers
   const handleVoiceButtonMouseDown = () => {
-    if (!voice?.isEnabled) return;
     longPressTriggeredRef.current = false;
+    if (!voice?.isEnabled) return; // Only start long-press timer when currently connected
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(() => {
+      // Mark as long-press, perform disconnect, keep flag true so the ensuing click is ignored
       longPressTriggeredRef.current = true;
       voice.onDisable();
       toast.success("Voice chat disconnected. It's quiet again!");
+      // After the click event from this press has had a chance to fire
+      setTimeout(() => {
+        longPressTriggeredRef.current = false;
+      }, 250);
     }, 600);
   };
 
@@ -89,7 +94,7 @@ export function ChatInput({
 
   const handleVoiceButtonClick = () => {
     if (!voice) return;
-    if (longPressTriggeredRef.current) return; // Ignore click right after long-press
+    if (longPressTriggeredRef.current) return;
     if (voice.isEnabled) {
       voice.onToggleMute();
     } else if (voice.overCap) {
@@ -103,6 +108,8 @@ export function ChatInput({
     if (!voice?.isEnabled) return;
     e.preventDefault();
     voice.onDisable();
+    toast.success('Voice chat disconnected.');
+    longPressTriggeredRef.current = false;
   };
 
   const inputSize = mode === 'overlay' ? 'h-8' : '';
@@ -241,7 +248,7 @@ export function ChatInput({
           <Button
             type="button"
             size={mode === 'overlay' ? 'sm' : 'icon'}
-            variant={voice.isEnabled ? (voice.isMuted ? 'secondary' : 'outline') : 'outline'}
+            variant={voice.isEnabled ? (voice.isMuted ? 'destructive' : 'outline') : 'outline'}
             onMouseDown={handleVoiceButtonMouseDown}
             onMouseUp={handleVoiceButtonMouseUp}
             onMouseLeave={handleVoiceButtonMouseUp}

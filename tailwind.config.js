@@ -128,9 +128,9 @@ module.exports = {
         'slow-slow': 'cubic-bezier(0.77, 0, 0.175, 1)',
         'slow-fast': 'cubic-bezier(0.5, 0, 0.75, 0)',
       },
-      transitionProperty: {
-        interactive: 'background-color, outline, box-shadow, transform',
-      },
+      // transitionProperty: {
+      //   interactive: 'background-color, outline, box-shadow, transform',
+      // },
     },
   },
   plugins: [

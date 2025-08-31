@@ -26,11 +26,6 @@ export function UserList({
   className,
   speakingUserIds,
 }: UserListProps) {
-  console.log(
-    '🧑‍🤝‍🧑 UserList received users:',
-    users.map(u => `${u.name} (${u.id})`)
-  );
-
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -60,67 +55,82 @@ export function UserList({
 
       <CardContent>
         <div className="space-y-6">
-          {sortedUsers.map(user => (
-            <div
-              key={user.id}
-              className={`flex items-center space-x-4 rounded-md p-4 transition-colors ${
-                user.id === currentUserId ? 'border border-primary bg-primary-50' : 'hover:bg-muted/50'
-              }`}
-            >
-              {/* User Info */}
-              <Avatar
-                className={`${speakingUserIds?.has(user.id) ? 'ring-2 ring-success-700 ring-offset-2' : ''}`}
-                size="lg"
+          {sortedUsers.map(user => {
+            const isSpeaking = speakingUserIds?.has(user.id);
+            return (
+              <div
+                key={user.id}
+                className={`flex items-center space-x-4 rounded-md p-4 transition-colors ${
+                  user.id === currentUserId ? 'border border-primary bg-primary-50' : 'hover:bg-muted/50'
+                }`}
               >
-                <AvatarFallback variant={user.id === currentUserId ? 'secondary' : 'default'}>
-                  {getInitials(user.name)}
-                </AvatarFallback>
-              </Avatar>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center space-x-2">
-                  <span className="truncate font-bold tracking-tight">
-                    {user.name}
-                    {user.id === currentUserId && <span className="ml-1 text-muted-foreground">(You)</span>}
-                  </span>
-                  {user.isHost && <Crown className="h-4 w-4 flex-shrink-0 text-primary" />}
+                {/* Avatar and Speaking Indicator */}
+                <div className="relative flex items-center justify-center">
+                  {isSpeaking && (
+                    <span
+                      aria-hidden
+                      className="absolute inset-0 animate-ping rounded-full opacity-60 ring-2 ring-success"
+                    />
+                  )}
+                  <Avatar
+                    className={`${
+                      isSpeaking
+                        ? 'shadow-sm ring-2 ring-success ring-offset-2 ring-offset-background transition-interactive'
+                        : ''
+                    } transition-interactive duration-150`}
+                    size="lg"
+                  >
+                    <AvatarFallback variant={user.id === currentUserId ? 'secondary' : 'default'}>
+                      {getInitials(user.name)}
+                    </AvatarFallback>
+                  </Avatar>
                 </div>
 
-                <div className="mt-1 flex items-center space-x-2">
-                  <User className="h-4 w-4 text-neutral" />
-                  <span className="tracking-tight text-neutral">{user.isHost ? 'Host' : 'Guest'}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="truncate font-bold tracking-tight">
+                      {user.name}
+                      {user.id === currentUserId && <span className="ml-1 text-muted-foreground">(You)</span>}
+                    </span>
+                    {user.isHost && <Crown className="h-4 w-4 flex-shrink-0 text-primary" />}
+                  </div>
+
+                  <div className="mt-1 flex items-center space-x-2">
+                    <User className="h-4 w-4 text-neutral" />
+                    <span className="tracking-tight text-neutral">{user.isHost ? 'Host' : 'Guest'}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-4">
+                  {/* Promote button for hosts to promote guests */}
+                  {currentUserIsHost && !user.isHost && user.id !== currentUserId && onPromoteUser && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onPromoteUser(user.id)}
+                      className="h-8 px-2"
+                      title={`Promote ${user.name} to host`}
+                    >
+                      <Crown className="h-4 w-4" />
+                    </Button>
+                  )}
+
+                  {/* Kick button for hosts to kick guests */}
+                  {currentUserIsHost && !user.isHost && user.id !== currentUserId && onKickUser && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => onKickUser(user.id)}
+                      className="h-8 px-2"
+                      title={`Kick ${user.name} from room`}
+                    >
+                      <UserX className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
-
-              <div className="flex items-center space-x-4">
-                {/* Promote button for hosts to promote guests */}
-                {currentUserIsHost && !user.isHost && user.id !== currentUserId && onPromoteUser && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onPromoteUser(user.id)}
-                    className="h-8 px-2"
-                    title={`Promote ${user.name} to host`}
-                  >
-                    <Crown className="h-4 w-4" />
-                  </Button>
-                )}
-
-                {/* Kick button for hosts to kick guests */}
-                {currentUserIsHost && !user.isHost && user.id !== currentUserId && onKickUser && (
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => onKickUser(user.id)}
-                    className="h-8 px-2"
-                    title={`Kick ${user.name} from room`}
-                  >
-                    <UserX className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           {users.length === 0 && (
             <div className="py-4 text-center text-muted-foreground">
