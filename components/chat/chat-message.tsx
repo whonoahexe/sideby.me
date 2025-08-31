@@ -7,6 +7,7 @@ import { MarkdownMessage } from './markdown-message';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { EmojiPicker, EmojiPickerSearch, EmojiPickerContent, EmojiPickerFooter } from '@/components/ui/emoji-picker';
 import { SmilePlus, Reply } from 'lucide-react';
+import { useFullscreenPortalContainer } from '@/hooks/use-fullscreen-portal-container';
 
 interface ChatMessageItemProps {
   message: ChatMessage;
@@ -26,6 +27,7 @@ export function ChatMessageItem({
   onQuoteClick,
 }: ChatMessageItemProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const portalContainer = useFullscreenPortalContainer();
 
   const getInitials = (name: string) =>
     name
@@ -129,6 +131,7 @@ export function ChatMessageItem({
                     side="top"
                     className="w-full max-w-[280px] p-0"
                     sideOffset={6}
+                    container={portalContainer}
                   >
                     <div
                       className="h-[320px] w-full"

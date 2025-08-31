@@ -7,6 +7,7 @@ import { Send, Mic, MicOff, Phone, Smile, X, Reply } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { EmojiPicker, EmojiPickerSearch, EmojiPickerContent, EmojiPickerFooter } from '@/components/ui/emoji-picker';
+import { useFullscreenPortalContainer } from '@/hooks/use-fullscreen-portal-container';
 
 interface VoiceConfig {
   isEnabled: boolean;
@@ -51,6 +52,8 @@ export function ChatInput({
   const ignoreNextCloseRef = useRef(false);
   const caretWasAtEndRef = useRef(true);
   const lastValueRef = useRef(inputMessage);
+
+  const portalContainer = useFullscreenPortalContainer();
 
   // When the external value changes, if caret was at end, keep scroll at end
   useEffect(() => {
@@ -198,7 +201,7 @@ export function ChatInput({
                 <Smile className={iconSize} />
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-full max-w-[270px] p-0" sideOffset={4}>
+            <PopoverContent align="end" className="w-full max-w-[270px] p-0" sideOffset={4} container={portalContainer}>
               <div
                 className="h-[320px] w-full"
                 onClick={e => {
