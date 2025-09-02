@@ -21,6 +21,8 @@ import { useFullscreenChatOverlay } from '@/hooks/use-fullscreen-chat-overlay';
 import { useVoiceChat } from '@/hooks/use-voice-chat';
 import { useVideoChat } from '@/hooks/use-video-chat';
 import { VideoChatGrid } from '@/components/room/video-chat-grid';
+import { Button } from '@/components/ui/button';
+import { Camera, CameraOff, PhoneOff, Video as VideoIcon } from 'lucide-react';
 
 type ClientVideoMeta = {
   originalUrl: string;
@@ -274,6 +276,66 @@ export default function RoomPage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-4">
+        {/* Video Chat (full-width above main player) */}
+        <div className="col-span-full mx-6">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Video Chat Control (single primary button like voice) */}
+            {!videochat.isEnabled ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={videochat.isConnecting}
+                onClick={() => videochat.enable()}
+                title="Hop on video chat"
+                aria-label="Join Video"
+              >
+                <VideoIcon className="h-4 w-4" />
+              </Button>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={videochat.isCameraOff ? 'destructive' : 'outline'}
+                  disabled={videochat.isConnecting}
+                  onClick={() => videochat.toggleCamera()}
+                  title={videochat.isCameraOff ? 'Turn camera on (hold leave soon)' : 'Turn camera off (hold leave soon)'}
+                  aria-label={videochat.isCameraOff ? 'Turn Camera On' : 'Turn Camera Off'}
+                >
+                  {videochat.isCameraOff ? <CameraOff className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => videochat.disable()}
+                  title="Leave video chat"
+                  aria-label="Leave Video"
+                >
+                  <PhoneOff className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+            {videochat.isEnabled && (
+              <span className="text-xs text-muted-foreground">
+                {videochat.remoteStreams.length + 1}/{5} in video
+              </span>
+            )}
+            {videochat.isConnecting && <span className="text-xs text-muted-foreground">Connecting...</span>}
+            {videochat.error && <span className="text-xs text-destructive">{videochat.error}</span>}
+          </div>
+          {videochat.isEnabled && (
+            <VideoChatGrid
+              localStream={videochat.localStream}
+              remoteStreams={videochat.remoteStreams}
+              currentUserId={currentUser.id}
+              isCameraOff={videochat.isCameraOff}
+              users={room.users}
+              className="mt-2 w-full"
+            />
+          )}
+        </div>
         {/* Main Content */}
         <div className="col-span-full lg:col-span-3">
           {/* Video Player */}
@@ -309,41 +371,6 @@ export default function RoomPage() {
               videoUrl={room.videoUrl}
             />
           )}
-          {/* Video Chat Grid */}
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center gap-2">
-              {!videochat.isEnabled ? (
-                <button
-                  onClick={() => videochat.enable()}
-                  className="rounded bg-primary px-2 py-1 text-xs text-primary-foreground"
-                >
-                  Join Video Chat
-                </button>
-              ) : (
-                <>
-                  <button onClick={() => videochat.toggleCamera()} className="rounded bg-secondary px-2 py-1 text-xs">
-                    {videochat.isCameraOff ? 'Turn Camera On' : 'Turn Camera Off'}
-                  </button>
-                  <button
-                    onClick={() => videochat.disable()}
-                    className="rounded bg-destructive px-2 py-1 text-xs text-destructive-foreground"
-                  >
-                    Leave Video Chat
-                  </button>
-                </>
-              )}
-              {videochat.isConnecting && <span className="text-xs text-muted-foreground">Connecting...</span>}
-              {videochat.error && <span className="text-xs text-destructive">{videochat.error}</span>}
-            </div>
-            {videochat.isEnabled && (
-              <VideoChatGrid
-                localStream={videochat.localStream}
-                remoteStreams={videochat.remoteStreams}
-                currentUserId={currentUser.id}
-                isCameraOff={videochat.isCameraOff}
-              />
-            )}
-          </div>
         </div>
 
         {/* Chat */}

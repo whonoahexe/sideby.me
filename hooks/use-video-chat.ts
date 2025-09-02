@@ -126,9 +126,29 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
   const toggleCamera = useCallback(() => {
     const s = localStreamRef.current;
     if (!s) return;
-    s.getVideoTracks().forEach(t => (t.enabled = !t.enabled));
-    setIsCameraOff(c => !c);
-  }, []);
+    const nextOff = !s.getVideoTracks()[0]?.enabled;
+    s.getVideoTracks().forEach(t => (t.enabled = nextOff));
+    setIsCameraOff(!isCameraOff);
+    // If turning camera back on, ensure tracks are attached to existing peers (in case browsers dropped them)
+    if (nextOff === true) return; // we just turned off
+    // turning on
+    for (const peerId of activePeerIds) {
+      getOrCreatePeer(peerId, true).then(pc => {
+        const existingSenders = pc.getSenders().filter(s => s.track && s.track.kind === 'video');
+        const track = s.getVideoTracks()[0];
+        if (!track) return;
+        if (existingSenders.length === 0) {
+          pc.addTrack(track, s);
+        } else {
+          try {
+            existingSenders[0].replaceTrack(track);
+          } catch {
+            /* ignore */
+          }
+        }
+      });
+    }
+  }, [activePeerIds, getOrCreatePeer, isCameraOff]);
 
   useEffect(() => {
     if (!socket || !currentUser) return;
