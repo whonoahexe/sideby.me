@@ -21,6 +21,8 @@ import { useFullscreenChatOverlay } from '@/hooks/use-fullscreen-chat-overlay';
 import { useVoiceChat } from '@/hooks/use-voice-chat';
 import { useVideoChat } from '@/hooks/use-video-chat';
 import { VideoChatGrid } from '@/components/room/video-chat-grid';
+import { VideoChatOverlay } from '@/components/room/video-chat-overlay';
+import { useFullscreenPortalContainer } from '@/hooks/use-fullscreen-portal-container';
 import { Spinner } from '../../../components/ui/spinner';
 
 type ClientVideoMeta = {
@@ -149,8 +151,15 @@ export default function RoomPage() {
   };
 
   // Use fullscreen chat overlay hook
-  const { showChatOverlay, isChatMinimized, toggleChatMinimize, closeChatOverlay, showChatOverlayManually } =
-    useFullscreenChatOverlay();
+  const {
+    isFullscreen,
+    showChatOverlay,
+    isChatMinimized,
+    toggleChatMinimize,
+    closeChatOverlay,
+    showChatOverlayManually,
+  } = useFullscreenChatOverlay();
+  const fullscreenPortalContainer = useFullscreenPortalContainer();
 
   // Use keyboard shortcuts hook
   useKeyboardShortcuts({
@@ -415,6 +424,17 @@ export default function RoomPage() {
           participantCount: videoParticipantCount,
         }}
       />
+      {videochat.isEnabled && isFullscreen && (
+        <VideoChatOverlay
+          isVisible={true}
+          localStream={videochat.localStream}
+          remoteStreams={videochat.remoteStreams}
+          currentUserId={currentUser.id}
+          isCameraOff={videochat.isCameraOff}
+          users={room.users}
+          portalContainer={fullscreenPortalContainer}
+        />
+      )}
     </div>
   );
 }

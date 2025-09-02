@@ -48,7 +48,7 @@ export const VideoChatGrid: React.FC<VideoChatGridProps> = ({
       />
       {remoteStreams.map(r => {
         const track = r.stream.getVideoTracks()[0];
-        const off = !track || track.muted || track.readyState !== 'live';
+        const off = !track || track.muted || track.readyState !== 'live' || !track.enabled;
         const u = userMap.get(r.userId);
         return <VideoTile key={r.userId} stream={r.stream} userId={r.userId} name={u?.name} isOff={off} />;
       })}
