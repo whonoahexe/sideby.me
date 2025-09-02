@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Mic, MicOff, Phone, Smile, X, Reply, Video, VideoOff } from 'lucide-react';
+import { Send, Mic, MicOff, Phone, Smile, X, Reply, Video, VideoOff, Camera, CameraOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { EmojiPicker, EmojiPickerSearch, EmojiPickerContent, EmojiPickerFooter } from '@/components/ui/emoji-picker';
@@ -132,7 +132,7 @@ export function ChatInput({
     videoLongPressTimerRef.current = setTimeout(() => {
       videoLongPressTriggeredRef.current = true;
       video.disable();
-      toast.success('Left video chat. Camera off and connection closed.');
+      toast.success(`You've left video chat. It's dark again.`);
       setTimeout(() => {
         videoLongPressTriggeredRef.current = false;
       }, 250);
@@ -157,7 +157,7 @@ export function ChatInput({
     if (!video?.isEnabled) return;
     e.preventDefault();
     video.disable();
-    toast.success('Left video chat. Camera off and connection closed.');
+    toast.success(`You've left video chat. It's dark again.`);
     videoLongPressTriggeredRef.current = false;
   };
 
@@ -356,9 +356,9 @@ export function ChatInput({
           >
             {video.isEnabled ? (
               video.isCameraOff ? (
-                <VideoOff className={iconSize} />
+                <CameraOff className={iconSize} />
               ) : (
-                <Video className={iconSize} />
+                <Camera className={iconSize} />
               )
             ) : (
               <Video className={iconSize} />

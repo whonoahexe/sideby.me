@@ -12,7 +12,7 @@ export interface PeerMapEntry {
 export interface UseWebRTCOptions {
   // Fired when a local ICE candidate is gathered
   onIceCandidate?: (peerId: string, candidate: RTCIceCandidate) => void;
-  // Fired on any connection state change (consumer decides how to react / cleanup / fallback)
+  // Fired on any connection state change
   onConnectionStateChange?: (
     peerId: string,
     state: RTCPeerConnectionState,
@@ -75,7 +75,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
       if (existing && !forceTurn) return existing.pc;
 
       if (existing && forceTurn) {
-        removePeer(id); // rebuild
+        removePeer(id);
       }
 
       const cfg = forceTurn ? await createRTCConfiguration() : createStunOnlyRTCConfiguration();

@@ -67,7 +67,7 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
 
   const ensureLocalCamera = useCallback(async () => {
     if (localStreamRef.current) return localStreamRef.current;
-    const stream = await requestCamera(false); // video only; user can use voice separately
+    const stream = await requestCamera(false); // video only, user can use voice separately
     if (!stream) throw new Error('camera-permission-denied');
     localStreamRef.current = stream;
     return stream;
@@ -109,7 +109,7 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
       if (!stream) throw new Error('camera-failed');
       socket.emit('videochat-join', { roomId });
     } catch (e) {
-      setError('Unable to access camera');
+      setError(`Looks like you don't want to use your camera.`);
       setIsConnecting(false);
       joinAttemptRef.current = false;
       setIsEnabled(false);
@@ -129,9 +129,9 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
     const nextOff = !s.getVideoTracks()[0]?.enabled;
     s.getVideoTracks().forEach(t => (t.enabled = nextOff));
     setIsCameraOff(!isCameraOff);
-    // If turning camera back on, ensure tracks are attached to existing peers (in case browsers dropped them)
-    if (nextOff === true) return; // we just turned off
-    // turning on
+    // If turning camera back on, ensure tracks are attached to existing peers
+    if (nextOff === true) return; // We just turned off
+    // Turning on
     for (const peerId of activePeerIds) {
       getOrCreatePeer(peerId, true).then(pc => {
         const existingSenders = pc.getSenders().filter(s => s.track && s.track.kind === 'video');

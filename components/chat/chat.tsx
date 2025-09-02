@@ -29,7 +29,7 @@ interface VideoConfig {
   enable: () => Promise<void> | void;
   disable: () => Promise<void> | void;
   toggleCamera: () => void;
-  participantCount?: number; // optional future use
+  participantCount?: number;
 }
 
 export interface ChatProps {

@@ -68,11 +68,13 @@ export function registerVideoChatHandlers(
     }
     if (!socket.rooms.has(vcRoomKey)) {
       if (current.length >= VIDEOCHAT_MAX_PARTICIPANTS) {
-        // quick second pass
+        // Quick second pass
         await new Promise(r => setTimeout(r, 30));
         ({ sockets: current } = computeValidVideoChatParticipants(io, roomId));
         if (current.length >= VIDEOCHAT_MAX_PARTICIPANTS) {
-          socket.emit('videochat-error', { error: 'Video chat is full (max 5).' });
+          socket.emit('videochat-error', {
+            error: `Whoa, it's a full house! The video channel is at its max of 5 people, unless Hulk's in the room.`,
+          });
           return;
         }
       }
@@ -80,7 +82,7 @@ export function registerVideoChatHandlers(
       ({ sockets: current } = computeValidVideoChatParticipants(io, roomId));
       slog('joined videochat', { count: current.length });
     }
-    // send existing peers (userIds)
+    // Send existing peers (userIds)
     const peers = current
       .filter(s => s.id !== socket.id)
       .map(s => s.data.userId!)

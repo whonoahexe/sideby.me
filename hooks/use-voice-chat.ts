@@ -115,7 +115,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       .catch(err => {
         dlog('remote audio play blocked', { userId, err: String(err) });
         toast.message('Enable audio', {
-          description: 'Browser blocked autoplay. Click anywhere or interact to allow voice playback.',
+          description: `Your browser is trying to be helpful by blocking audio. Just click anywhere on the page to unmute everyone.`,
         });
       });
   };
@@ -156,7 +156,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
   // Keep ref up to date for connection state callback
   cleanupPeerRef.current = cleanupPeer;
 
-  // Resets all state & refs for a clean future join.
+  // Resets all state & refs for a clean future join
   const cleanupAll = useCallback(() => {
     dlog('cleanupAll');
     closeAll();
@@ -246,7 +246,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       if (!stream) throw new Error('mic-failed');
       socket.emit('voice-join', { roomId });
     } catch (e) {
-      setError('Unable to access microphone');
+      setError(`Looks like you don't want to use your mic.`);
       setIsConnecting(false);
       joinAttemptRef.current = false;
       setIsEnabled(false);
@@ -282,7 +282,9 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
   const startSoloTimeout = useCallback(() => {
     if (soloTimeoutRef.current) clearTimeout(soloTimeoutRef.current);
     soloTimeoutRef.current = setTimeout(() => {
-      toast.error('🚨 Bandwidth Patrol', { description: 'Ending lonely voice session to save bandwidth.' });
+      toast.error('🚨 Bandwidth Patrol', {
+        description: 'Noah told me to end your lonely voice session to save bandwidth.',
+      });
       disable();
     }, SOLO_USER_TIMEOUT);
   }, [disable]);

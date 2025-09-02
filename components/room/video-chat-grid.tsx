@@ -35,13 +35,7 @@ export const VideoChatGrid: React.FC<VideoChatGridProps> = ({
   }, [localStream, isCameraOff]);
 
   return (
-    <div
-      className={cn(
-        // Converted from CSS grid to flex so that incomplete final rows are horizontally centered
-        'flex flex-wrap justify-center gap-2 rounded-md border border-border p-4',
-        className
-      )}
-    >
+    <div className={cn('flex flex-wrap justify-center gap-2 rounded-md border border-border p-4', className)}>
       <VideoTile
         local
         stream={localStream || undefined}
@@ -90,8 +84,7 @@ const VideoTile: React.FC<VideoTileProps> = ({ stream, userId, name, isOff, loca
   return (
     <div
       className={cn(
-        // Widths approximate the old 2/3/4 column breakpoints while allowing centering with flexbox
-        'group relative aspect-video w-1/2 overflow-hidden rounded-md border border-border bg-muted/60 sm:w-1/3 lg:w-1/4'
+        'group relative aspect-video w-1/2 overflow-hidden rounded-md border border-border bg-primary-50 sm:w-1/3 lg:w-1/4'
       )}
     >
       {!isOff && stream ? (
@@ -103,13 +96,13 @@ const VideoTile: React.FC<VideoTileProps> = ({ stream, userId, name, isOff, loca
           className={cn('h-full w-full object-cover', local && 'scale-x-[-1]')}
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10">
+        <div className="flex h-full w-full items-center justify-center">
           <Avatar size="lg">
             <AvatarFallback className="text-xs sm:text-sm">{initials}</AvatarFallback>
           </Avatar>
         </div>
       )}
-      <div className="absolute bottom-1 left-1 flex items-center gap-1 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
+      <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded bg-black/60 px-2 py-1 text-[10px] text-white">
         {isOff ? <VideoOff className="h-3 w-3" /> : <Video className="h-3 w-3" />}
         <span className="max-w-[70px] truncate">{local ? 'You' : name || userId.slice(0, 6)}</span>
       </div>
