@@ -31,7 +31,58 @@ const SOLO_USER_TIMEOUT = 120000; // 2 min bandwidth patrol auto-disconnect when
 export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVoiceChatOptions): UseVoiceChatReturn {
   const { socket } = useSocket();
   const { requestMic } = useMediaPermissions();
-  const { getOrCreatePeer, removePeer, closeAll } = useWebRTC({ kind: 'audio' });
+  // Bridge cleanup via ref so we can pass callback before cleanupPeer is defined
+  const cleanupPeerRef = useRef<(id: string) => void>(() => {});
+  const { getOrCreatePeer, removePeer, closeAll } = useWebRTC({
+    onIceCandidate: (peerId, candidate) => {
+      if (!socket) return;
+      socket.emit('voice-ice-candidate', { roomId, targetUserId: peerId, candidate });
+    },
+    onConnectionStateChange: (peerId, state) => {
+      if (state === 'failed' || state === 'closed' || state === 'disconnected') {
+        cleanupPeerRef.current(peerId);
+      }
+    },
+    onTrack: (peerId, ev) => {
+      const stream = ev.streams[0];
+      // Create or reuse hidden audio element
+      let audioEl = remoteAudioElsRef.current.get(peerId);
+      if (!audioEl) {
+        audioEl = document.createElement('audio');
+        audioEl.autoplay = true;
+        audioEl.dataset.userId = peerId;
+        audioEl.style.display = 'none';
+        document.body.appendChild(audioEl);
+        remoteAudioElsRef.current.set(peerId, audioEl);
+      }
+      audioEl.srcObject = stream;
+      attemptPlayback(audioEl, peerId);
+      // Speaking detection for remote peer
+      try {
+        if (!audioContextRef.current) audioContextRef.current = new AudioContext();
+        const ctx = audioContextRef.current;
+        const src = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        src.connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        const tick = () => {
+          analyser.getByteFrequencyData(data);
+          const avg = data.reduce((s, v) => s + v, 0) / data.length;
+          const speaking = avg > 20;
+          setSpeakingUserIds(prev => {
+            const next = new Set(prev);
+            speaking ? next.add(peerId) : next.delete(peerId);
+            return next;
+          });
+          const entry = analyserNodesRef.current.get(peerId);
+          const raf = requestAnimationFrame(tick);
+          if (entry) entry.rafId = raf;
+        };
+        analyserNodesRef.current.set(peerId, { analyser, source: src, rafId: requestAnimationFrame(tick) });
+      } catch {}
+    },
+  });
 
   const [isEnabled, setIsEnabled] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -102,6 +153,8 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
     },
     [removePeer]
   );
+  // Keep ref up to date for connection state callback
+  cleanupPeerRef.current = cleanupPeer;
 
   // Resets all state & refs for a clean future join.
   const cleanupAll = useCallback(() => {
@@ -261,61 +314,10 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
           const pc = await getOrCreatePeer(id, true);
           const local = await ensureLocalMic();
           local.getAudioTracks().forEach(track => pc.addTrack(track, local));
-          // Attach ICE + state handlers (initiator)
-          pc.onicecandidate = ev => {
-            if (ev.candidate) {
-              socket.emit('voice-ice-candidate', { roomId, targetUserId: id, candidate: ev.candidate });
-            }
-          };
-          pc.onconnectionstatechange = () => {
-            const state = pc.connectionState;
-            if (state === 'failed' || state === 'closed' || state === 'disconnected') {
-              cleanupPeer(id);
-            }
-          };
           const offer = await pc.createOffer({ offerToReceiveAudio: true });
           await pc.setLocalDescription(offer);
           socket.emit('voice-offer', { roomId, targetUserId: id, sdp: offer });
           setActivePeerIds(prev => (prev.includes(id) ? prev : [...prev, id]));
-          pc.ontrack = ev => {
-            const stream = ev.streams[0];
-            // Create hidden audio element for playback
-            let audioEl = remoteAudioElsRef.current.get(id);
-            if (!audioEl) {
-              audioEl = document.createElement('audio');
-              audioEl.autoplay = true;
-              /* playsInline not needed for audio */
-              audioEl.dataset.userId = id;
-              audioEl.style.display = 'none';
-              document.body.appendChild(audioEl);
-              remoteAudioElsRef.current.set(id, audioEl);
-            }
-            audioEl.srcObject = stream;
-            attemptPlayback(audioEl, id);
-            try {
-              if (!audioContextRef.current) audioContextRef.current = new AudioContext();
-              const ctx = audioContextRef.current;
-              const src = ctx!.createMediaStreamSource(stream);
-              const analyser = ctx!.createAnalyser();
-              analyser.fftSize = 512;
-              src.connect(analyser);
-              const data = new Uint8Array(analyser.frequencyBinCount);
-              const tick = () => {
-                analyser.getByteFrequencyData(data);
-                const avg = data.reduce((s, v) => s + v, 0) / data.length;
-                const speaking = avg > 20;
-                setSpeakingUserIds(prev => {
-                  const next = new Set(prev);
-                  speaking ? next.add(id) : next.delete(id);
-                  return next;
-                });
-                const entry = analyserNodesRef.current.get(id);
-                const raf = requestAnimationFrame(tick);
-                if (entry) entry.rafId = raf;
-              };
-              analyserNodesRef.current.set(id, { analyser, source: src, rafId: requestAnimationFrame(tick) });
-            } catch {}
-          };
         }
       });
     };
@@ -325,61 +327,9 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       if (fromUserId === currentUser.id) return;
       const pc = await getOrCreatePeer(fromUserId, false);
       if (pc.signalingState !== 'stable') return;
-      // Register ontrack before answer so we don't miss early track events
-      if (!pc.ontrack) {
-        pc.ontrack = ev => {
-          const stream = ev.streams[0];
-          let audioEl = remoteAudioElsRef.current.get(fromUserId);
-          if (!audioEl) {
-            audioEl = document.createElement('audio');
-            audioEl.autoplay = true;
-            audioEl.dataset.userId = fromUserId;
-            audioEl.style.display = 'none';
-            document.body.appendChild(audioEl);
-            remoteAudioElsRef.current.set(fromUserId, audioEl);
-          }
-          audioEl.srcObject = stream;
-          attemptPlayback(audioEl, fromUserId);
-          try {
-            if (!audioContextRef.current) audioContextRef.current = new AudioContext();
-            const ctx = audioContextRef.current;
-            const src = ctx.createMediaStreamSource(stream);
-            const analyser = ctx.createAnalyser();
-            analyser.fftSize = 512;
-            src.connect(analyser);
-            const data = new Uint8Array(analyser.frequencyBinCount);
-            const tick = () => {
-              analyser.getByteFrequencyData(data);
-              const avg = data.reduce((s, v) => s + v, 0) / data.length;
-              const speaking = avg > 20;
-              setSpeakingUserIds(prev => {
-                const next = new Set(prev);
-                speaking ? next.add(fromUserId) : next.delete(fromUserId);
-                return next;
-              });
-              const entry = analyserNodesRef.current.get(fromUserId);
-              const raf = requestAnimationFrame(tick);
-              if (entry) entry.rafId = raf;
-            };
-            analyserNodesRef.current.set(fromUserId, { analyser, source: src, rafId: requestAnimationFrame(tick) });
-          } catch {}
-        };
-      }
       await pc.setRemoteDescription(new RTCSessionDescription(sdp));
       const local = await ensureLocalMic();
       local.getAudioTracks().forEach(t => pc.addTrack(t, local));
-      // Attach ICE/state handlers (answerer)
-      pc.onicecandidate = ev => {
-        if (ev.candidate) {
-          socket.emit('voice-ice-candidate', { roomId, targetUserId: fromUserId, candidate: ev.candidate });
-        }
-      };
-      pc.onconnectionstatechange = () => {
-        const state = pc.connectionState;
-        if (state === 'failed' || state === 'closed' || state === 'disconnected') {
-          cleanupPeer(fromUserId);
-        }
-      };
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       socket.emit('voice-answer', { roomId, targetUserId: fromUserId, sdp: answer });
