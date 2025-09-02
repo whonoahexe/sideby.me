@@ -48,7 +48,7 @@ export const VideoChatGrid: React.FC<VideoChatGridProps> = ({
       />
       {remoteStreams.map(r => {
         const track = r.stream.getVideoTracks()[0];
-        const off = !track || !track.enabled || track.readyState !== 'live';
+        const off = !track || track.muted || track.readyState !== 'live';
         const u = userMap.get(r.userId);
         return <VideoTile key={r.userId} stream={r.stream} userId={r.userId} name={u?.name} isOff={off} />;
       })}
@@ -84,7 +84,7 @@ const VideoTile: React.FC<VideoTileProps> = ({ stream, userId, name, isOff, loca
   return (
     <div
       className={cn(
-        'group relative aspect-video overflow-hidden rounded-md border border-border bg-primary-50 sm:w-1/3 md:w-1/2 lg:w-1/4'
+        'group relative aspect-video w-full overflow-hidden rounded-md border border-border bg-primary-50 sm:w-1/3 md:w-1/2 lg:w-1/4'
       )}
     >
       {!isOff && stream ? (

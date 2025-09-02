@@ -250,6 +250,13 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
       if (remaining.length === 0) startSoloTimeout();
     };
 
+    // Another peer joined -> cancel solo timeout (we're not alone anymore)
+    const handlePeerJoined = ({ userId }: { userId: string }) => {
+      if (userId && userId !== currentUser.id) {
+        clearSoloTimeout();
+      }
+    };
+
     // Server-side video chat error -> surface to user & reset pending join attempt
     const handleVideoChatError = ({ error }: { error: string }) => {
       setError(error);
@@ -270,6 +277,7 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
     socket.on('videochat-answer-received', handleAnswer);
     socket.on('videochat-ice-candidate-received', handleIce);
     socket.on('videochat-peer-left', handlePeerLeft);
+    socket.on('videochat-peer-joined', handlePeerJoined);
     socket.on('videochat-error', handleVideoChatError);
     socket.on('videochat-participant-count', handleCount);
     return () => {
@@ -278,6 +286,7 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
       socket.off('videochat-answer-received', handleAnswer);
       socket.off('videochat-ice-candidate-received', handleIce);
       socket.off('videochat-peer-left', handlePeerLeft);
+      socket.off('videochat-peer-joined', handlePeerJoined);
       socket.off('videochat-error', handleVideoChatError);
       socket.off('videochat-participant-count', handleCount);
     };
@@ -302,6 +311,16 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
     },
     [cleanupAll, clearSoloTimeout]
   );
+
+  // Reactively (re)start / clear patrol timeout on roster changes
+  useEffect(() => {
+    if (!isEnabled) {
+      clearSoloTimeout();
+      return;
+    }
+    if (activePeerIds.length === 0) startSoloTimeout();
+    else clearSoloTimeout();
+  }, [isEnabled, activePeerIds, startSoloTimeout, clearSoloTimeout]);
 
   return {
     isEnabled,

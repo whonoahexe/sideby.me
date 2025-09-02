@@ -380,11 +380,19 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       if (r === roomId) setPublicParticipantCount(count);
     };
 
+    // New peer joined -> we're no longer alone, cancel pending bandwidth patrol
+    const handlePeerJoined = ({ userId }: { userId: string }) => {
+      if (userId && userId !== currentUser.id) {
+        clearSoloTimeout();
+      }
+    };
+
     socket.on('voice-existing-peers', handleExistingPeers);
     socket.on('voice-offer-received', handleOffer);
     socket.on('voice-answer-received', handleAnswer);
     socket.on('voice-ice-candidate-received', handleIce);
     socket.on('voice-peer-left', handlePeerLeft);
+    socket.on('voice-peer-joined', handlePeerJoined);
     socket.on('voice-error', handleVoiceError);
     socket.on('voice-participant-count', handleCount);
     return () => {
@@ -393,6 +401,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       socket.off('voice-answer-received', handleAnswer);
       socket.off('voice-ice-candidate-received', handleIce);
       socket.off('voice-peer-left', handlePeerLeft);
+      socket.off('voice-peer-joined', handlePeerJoined);
       socket.off('voice-error', handleVoiceError);
       socket.off('voice-participant-count', handleCount);
     };
@@ -417,6 +426,16 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
     },
     [cleanupAll, clearSoloTimeout]
   );
+
+  // Reactively manage solo timeout when peer roster changes (defensive redundancy)
+  useEffect(() => {
+    if (!isEnabled) {
+      clearSoloTimeout();
+      return;
+    }
+    if (activePeerIds.length === 0) startSoloTimeout();
+    else clearSoloTimeout();
+  }, [isEnabled, activePeerIds, startSoloTimeout, clearSoloTimeout]);
 
   return {
     isEnabled,
