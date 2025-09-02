@@ -228,6 +228,70 @@ export const VoiceIceCandidateEventResponseSchema = z.object({
   candidate: z.any(),
 });
 
+// Video Chat (camera) schemas (mirrors voice but video-only track)
+export const VideoChatJoinDataSchema = z.object({
+  roomId: RoomIdSchema,
+});
+
+export const VideoChatLeaveDataSchema = z.object({
+  roomId: RoomIdSchema,
+});
+
+export const VideoChatOfferSchema = z.object({
+  roomId: RoomIdSchema,
+  targetUserId: z.string().uuid(),
+  sdp: z.any(),
+});
+
+export const VideoChatAnswerSchema = z.object({
+  roomId: RoomIdSchema,
+  targetUserId: z.string().uuid(),
+  sdp: z.any(),
+});
+
+export const VideoChatIceCandidateSchema = z.object({
+  roomId: RoomIdSchema,
+  targetUserId: z.string().uuid(),
+  candidate: z.any(),
+});
+
+export const VideoChatExistingPeersResponseSchema = z.object({
+  userIds: z.array(z.string().uuid()),
+});
+
+export const VideoChatPeerJoinResponseSchema = z.object({
+  userId: z.string().uuid(),
+});
+
+export const VideoChatPeerLeaveResponseSchema = z.object({
+  userId: z.string().uuid(),
+});
+
+export const VideoChatErrorResponseSchema = z.object({
+  error: z.string(),
+});
+
+export const VideoChatParticipantCountResponseSchema = z.object({
+  roomId: RoomIdSchema,
+  count: z.number().int().min(0),
+  max: z.number().int().min(1).optional(),
+});
+
+export const VideoChatOfferEventResponseSchema = z.object({
+  fromUserId: z.string().uuid(),
+  sdp: z.any(),
+});
+
+export const VideoChatAnswerEventResponseSchema = z.object({
+  fromUserId: z.string().uuid(),
+  sdp: z.any(),
+});
+
+export const VideoChatIceCandidateEventResponseSchema = z.object({
+  fromUserId: z.string().uuid(),
+  candidate: z.any(),
+});
+
 // Response schemas
 export const RoomCreatedResponseSchema = z.object({
   roomId: RoomIdSchema,
@@ -358,3 +422,18 @@ export type VoiceOfferEventResponse = z.infer<typeof VoiceOfferEventResponseSche
 export type VoiceAnswerEventResponse = z.infer<typeof VoiceAnswerEventResponseSchema>;
 export type VoiceIceCandidateEventResponse = z.infer<typeof VoiceIceCandidateEventResponseSchema>;
 export type VoiceParticipantCountResponse = z.infer<typeof VoiceParticipantCountResponseSchema>;
+
+// Video chat types
+export type VideoChatJoinData = z.infer<typeof VideoChatJoinDataSchema>;
+export type VideoChatLeaveData = z.infer<typeof VideoChatLeaveDataSchema>;
+export type VideoChatOffer = z.infer<typeof VideoChatOfferSchema>;
+export type VideoChatAnswer = z.infer<typeof VideoChatAnswerSchema>;
+export type VideoChatIceCandidate = z.infer<typeof VideoChatIceCandidateSchema>;
+export type VideoChatExistingPeersResponse = z.infer<typeof VideoChatExistingPeersResponseSchema>;
+export type VideoChatPeerJoinResponse = z.infer<typeof VideoChatPeerJoinResponseSchema>;
+export type VideoChatPeerLeaveResponse = z.infer<typeof VideoChatPeerLeaveResponseSchema>;
+export type VideoChatErrorResponse = z.infer<typeof VideoChatErrorResponseSchema>;
+export type VideoChatParticipantCountResponse = z.infer<typeof VideoChatParticipantCountResponseSchema>;
+export type VideoChatOfferEventResponse = z.infer<typeof VideoChatOfferEventResponseSchema>;
+export type VideoChatAnswerEventResponse = z.infer<typeof VideoChatAnswerEventResponseSchema>;
+export type VideoChatIceCandidateEventResponse = z.infer<typeof VideoChatIceCandidateEventResponseSchema>;

@@ -39,6 +39,19 @@ import type {
   VoiceIceCandidateEventResponse,
   VoiceParticipantCountResponse,
   ReactionUpdatedResponse,
+  VideoChatJoinData,
+  VideoChatLeaveData,
+  VideoChatOffer,
+  VideoChatAnswer,
+  VideoChatIceCandidate,
+  VideoChatPeerJoinResponse,
+  VideoChatPeerLeaveResponse,
+  VideoChatErrorResponse,
+  VideoChatExistingPeersResponse,
+  VideoChatOfferEventResponse,
+  VideoChatAnswerEventResponse,
+  VideoChatIceCandidateEventResponse,
+  VideoChatParticipantCountResponse,
 } from './schemas';
 
 export interface SocketEvents {
@@ -107,4 +120,20 @@ export interface SocketEvents {
   'voice-peer-left': (data: VoicePeerLeaveResponse) => void;
   'voice-error': (data: VoiceErrorResponse) => void;
   'voice-participant-count': (data: VoiceParticipantCountResponse) => void;
+  // Video chat signaling (camera)
+  // Client -> Server
+  'videochat-join': (data: VideoChatJoinData) => void;
+  'videochat-leave': (data: VideoChatLeaveData) => void;
+  'videochat-offer': (data: VideoChatOffer) => void;
+  'videochat-answer': (data: VideoChatAnswer) => void;
+  'videochat-ice-candidate': (data: VideoChatIceCandidate) => void;
+  // Server -> Client
+  'videochat-peer-joined': (data: VideoChatPeerJoinResponse) => void;
+  'videochat-existing-peers': (data: VideoChatExistingPeersResponse) => void;
+  'videochat-offer-received': (data: VideoChatOfferEventResponse) => void;
+  'videochat-answer-received': (data: VideoChatAnswerEventResponse) => void;
+  'videochat-ice-candidate-received': (data: VideoChatIceCandidateEventResponse) => void;
+  'videochat-peer-left': (data: VideoChatPeerLeaveResponse) => void;
+  'videochat-error': (data: VideoChatErrorResponse) => void;
+  'videochat-participant-count': (data: VideoChatParticipantCountResponse) => void;
 }

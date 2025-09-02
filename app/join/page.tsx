@@ -9,6 +9,7 @@ import { AtSign, Hash, Users, MessageCircle, Eye, LucideIcon, Crown } from 'luci
 import { Icon } from '../../components/ui/icon';
 import HowItWorks from '@/components/pages/how-it-works';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 const QUIRKY_USERNAMES = [
   'The Plus One',
@@ -60,6 +61,13 @@ export default function JoinRoomPage() {
     handleJoinRoom,
     handleRoomIdChange,
   } = useJoinRoom();
+  // Keep a deterministic placeholder for SSR and update to a random one on the client
+  const DEFAULT_PLACEHOLDER = `e.g., ${QUIRKY_USERNAMES[1]}`;
+  const [placeholder, setPlaceholder] = useState<string>(DEFAULT_PLACEHOLDER);
+
+  useEffect(() => {
+    setPlaceholder(`e.g., ${getRandomUsername()}`);
+  }, []);
 
   return (
     <>
@@ -125,7 +133,7 @@ export default function JoinRoomPage() {
                       type="text"
                       value={userName}
                       onChange={e => setUserName(e.target.value)}
-                      placeholder={`e.g., ${getRandomUsername()}`}
+                      placeholder={placeholder}
                       className="pl-10 text-base tracking-tight sm:text-lg"
                       maxLength={50}
                       required

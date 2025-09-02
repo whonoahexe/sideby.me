@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Mic, MicOff, Phone, Smile, X, Reply } from 'lucide-react';
+import { Send, Mic, MicOff, Phone, Smile, X, Reply, Video, Camera, CameraOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { EmojiPicker, EmojiPickerSearch, EmojiPickerContent, EmojiPickerFooter } from '@/components/ui/emoji-picker';
@@ -25,6 +25,14 @@ interface ChatInputProps {
   onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
   voice?: VoiceConfig;
+  video?: {
+    isEnabled: boolean;
+    isCameraOff: boolean;
+    isConnecting: boolean;
+    enable: () => Promise<void> | void;
+    disable: () => Promise<void> | void;
+    toggleCamera: () => void;
+  };
   mode?: 'sidebar' | 'overlay';
   onEmojiSelect?: (emoji: string) => void;
   replyTo?: {
@@ -40,6 +48,7 @@ export function ChatInput({
   onInputChange,
   onSubmit,
   voice,
+  video,
   mode = 'sidebar',
   onEmojiSelect,
   replyTo,
@@ -110,6 +119,46 @@ export function ChatInput({
     voice.onDisable();
     toast.success("Voice chat disconnected. It's quiet again!");
     longPressTriggeredRef.current = false;
+  };
+
+  // Video button handlers (mirrors voice logic)
+  const videoLongPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const videoLongPressTriggeredRef = useRef(false);
+
+  const handleVideoButtonMouseDown = () => {
+    videoLongPressTriggeredRef.current = false;
+    if (!video?.isEnabled) return; // Only enable long press to leave when already connected
+    if (videoLongPressTimerRef.current) clearTimeout(videoLongPressTimerRef.current);
+    videoLongPressTimerRef.current = setTimeout(() => {
+      videoLongPressTriggeredRef.current = true;
+      video.disable();
+      toast.success(`You've left video chat. It's dark again.`);
+      setTimeout(() => {
+        videoLongPressTriggeredRef.current = false;
+      }, 250);
+    }, 600);
+  };
+
+  const handleVideoButtonMouseUp = () => {
+    if (videoLongPressTimerRef.current) clearTimeout(videoLongPressTimerRef.current);
+  };
+
+  const handleVideoButtonClick = () => {
+    if (!video) return;
+    if (videoLongPressTriggeredRef.current) return;
+    if (video.isEnabled) {
+      video.toggleCamera();
+    } else {
+      video.enable();
+    }
+  };
+
+  const handleVideoButtonContextMenu = (e: React.MouseEvent) => {
+    if (!video?.isEnabled) return;
+    e.preventDefault();
+    video.disable();
+    toast.success(`You've left video chat. It's dark again.`);
+    videoLongPressTriggeredRef.current = false;
   };
 
   const inputSize = mode === 'overlay' ? 'h-8' : '';
@@ -276,6 +325,43 @@ export function ChatInput({
               )
             ) : (
               <Phone className={iconSize} />
+            )}
+          </Button>
+        )}
+
+        {/* Video button */}
+        {video && (
+          <Button
+            type="button"
+            size={mode === 'overlay' ? 'sm' : 'icon'}
+            variant={video.isEnabled ? (video.isCameraOff ? 'destructive' : 'outline') : 'outline'}
+            onMouseDown={handleVideoButtonMouseDown}
+            onMouseUp={handleVideoButtonMouseUp}
+            onMouseLeave={handleVideoButtonMouseUp}
+            onTouchStart={handleVideoButtonMouseDown}
+            onTouchEnd={handleVideoButtonMouseUp}
+            onTouchCancel={handleVideoButtonMouseUp}
+            onClick={handleVideoButtonClick}
+            onContextMenu={handleVideoButtonContextMenu}
+            disabled={video.isConnecting}
+            className={buttonSize ? `${buttonSize} p-0` : ''}
+            title={
+              video.isEnabled
+                ? video.isCameraOff
+                  ? 'Turn camera on (hold to leave video)'
+                  : 'Turn camera off (hold to leave video)'
+                : 'Hop on video chat'
+            }
+            aria-label={video.isEnabled ? (video.isCameraOff ? 'Enable Camera' : 'Disable Camera') : 'Join Video'}
+          >
+            {video.isEnabled ? (
+              video.isCameraOff ? (
+                <CameraOff className={iconSize} />
+              ) : (
+                <Camera className={iconSize} />
+              )
+            ) : (
+              <Video className={iconSize} />
             )}
           </Button>
         )}

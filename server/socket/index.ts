@@ -6,6 +6,7 @@ import { registerRoomHandlers } from './handlers/room';
 import { registerVideoHandlers } from './handlers/video';
 import { registerChatHandlers } from './handlers/chat';
 import { registerVoiceHandlers } from './handlers/voice';
+import { registerVideoChatHandlers } from './handlers/videochat';
 import { handleDisconnect } from './handlers/disconnect';
 
 let io: IOServer | undefined;
@@ -35,6 +36,7 @@ export function initSocketIO(httpServer: HTTPServer): IOServer {
     registerVideoHandlers(socket, io!);
     registerChatHandlers(socket, io!);
     registerVoiceHandlers(socket, io!);
+    registerVideoChatHandlers(socket, io!);
 
     // Handle disconnect
     socket.on('disconnect', () => handleDisconnect(socket));
