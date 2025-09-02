@@ -35,6 +35,7 @@ interface VideoConfig {
 export interface ChatProps {
   messages: ChatMessage[];
   currentUserId: string;
+  users?: { id: string; name: string }[];
   onSendMessage: (
     message: string,
     replyTo?: { messageId: string; userId: string; userName: string; message: string }
@@ -56,6 +57,7 @@ export interface ChatProps {
 export function Chat({
   messages,
   currentUserId,
+  users = [],
   onSendMessage,
   onTypingStart,
   onTypingStop,
@@ -294,6 +296,7 @@ export function Chat({
                       onToggleReaction={onToggleReaction}
                       onReply={handleReply}
                       onQuoteClick={handleQuoteClick}
+                      users={users}
                     />
                   </div>
                 ))
@@ -308,6 +311,7 @@ export function Chat({
           <ChatInput
             inputMessage={inputMessage}
             onInputChange={handleInputChange}
+            onValueChange={v => setInputMessage(v)}
             onSubmit={handleSendMessage}
             voice={voice}
             video={video}
@@ -321,6 +325,8 @@ export function Chat({
                 onTypingStart?.();
               }
             }}
+            users={users}
+            currentUserId={currentUserId}
           />
         </CardContent>
       </Card>
@@ -369,6 +375,7 @@ export function Chat({
                 onToggleReaction={onToggleReaction}
                 onReply={handleReply}
                 onQuoteClick={handleQuoteClick}
+                users={users}
               />
             </div>
           ))
@@ -382,6 +389,7 @@ export function Chat({
       <ChatInput
         inputMessage={inputMessage}
         onInputChange={handleInputChange}
+        onValueChange={v => setInputMessage(v)}
         onSubmit={handleSendMessage}
         voice={voice}
         video={video}
@@ -395,6 +403,8 @@ export function Chat({
             onTypingStart?.();
           }
         }}
+        users={users}
+        currentUserId={currentUserId}
       />
     </>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ChatMessage } from '@/types';
 import { MarkdownMessage } from './markdown-message';
@@ -16,6 +16,7 @@ interface ChatMessageItemProps {
   onToggleReaction?: (messageId: string, emoji: string) => void;
   onReply?: (messageId: string, userName: string, message: string) => void;
   onQuoteClick?: (messageId: string) => void;
+  users?: { id: string; name: string }[];
 }
 
 export function ChatMessageItem({
@@ -25,6 +26,7 @@ export function ChatMessageItem({
   onToggleReaction,
   onReply,
   onQuoteClick,
+  users = [],
 }: ChatMessageItemProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const portalContainer = useFullscreenPortalContainer();
@@ -94,7 +96,7 @@ export function ChatMessageItem({
             style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
           >
             {/* Message content */}
-            <MarkdownMessage content={message.message} />
+            <MessageWithMentions content={message.message} currentUserId={currentUserId} users={users} />
 
             {/* Action buttons (Reply & Reaction picker) */}
             <div className={`absolute -top-3 ${isOwnMessage ? 'right-2' : 'left-2'} flex gap-1`}>
@@ -185,3 +187,110 @@ export function ChatMessageItem({
     </div>
   );
 }
+
+// Mention highlights supports structured tokens (@[Name](uuid)) and plain @Name
+const MessageWithMentions = ({
+  content,
+  currentUserId,
+  users = [],
+}: {
+  content: string;
+  currentUserId: string;
+  users?: { id: string; name: string }[];
+}) => {
+  const STRUCTURED = /@\[([^\]]{1,30})\]\(([0-9a-fA-F\-]{36})\)/g;
+  const hasStructured = STRUCTURED.test(content);
+  STRUCTURED.lastIndex = 0;
+
+  // Fast path: no '@' at all
+  if (!content.includes('@')) return <MarkdownMessage content={content} />;
+
+  if (hasStructured) {
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = STRUCTURED.exec(content))) {
+      const [full, name, id] = m;
+      const start = m.index;
+      if (start > lastIndex) {
+        const slice = content.slice(lastIndex, start);
+        parts.push(<MarkdownMessage key={start + '-pre'} content={slice} />);
+      }
+      const isYou = id === currentUserId;
+      parts.push(
+        <span
+          key={start + '-mention'}
+          className={`inline-block rounded bg-primary-50 px-1 py-0.5 font-medium text-primary-foreground shadow-sm ring-1 ${
+            isYou ? 'outline-none ring-2 ring-offset-1 ring-offset-background' : ''
+          }`}
+          title={`Mention: ${name}${isYou ? ' (you)' : ''}`}
+        >
+          @{name}
+        </span>
+      );
+      lastIndex = start + full.length;
+    }
+    if (lastIndex < content.length) parts.push(<MarkdownMessage key={'final'} content={content.slice(lastIndex)} />);
+    return <>{parts}</>;
+  }
+
+  // Plain mention mode: try to match @Name where Name equals a user name (case-insensitive).
+  if (!users.length) return <MarkdownMessage content={content} />;
+  const nameMap = new Map(users.map(u => [u.name.toLowerCase(), u] as const));
+  const parts: React.ReactNode[] = [];
+  let i = 0;
+  const len = content.length;
+  while (i < len) {
+    const ch = content[i];
+    if (ch === '@') {
+      // Only treat as mention if start or preceded by whitespace
+      const prev = i === 0 ? ' ' : content[i - 1];
+      if (!/\s/.test(prev)) {
+        parts.push(<React.Fragment key={i}>{ch}</React.Fragment>);
+        i += 1;
+        continue;
+      }
+      // Try longest matching name
+      let matched: { id: string; name: string } | null = null;
+      let matchedLength = 0;
+      for (const [lowerName, user] of nameMap.entries()) {
+        const candidate = content.slice(i + 1, i + 1 + lowerName.length);
+        if (candidate.toLowerCase() === lowerName) {
+          // Boundary check (end or whitespace / punctuation)
+          const boundaryChar = content[i + 1 + lowerName.length] || '';
+          if (boundaryChar === '' || /[\s.,!?;:)/\]]/.test(boundaryChar)) {
+            if (lowerName.length > matchedLength) {
+              matched = user;
+              matchedLength = lowerName.length;
+            }
+          }
+        }
+      }
+      if (matched) {
+        const isYou = matched.id === currentUserId;
+        parts.push(
+          <span
+            key={i + '-mention-plain'}
+            className={`inline-block rounded bg-primary/30 px-1 py-0.5 font-medium text-primary-foreground ring-1 ${
+              isYou ? 'outline-none ring-2 ring-offset-1 ring-offset-background' : ''
+            }`}
+            title={`Mention: ${matched.name}${isYou ? ' (you)' : ''}`}
+          >
+            @{matched.name}
+          </span>
+        );
+        i += 1 + matchedLength;
+        continue;
+      }
+      parts.push(<React.Fragment key={i}>{ch}</React.Fragment>);
+      i += 1;
+    } else {
+      const nextAt = content.indexOf('@', i + 1);
+      const end = nextAt === -1 ? len : nextAt;
+      const slice = content.slice(i, end);
+      parts.push(<MarkdownMessage key={i + '-txt'} content={slice} />);
+      i = end;
+    }
+  }
+  return <>{parts}</>;
+};

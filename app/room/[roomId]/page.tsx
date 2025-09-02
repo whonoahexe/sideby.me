@@ -331,6 +331,7 @@ export default function RoomPage() {
             mode="sidebar"
             messages={messages}
             currentUserId={currentUser.id}
+            users={room.users.map(u => ({ id: u.id, name: u.name }))}
             onSendMessage={handleSendMessage}
             onTypingStart={handleTypingStart}
             onTypingStop={handleTypingStop}
@@ -394,6 +395,7 @@ export default function RoomPage() {
       <ChatOverlay
         messages={messages}
         currentUserId={currentUser.id}
+        users={room.users.map(u => ({ id: u.id, name: u.name }))}
         onSendMessage={handleSendMessage}
         onTypingStart={handleTypingStart}
         onTypingStop={handleTypingStop}

@@ -33,6 +33,7 @@ interface VideoConfig {
 interface ChatOverlayProps {
   messages: ChatMessage[];
   currentUserId: string;
+  users?: { id: string; name: string }[];
   onSendMessage: (
     message: string,
     replyTo?: { messageId: string; userId: string; userName: string; message: string }
@@ -53,6 +54,7 @@ interface ChatOverlayProps {
 export function ChatOverlay({
   messages,
   currentUserId,
+  users = [],
   onSendMessage,
   onTypingStart,
   onTypingStop,
@@ -121,6 +123,7 @@ export function ChatOverlay({
           mode="overlay"
           messages={messages}
           currentUserId={currentUserId}
+          users={users}
           onSendMessage={onSendMessage}
           onTypingStart={onTypingStart}
           onTypingStop={onTypingStop}

@@ -23,6 +23,7 @@ interface VoiceConfig {
 interface ChatInputProps {
   inputMessage: string;
   onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onValueChange?: (value: string) => void; // programmatic changes (mentions, emoji, etc.)
   onSubmit: (e: React.FormEvent) => void;
   voice?: VoiceConfig;
   video?: {
@@ -41,11 +42,14 @@ interface ChatInputProps {
     message: string;
   } | null;
   onCancelReply?: () => void;
+  users?: { id: string; name: string }[];
+  currentUserId?: string;
 }
 
 export function ChatInput({
   inputMessage,
   onInputChange,
+  onValueChange,
   onSubmit,
   voice,
   video,
@@ -53,6 +57,8 @@ export function ChatInput({
   onEmojiSelect,
   replyTo,
   onCancelReply,
+  users = [],
+  currentUserId,
 }: ChatInputProps) {
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const longPressTriggeredRef = useRef(false);
@@ -61,6 +67,18 @@ export function ChatInput({
   const ignoreNextCloseRef = useRef(false);
   const caretWasAtEndRef = useRef(true);
   const lastValueRef = useRef(inputMessage);
+  // Mention state
+  const [mentionActive, setMentionActive] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionAnchor, setMentionAnchor] = useState<number | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const prevMentionQueryRef = useRef<string>('');
+
+  const filteredUsers = mentionActive
+    ? users
+        .filter(u => u.name.toLowerCase().includes(mentionQuery.toLowerCase()))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    : [];
 
   const portalContainer = useFullscreenPortalContainer();
 
@@ -161,15 +179,38 @@ export function ChatInput({
     videoLongPressTriggeredRef.current = false;
   };
 
-  const inputSize = mode === 'overlay' ? 'h-8' : '';
-  const buttonSize = mode === 'overlay' ? 'h-8 w-8' : '';
-  const iconSize = mode === 'overlay' ? 'h-3 w-3' : 'h-4 w-4';
-  const spacing = mode === 'overlay' ? 'gap-2' : 'space-x-2';
+  const insertMention = (user: { id: string; name: string }) => {
+    const el = inputRef.current;
+    if (!el) return;
+    const anchor = mentionAnchor ?? 0;
+    const caret = el.selectionStart ?? inputMessage.length;
+    // Insert display form only; conversion to machine tokens happens on send
+    const display = `@${user.name} `;
+    const nextValue = (inputMessage.slice(0, anchor) + display + inputMessage.slice(caret)).slice(0, 500);
+    onValueChange?.(nextValue);
+    // Update caret after React updates value
+    requestAnimationFrame(() => {
+      if (!el) return;
+      try {
+        const pos = anchor + display.length;
+        el.focus();
+        el.selectionStart = el.selectionEnd = pos;
+      } catch {}
+    });
+    setMentionActive(false);
+    setMentionQuery('');
+    setMentionAnchor(null);
+  };
 
   const truncateMessage = (text: string, maxLength: number = 80) => {
     if (text.length <= maxLength) return text;
     return text.slice(0, maxLength) + '...';
   };
+
+  const inputSize = mode === 'overlay' ? 'h-8' : '';
+  const buttonSize = mode === 'overlay' ? 'h-8 w-8' : '';
+  const iconSize = mode === 'overlay' ? 'h-3 w-3' : 'h-4 w-4';
+  const spacing = mode === 'overlay' ? 'gap-2' : 'space-x-2';
 
   return (
     <div className={`relative border-t border-border ${mode === 'overlay' ? 'border-border p-4' : 'mt-1 pt-8'}`}>
@@ -222,17 +263,117 @@ export function ChatInput({
               if (!el) return;
               caretWasAtEndRef.current = el.selectionStart === el.value.length && el.selectionEnd === el.value.length;
             }}
-            onKeyUp={() => {
-              const el = inputRef.current;
-              if (!el) return;
-              caretWasAtEndRef.current = el.selectionStart === el.value.length && el.selectionEnd === el.value.length;
-            }}
             onClick={() => {
               const el = inputRef.current;
               if (!el) return;
               caretWasAtEndRef.current = el.selectionStart === el.value.length && el.selectionEnd === el.value.length;
             }}
+            onKeyDown={e => {
+              // Handle mention navigation
+              if (mentionActive && filteredUsers.length > 0) {
+                if (e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey)) {
+                  e.preventDefault();
+                  setMentionIndex(i => (i + 1) % filteredUsers.length);
+                  return;
+                }
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setMentionIndex(i => (i - 1 + filteredUsers.length) % filteredUsers.length);
+                  return;
+                }
+                if (e.key === 'Enter') {
+                  const user = filteredUsers[mentionIndex];
+                  if (user) {
+                    e.preventDefault();
+                    insertMention(user);
+                  }
+                  return;
+                }
+                if (e.key === 'Escape') {
+                  setMentionActive(false);
+                  return;
+                }
+              }
+            }}
+            onKeyUp={e => {
+              if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape', 'Tab'].includes(e.key)) return;
+              // Detect mention trigger pattern
+              const el = inputRef.current;
+              if (!el) return;
+              const caret = el.selectionStart ?? el.value.length;
+              const value = el.value;
+              // Find last '@' before caret
+              const i = value.lastIndexOf('@', caret - 1);
+              let active = false;
+              if (i !== -1) {
+                // Ensure it's start or preceded by space
+                const prevChar = i === 0 ? ' ' : value[i - 1];
+                if (/\s/.test(prevChar)) {
+                  // Extract query until space or end
+                  const after = value.slice(i + 1, caret);
+                  if (!after.includes('@') && !after.includes(' ')) {
+                    active = true;
+                    // Only reset anchor / index if anchor changed (new mention) or query was cleared
+                    if (mentionAnchor !== i) {
+                      setMentionAnchor(i);
+                      setMentionIndex(0);
+                    }
+                    setMentionQuery(after);
+                  }
+                }
+              }
+              if (!active) {
+                setMentionActive(false);
+                setMentionAnchor(null);
+                setMentionQuery('');
+              } else if (!mentionActive) {
+                setMentionActive(true);
+              } else {
+                // Preserve index unless the query changed from previous
+                if (prevMentionQueryRef.current !== mentionQuery) {
+                  // keep index if still within range, if filter shrank, clamp
+                  setMentionIndex(idx => {
+                    const q = mentionQuery.toLowerCase();
+                    const filtered = users.filter(u => u.name.toLowerCase().includes(q));
+                    return Math.min(idx, Math.max(filtered.length - 1, 0));
+                  });
+                }
+              }
+              prevMentionQueryRef.current = mentionQuery;
+            }}
           />
+          {/* Mention suggestions */}
+          {mentionActive && filteredUsers.length > 0 && (
+            <div
+              className="absolute bottom-full mb-1 max-h-60 w-44 overflow-y-auto rounded-md border border-border bg-background text-sm shadow-md"
+              style={{ left: 0, zIndex: 40 }}
+            >
+              {filteredUsers.map((u, idx) => {
+                const isSelf = u.id === currentUserId;
+                const active = idx === mentionIndex;
+                return (
+                  <button
+                    type="button"
+                    key={u.id}
+                    onMouseDown={e => {
+                      e.preventDefault();
+                      insertMention(u);
+                    }}
+                    className={`flex w-full items-center justify-between px-3 py-2 text-left hover:bg-muted focus:bg-muted focus:outline-none ${
+                      active ? 'bg-muted' : ''
+                    }`}
+                  >
+                    <span className="truncate">{u.name}</span>
+                    {isSelf && (
+                      <span className="ml-2 rounded bg-primary px-1 text-xs uppercase text-primary-foreground">
+                        you
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <Popover
             open={emojiOpen}
             onOpenChange={next => {

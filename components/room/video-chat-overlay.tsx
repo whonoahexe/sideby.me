@@ -102,6 +102,7 @@ export const VideoChatOverlay: React.FC<VideoChatOverlayProps> = ({
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDragging, handlePointerMove]);
 
   // Map for quick user lookup
