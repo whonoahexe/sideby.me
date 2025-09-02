@@ -19,6 +19,8 @@ import { VideoPlayerContainer } from '@/components/room/video-player-container';
 import { HostControlDialog } from '@/components/room/host-control-dialog';
 import { useFullscreenChatOverlay } from '@/hooks/use-fullscreen-chat-overlay';
 import { useVoiceChat } from '@/hooks/use-voice-chat';
+import { useVideoChat } from '@/hooks/use-video-chat';
+import { VideoChatGrid } from '@/components/room/video-chat-grid';
 
 type ClientVideoMeta = {
   originalUrl: string;
@@ -126,6 +128,7 @@ export default function RoomPage() {
 
   // Voice chat hook (must be before any early returns)
   const voice = useVoiceChat({ roomId, currentUser });
+  const videochat = useVideoChat({ roomId, currentUser });
   // Voice capacity logic should be based on current voice participants, not total room users
   const VOICE_MAX = 5;
   // If user is in voice, derive from activePeerIds + self; else use public broadcasted count
@@ -306,6 +309,41 @@ export default function RoomPage() {
               videoUrl={room.videoUrl}
             />
           )}
+          {/* Video Chat Grid */}
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center gap-2">
+              {!videochat.isEnabled ? (
+                <button
+                  onClick={() => videochat.enable()}
+                  className="rounded bg-primary px-2 py-1 text-xs text-primary-foreground"
+                >
+                  Join Video Chat
+                </button>
+              ) : (
+                <>
+                  <button onClick={() => videochat.toggleCamera()} className="rounded bg-secondary px-2 py-1 text-xs">
+                    {videochat.isCameraOff ? 'Turn Camera On' : 'Turn Camera Off'}
+                  </button>
+                  <button
+                    onClick={() => videochat.disable()}
+                    className="rounded bg-destructive px-2 py-1 text-xs text-destructive-foreground"
+                  >
+                    Leave Video Chat
+                  </button>
+                </>
+              )}
+              {videochat.isConnecting && <span className="text-xs text-muted-foreground">Connecting...</span>}
+              {videochat.error && <span className="text-xs text-destructive">{videochat.error}</span>}
+            </div>
+            {videochat.isEnabled && (
+              <VideoChatGrid
+                localStream={videochat.localStream}
+                remoteStreams={videochat.remoteStreams}
+                currentUserId={currentUser.id}
+                isCameraOff={videochat.isCameraOff}
+              />
+            )}
+          </div>
         </div>
 
         {/* Chat */}
