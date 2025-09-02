@@ -20,6 +20,16 @@ interface VoiceConfig {
   onToggleMute: () => void;
 }
 
+interface VideoConfig {
+  isEnabled: boolean;
+  isCameraOff: boolean;
+  isConnecting: boolean;
+  enable: () => Promise<void> | void;
+  disable: () => Promise<void> | void;
+  toggleCamera: () => void;
+  participantCount?: number;
+}
+
 interface ChatOverlayProps {
   messages: ChatMessage[];
   currentUserId: string;
@@ -32,6 +42,7 @@ interface ChatOverlayProps {
   onToggleReaction?: (messageId: string, emoji: string) => void;
   typingUsers?: TypingUser[];
   voice?: VoiceConfig;
+  video?: VideoConfig;
   isVisible: boolean;
   isMinimized: boolean;
   onToggleMinimize: () => void;
@@ -48,6 +59,7 @@ export function ChatOverlay({
   onToggleReaction,
   typingUsers = [],
   voice,
+  video,
   isVisible,
   isMinimized,
   onToggleMinimize,
@@ -115,6 +127,7 @@ export function ChatOverlay({
           onToggleReaction={onToggleReaction}
           typingUsers={typingUsers}
           voice={voice}
+          video={video}
           unreadCount={unreadCount}
           onToggleMinimize={onToggleMinimize}
           onClose={onClose}

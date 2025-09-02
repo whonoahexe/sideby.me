@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, Volume2, VolumeX, Mic, MicOff, X, MinusIcon } from 'lucide-react';
+import { MessageCircle, Volume2, VolumeX, Mic, MicOff, X, MinusIcon, Video, VideoOff } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface VoiceConfig {
@@ -16,6 +16,16 @@ interface VoiceConfig {
   onToggleMute: () => void;
 }
 
+interface VideoConfig {
+  isEnabled: boolean;
+  isCameraOff: boolean;
+  isConnecting: boolean;
+  participantCount?: number;
+  enable: () => Promise<void> | void;
+  disable: () => Promise<void> | void;
+  toggleCamera: () => void;
+}
+
 interface ChatHeaderProps {
   mode: 'sidebar' | 'overlay';
   messageCount?: number;
@@ -23,6 +33,7 @@ interface ChatHeaderProps {
   soundEnabled: boolean;
   onSoundToggle: () => void;
   voice?: VoiceConfig;
+  video?: VideoConfig;
   onToggleMinimize?: () => void;
   onClose?: () => void;
 }
@@ -34,6 +45,7 @@ export function ChatHeader({
   soundEnabled,
   onSoundToggle,
   voice,
+  video,
   onToggleMinimize,
   onClose,
 }: ChatHeaderProps) {
@@ -65,19 +77,37 @@ export function ChatHeader({
               ) : (
                 <VolumeX className="h-5 w-5 cursor-pointer" onClick={handleSoundToggle} />
               )}
-              {voice && (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  {voice.isEnabled ? (
-                    voice.isMuted ? (
-                      <MicOff className="h-2 w-2" />
-                    ) : (
-                      <Mic className="h-2 w-2" />
-                    )
-                  ) : (
-                    <Volume2 className="h-2 w-2" />
+              {(voice || video) && (
+                <div className="flex items-center gap-1">
+                  {voice && (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      {voice.isEnabled ? (
+                        voice.isMuted ? (
+                          <MicOff className="h-2 w-2" />
+                        ) : (
+                          <Mic className="h-2 w-2" />
+                        )
+                      ) : (
+                        <Volume2 className="h-2 w-2" />
+                      )}
+                      {voice.participantCount}
+                    </Badge>
                   )}
-                  {voice.participantCount}
-                </Badge>
+                  {video && (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      {video.isEnabled ? (
+                        video.isCameraOff ? (
+                          <VideoOff className="h-2 w-2" />
+                        ) : (
+                          <Video className="h-2 w-2" />
+                        )
+                      ) : (
+                        <Video className="h-2 w-2" />
+                      )}
+                      {video.participantCount ?? 0}
+                    </Badge>
+                  )}
+                </div>
               )}
             </div>
             <Badge>{messageCount}</Badge>
@@ -98,19 +128,37 @@ export function ChatHeader({
             {unreadCount}
           </Badge>
         )}
-        {voice && (
-          <Badge variant="secondary" className="flex items-center gap-1 text-xs">
-            {voice.isEnabled ? (
-              voice.isMuted ? (
-                <MicOff className="h-2 w-2" />
-              ) : (
-                <Mic className="h-2 w-2" />
-              )
-            ) : (
-              <Volume2 className="h-2 w-2" />
+        {(voice || video) && (
+          <div className="flex items-center gap-1">
+            {voice && (
+              <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+                {voice.isEnabled ? (
+                  voice.isMuted ? (
+                    <MicOff className="h-2 w-2" />
+                  ) : (
+                    <Mic className="h-2 w-2" />
+                  )
+                ) : (
+                  <Volume2 className="h-2 w-2" />
+                )}
+                {voice.participantCount}
+              </Badge>
             )}
-            {voice.participantCount}
-          </Badge>
+            {video && (
+              <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+                {video.isEnabled ? (
+                  video.isCameraOff ? (
+                    <VideoOff className="h-2 w-2" />
+                  ) : (
+                    <Video className="h-2 w-2" />
+                  )
+                ) : (
+                  <Video className="h-2 w-2 opacity-50" />
+                )}
+                {video.participantCount ?? 0}
+              </Badge>
+            )}
+          </div>
         )}
       </div>
       <div className="flex items-center">

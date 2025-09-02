@@ -22,6 +22,16 @@ interface VoiceConfig {
   onToggleMute: () => void;
 }
 
+interface VideoConfig {
+  isEnabled: boolean;
+  isCameraOff: boolean;
+  isConnecting: boolean;
+  enable: () => Promise<void> | void;
+  disable: () => Promise<void> | void;
+  toggleCamera: () => void;
+  participantCount?: number; // optional future use
+}
+
 export interface ChatProps {
   messages: ChatMessage[];
   currentUserId: string;
@@ -35,6 +45,7 @@ export interface ChatProps {
   typingUsers?: TypingUser[];
   className?: string;
   voice?: VoiceConfig;
+  video?: VideoConfig;
   // Mode props
   mode?: 'sidebar' | 'overlay';
   unreadCount?: number;
@@ -52,6 +63,7 @@ export function Chat({
   typingUsers = [],
   className,
   voice,
+  video,
   mode = 'sidebar',
   unreadCount = 0,
   onToggleMinimize,
@@ -251,6 +263,7 @@ export function Chat({
               soundEnabled={soundEnabled}
               onSoundToggle={toggleSound}
               voice={voice}
+              video={video}
             />
           </CardTitle>
         </CardHeader>
@@ -297,6 +310,7 @@ export function Chat({
             onInputChange={handleInputChange}
             onSubmit={handleSendMessage}
             voice={voice}
+            video={video}
             mode="sidebar"
             replyTo={replyTo}
             onCancelReply={handleCancelReply}
@@ -323,6 +337,7 @@ export function Chat({
         soundEnabled={soundEnabled}
         onSoundToggle={toggleSound}
         voice={voice}
+        video={video}
         onToggleMinimize={onToggleMinimize}
         onClose={onClose}
       />
@@ -369,6 +384,7 @@ export function Chat({
         onInputChange={handleInputChange}
         onSubmit={handleSendMessage}
         voice={voice}
+        video={video}
         mode="overlay"
         replyTo={replyTo}
         onCancelReply={handleCancelReply}

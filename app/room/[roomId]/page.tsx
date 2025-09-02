@@ -21,8 +21,7 @@ import { useFullscreenChatOverlay } from '@/hooks/use-fullscreen-chat-overlay';
 import { useVoiceChat } from '@/hooks/use-voice-chat';
 import { useVideoChat } from '@/hooks/use-video-chat';
 import { VideoChatGrid } from '@/components/room/video-chat-grid';
-import { Button } from '@/components/ui/button';
-import { Camera, CameraOff, PhoneOff, Video as VideoIcon } from 'lucide-react';
+import { Spinner } from '../../../components/ui/spinner';
 
 type ClientVideoMeta = {
   originalUrl: string;
@@ -136,6 +135,10 @@ export default function RoomPage() {
   // If user is in voice, derive from activePeerIds + self; else use public broadcasted count
   const voiceParticipantCount = voice.isEnabled ? voice.activePeerIds.length + 1 : voice.publicParticipantCount;
   const overCap = voiceParticipantCount >= VOICE_MAX;
+  // Video participant public count mirrors voice logic
+  const videoParticipantCount = videochat.isEnabled
+    ? videochat.remoteStreams.length + 1
+    : videochat.publicParticipantCount;
 
   // Handle video control attempts by guests
   const handleVideoControlAttempt = () => {
@@ -276,66 +279,6 @@ export default function RoomPage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-4">
-        {/* Video Chat (full-width above main player) */}
-        <div className="col-span-full mx-6">
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Video Chat Control (single primary button like voice) */}
-            {!videochat.isEnabled ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={videochat.isConnecting}
-                onClick={() => videochat.enable()}
-                title="Hop on video chat"
-                aria-label="Join Video"
-              >
-                <VideoIcon className="h-4 w-4" />
-              </Button>
-            ) : (
-              <>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={videochat.isCameraOff ? 'destructive' : 'outline'}
-                  disabled={videochat.isConnecting}
-                  onClick={() => videochat.toggleCamera()}
-                  title={videochat.isCameraOff ? 'Turn camera on (hold leave soon)' : 'Turn camera off (hold leave soon)'}
-                  aria-label={videochat.isCameraOff ? 'Turn Camera On' : 'Turn Camera Off'}
-                >
-                  {videochat.isCameraOff ? <CameraOff className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => videochat.disable()}
-                  title="Leave video chat"
-                  aria-label="Leave Video"
-                >
-                  <PhoneOff className="h-4 w-4" />
-                </Button>
-              </>
-            )}
-            {videochat.isEnabled && (
-              <span className="text-xs text-muted-foreground">
-                {videochat.remoteStreams.length + 1}/{5} in video
-              </span>
-            )}
-            {videochat.isConnecting && <span className="text-xs text-muted-foreground">Connecting...</span>}
-            {videochat.error && <span className="text-xs text-destructive">{videochat.error}</span>}
-          </div>
-          {videochat.isEnabled && (
-            <VideoChatGrid
-              localStream={videochat.localStream}
-              remoteStreams={videochat.remoteStreams}
-              currentUserId={currentUser.id}
-              isCameraOff={videochat.isCameraOff}
-              users={room.users}
-              className="mt-2 w-full"
-            />
-          )}
-        </div>
         {/* Main Content */}
         <div className="col-span-full lg:col-span-3">
           {/* Video Player */}
@@ -394,9 +337,36 @@ export default function RoomPage() {
               onDisable: voice.disable,
               onToggleMute: voice.toggleMute,
             }}
+            video={{
+              isEnabled: videochat.isEnabled,
+              isCameraOff: videochat.isCameraOff,
+              isConnecting: videochat.isConnecting,
+              enable: videochat.enable,
+              disable: videochat.disable,
+              toggleCamera: videochat.toggleCamera,
+              participantCount: videoParticipantCount,
+            }}
             className="border-0 p-0"
           />
         </div>
+
+        {/* Video Chat Grid */}
+        {videochat.isEnabled && (
+          <div className="col-span-full mx-6 mt-4">
+            <VideoChatGrid
+              localStream={videochat.localStream}
+              remoteStreams={videochat.remoteStreams}
+              currentUserId={currentUser.id}
+              isCameraOff={videochat.isCameraOff}
+              users={room.users}
+              className="w-full"
+            />
+            <div className="mt-1 flex gap-2 text-xs text-muted-foreground">
+              {videochat.isConnecting && <Spinner variant="ellipsis" />}
+              {videochat.error && <span className="text-destructive">{videochat.error}</span>}
+            </div>
+          </div>
+        )}
 
         <UserList
           users={room.users}
@@ -434,6 +404,15 @@ export default function RoomPage() {
           onEnable: voice.enable,
           onDisable: voice.disable,
           onToggleMute: voice.toggleMute,
+        }}
+        video={{
+          isEnabled: videochat.isEnabled,
+          isCameraOff: videochat.isCameraOff,
+          isConnecting: videochat.isConnecting,
+          enable: videochat.enable,
+          disable: videochat.disable,
+          toggleCamera: videochat.toggleCamera,
+          participantCount: videoParticipantCount,
         }}
       />
     </div>

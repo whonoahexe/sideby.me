@@ -35,7 +35,13 @@ export const VideoChatGrid: React.FC<VideoChatGridProps> = ({
   }, [localStream, isCameraOff]);
 
   return (
-    <div className={cn('grid grid-cols-2 gap-2 rounded-md border border-border p-3 md:grid-cols-3 lg:grid-cols-4', className)}>
+    <div
+      className={cn(
+        // Converted from CSS grid to flex so that incomplete final rows are horizontally centered
+        'flex flex-wrap justify-center gap-2 rounded-md border border-border p-4',
+        className
+      )}
+    >
       <VideoTile
         local
         stream={localStream || undefined}
@@ -82,7 +88,12 @@ const VideoTile: React.FC<VideoTileProps> = ({ stream, userId, name, isOff, loca
   }, [stream, isOff, ref]);
   const initials = initialsFromName(name) || '??';
   return (
-    <div className="group relative aspect-video overflow-hidden rounded-md border border-border bg-muted/60">
+    <div
+      className={cn(
+        // Widths approximate the old 2/3/4 column breakpoints while allowing centering with flexbox
+        'group relative aspect-video w-1/2 overflow-hidden rounded-md border border-border bg-muted/60 sm:w-1/3 lg:w-1/4'
+      )}
+    >
       {!isOff && stream ? (
         <video
           ref={ref}
