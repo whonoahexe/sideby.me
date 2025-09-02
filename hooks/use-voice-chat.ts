@@ -169,6 +169,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
     setIsMuted(false);
     setIsConnecting(false);
     setError('');
+    setPublicParticipantCount(0);
     // Reset signaling guards so a fresh join can negotiate cleanly
     appliedRemoteAnswerRef.current.clear();
     // Remove any lingering remote audio elements

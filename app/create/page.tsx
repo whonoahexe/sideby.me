@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -49,6 +50,13 @@ function FeatureCard({ icon: IconComponent, title }: { icon: LucideIcon; title: 
 
 export default function CreateRoomPage() {
   const { hostName, setHostName, isLoading, error, isConnected, isInitialized, handleCreateRoom } = useCreateRoom();
+  // Keep a deterministic placeholder for SSR and update to a random one on the client
+  const DEFAULT_PLACEHOLDER = `e.g., ${QUIRKY_USERNAMES[1]}`;
+  const [placeholder, setPlaceholder] = useState<string>(DEFAULT_PLACEHOLDER);
+
+  useEffect(() => {
+    setPlaceholder(`e.g., ${getRandomUsername()}`);
+  }, []);
 
   return (
     <>
@@ -90,7 +98,7 @@ export default function CreateRoomPage() {
                       type="text"
                       value={hostName}
                       onChange={e => setHostName(e.target.value)}
-                      placeholder={`e.g., ${getRandomUsername()}`}
+                      placeholder={placeholder}
                       className="pl-10 text-base tracking-tight sm:text-lg"
                       maxLength={21}
                       required

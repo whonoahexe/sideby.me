@@ -31,6 +31,8 @@ interface UseVideoChatReturn {
   toggleCamera: () => void; // enable/disable local video track
 }
 
+const SOLO_USER_TIMEOUT = 120000; // 2 minutes
+
 export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVideoChatOptions): UseVideoChatReturn {
   const { socket } = useSocket();
   const { requestCamera } = useMediaPermissions();
@@ -53,26 +55,51 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
     },
   });
 
+  // UI state flags
   const [isEnabled, setIsEnabled] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState('');
+  // Peer roster (userIds) and public participant count
   const [activePeerIds, setActivePeerIds] = useState<string[]>([]);
   const [publicParticipantCount, setPublicParticipantCount] = useState(0);
+  // Remote media streams
   const [remoteStreams, setRemoteStreams] = useState<RemoteVideoStream[]>([]);
 
+  // Local media, signaling guards, join attempt, solo timeout refs
   const localStreamRef = useRef<MediaStream | null>(null);
   const appliedRemoteAnswerRef = useRef<Set<string>>(new Set());
   const joinAttemptRef = useRef(false);
+  const soloTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const disableRef = useRef<() => Promise<void>>(async () => {});
 
+  const clearSoloTimeout = useCallback(() => {
+    if (soloTimeoutRef.current) {
+      clearTimeout(soloTimeoutRef.current);
+      soloTimeoutRef.current = null;
+    }
+  }, []);
+
+  const startSoloTimeout = useCallback(() => {
+    clearSoloTimeout();
+    soloTimeoutRef.current = setTimeout(() => {
+      toast.error('🚨 Bandwidth Patrol', {
+        description: 'Noah told me to end your lonely video session to spare the upstream bits.',
+      });
+      disableRef.current();
+    }, SOLO_USER_TIMEOUT);
+  }, [clearSoloTimeout]);
+
+  // Acquire local camera stream. Video only
   const ensureLocalCamera = useCallback(async () => {
     if (localStreamRef.current) return localStreamRef.current;
-    const stream = await requestCamera(false); // video only, user can use voice separately
+    const stream = await requestCamera(false);
     if (!stream) throw new Error('camera-permission-denied');
     localStreamRef.current = stream;
     return stream;
   }, [requestCamera]);
 
+  // Remove a single peer: drop connection, stream, signaling markers
   const cleanupPeer = useCallback(
     (peerId: string) => {
       removePeer(peerId);
@@ -84,7 +111,9 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
   );
   cleanupPeerRef.current = cleanupPeer;
 
+  // Full teardown used by explicit leave, auto-disconnect, and unmount
   const cleanupAll = useCallback(() => {
+    clearSoloTimeout();
     closeAll();
     setActivePeerIds([]);
     setRemoteStreams([]);
@@ -96,9 +125,11 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
     setIsCameraOff(false);
     setIsConnecting(false);
     setError('');
+    setPublicParticipantCount(0);
     appliedRemoteAnswerRef.current.clear();
   }, [closeAll]);
 
+  // Start video chat
   const enable = useCallback(async () => {
     if (!socket || !currentUser) return;
     if (isEnabled || joinAttemptRef.current) return;
@@ -116,13 +147,17 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
     }
   }, [socket, currentUser, isEnabled, ensureLocalCamera, roomId]);
 
+  // Stop video chat and teardown
   const disable = useCallback(async () => {
     if (!socket) return;
     if (isEnabled) socket.emit('videochat-leave', { roomId });
     joinAttemptRef.current = false;
+    clearSoloTimeout();
     cleanupAll();
   }, [socket, isEnabled, roomId, cleanupAll]);
+  disableRef.current = disable;
 
+  // UI mute for camera track
   const toggleCamera = useCallback(() => {
     const s = localStreamRef.current;
     if (!s) return;
@@ -153,6 +188,7 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
   useEffect(() => {
     if (!socket || !currentUser) return;
 
+    // Server acceptance & initial roster -> we create offers to each peer deterministically
     const handleExistingPeers = ({ userIds }: { userIds: string[] }) => {
       const others = userIds.filter(id => id !== currentUser.id).slice(0, Math.max(0, maxParticipants - 1));
       if (!isEnabled) {
@@ -160,6 +196,8 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
         setIsConnecting(false);
         joinAttemptRef.current = false;
       }
+      if (others.length === 0) startSoloTimeout();
+      else clearSoloTimeout();
       others.sort().forEach(async id => {
         if (!activePeerIds.includes(id)) {
           const pc = await getOrCreatePeer(id, true);
@@ -173,6 +211,7 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
       });
     };
 
+    // Incoming offer -> attach local track & respond with answer
     const handleOffer = async ({ fromUserId, sdp }: { fromUserId: string; sdp: RTCSessionDescriptionInit }) => {
       if (fromUserId === currentUser.id) return;
       const pc = await getOrCreatePeer(fromUserId, false);
@@ -186,6 +225,7 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
       setActivePeerIds(prev => (prev.includes(fromUserId) ? prev : [...prev, fromUserId]));
     };
 
+    // Incoming answer -> apply once (guard via appliedRemoteAnswerRef)
     const handleAnswer = async ({ fromUserId, sdp }: { fromUserId: string; sdp: RTCSessionDescriptionInit }) => {
       if (appliedRemoteAnswerRef.current.has(fromUserId)) return;
       if (!activePeerIds.includes(fromUserId)) return;
@@ -195,6 +235,7 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
       appliedRemoteAnswerRef.current.add(fromUserId);
     };
 
+    // Remote ICE candidate -> add to peer (errors ignored silently)
     const handleIce = async ({ fromUserId, candidate }: { fromUserId: string; candidate: RTCIceCandidateInit }) => {
       try {
         const pc = await getOrCreatePeer(fromUserId, false);
@@ -202,10 +243,14 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
       } catch {}
     };
 
+    // Peer left -> cleanup and maybe schedule patrol timeout
     const handlePeerLeft = ({ userId }: { userId: string }) => {
       cleanupPeer(userId);
+      const remaining = activePeerIds.filter(id => id !== userId);
+      if (remaining.length === 0) startSoloTimeout();
     };
 
+    // Server-side video chat error -> surface to user & reset pending join attempt
     const handleVideoChatError = ({ error }: { error: string }) => {
       setError(error);
       toast.error('Video chat error', { description: error });
@@ -215,6 +260,7 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
       }
     };
 
+    // Broadcast participant count -> used by non-joined users for occupancy badge
     const handleCount = ({ roomId: r, count }: { roomId: string; count: number }) => {
       if (r === roomId) setPublicParticipantCount(count);
     };
@@ -245,13 +291,16 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
     getOrCreatePeer,
     ensureLocalCamera,
     cleanupPeer,
+    startSoloTimeout,
+    clearSoloTimeout,
   ]);
 
   useEffect(
     () => () => {
+      clearSoloTimeout();
       cleanupAll();
     },
-    [cleanupAll]
+    [cleanupAll, clearSoloTimeout]
   );
 
   return {
