@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Mic, MicOff, Phone, Smile, X, Reply, Video, VideoOff, Camera, CameraOff } from 'lucide-react';
+import { Send, Mic, MicOff, Phone, Smile, X, Reply, Video, Camera, CameraOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { EmojiPicker, EmojiPickerSearch, EmojiPickerContent, EmojiPickerFooter } from '@/components/ui/emoji-picker';
