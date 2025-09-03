@@ -33,15 +33,49 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
   const { requestMic } = useMediaPermissions();
   // Bridge cleanup via ref so we can pass callback before cleanupPeer is defined
   const cleanupPeerRef = useRef<(id: string) => void>(() => {});
-  const { getOrCreatePeer, removePeer, closeAll } = useWebRTC({
+  const fallbackInProgressRef = useRef<Set<string>>(new Set());
+  const { getOrCreatePeer, removePeer, closeAll, forceTurnReconnect } = useWebRTC({
     onIceCandidate: (peerId, candidate) => {
       if (!socket) return;
       socket.emit('voice-ice-candidate', { roomId, targetUserId: peerId, candidate });
     },
-    onConnectionStateChange: (peerId, state) => {
-      if (state === 'failed' || state === 'closed' || state === 'disconnected') {
+    onConnectionStateChange: (peerId, state, _pc, meta) => {
+      if (state === 'failed') {
+        if (meta.attempt < 3 && !fallbackInProgressRef.current.has(peerId)) {
+          fallbackInProgressRef.current.add(peerId);
+          (async () => {
+            try {
+              const local = await ensureLocalMic().catch(() => null);
+              const newPc = await forceTurnReconnect(peerId, true);
+              if (newPc && local) {
+                const track = local.getAudioTracks()[0];
+                if (track) {
+                  const existingSenders = newPc.getSenders().filter(s => s.track && s.track.kind === 'audio');
+                  if (existingSenders.length === 0) newPc.addTrack(track, local);
+                  else {
+                    try {
+                      existingSenders[0].replaceTrack(track);
+                    } catch {}
+                  }
+                }
+              }
+              if (newPc) {
+                const offer = await newPc.createOffer({ offerToReceiveAudio: true });
+                await newPc.setLocalDescription(offer);
+                socket?.emit('voice-offer', { roomId, targetUserId: peerId, sdp: offer });
+              }
+            } catch {
+              cleanupPeerRef.current(peerId);
+            } finally {
+              fallbackInProgressRef.current.delete(peerId);
+            }
+          })();
+          return;
+        }
         cleanupPeerRef.current(peerId);
+        return;
       }
+      if (state === 'closed' || state === 'disconnected') cleanupPeerRef.current(peerId);
     },
     onTrack: (peerId, ev) => {
       const stream = ev.streams[0];

@@ -90,14 +90,11 @@ export async function createRTCConfiguration(): Promise<RTCConfiguration> {
 
   return {
     iceServers,
-    iceTransportPolicy: 'all', // Allow both STUN and TURN (STUN preferred by browser)
+    iceTransportPolicy: 'all', // Allow both STUN and TURN
     iceCandidatePoolSize: 10, // Pre-gather candidates for faster connection
   };
 }
 
-// Creates a TURN-only RTCConfiguration used for fallback when direct/STUN connectivity fails.
-// This forces the browser to only use relay candidates which improves success rate across
-// restrictive/Symmetric NATs at the expense of latency and cost.
 export async function createTurnOnlyRTCConfiguration(): Promise<RTCConfiguration> {
   const turnServers = await fetchTurnCredentials();
   if (!turnServers || turnServers.length === 0) {
@@ -107,7 +104,7 @@ export async function createTurnOnlyRTCConfiguration(): Promise<RTCConfiguration
   return {
     iceServers: turnServers,
     iceTransportPolicy: 'relay', // Force relay only for reliability
-    iceCandidatePoolSize: 0, // Pooling not very useful when relay-only and ephemeral creds
+    iceCandidatePoolSize: 0,
   };
 }
 

@@ -37,13 +37,54 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
   const { socket } = useSocket();
   const { requestCamera } = useMediaPermissions();
   const cleanupPeerRef = useRef<(id: string) => void>(() => {});
-  const { getOrCreatePeer, removePeer, closeAll } = useWebRTC({
+  // Track peers currently in fallback renegotiation to avoid duplicate attempts
+  const fallbackInProgressRef = useRef<Set<string>>(new Set());
+  const { getOrCreatePeer, removePeer, closeAll, forceTurnReconnect } = useWebRTC({
     onIceCandidate: (peerId, candidate) => {
       if (!socket) return;
       socket.emit('videochat-ice-candidate', { roomId, targetUserId: peerId, candidate });
     },
-    onConnectionStateChange: (peerId, state) => {
-      if (state === 'failed' || state === 'disconnected' || state === 'closed') cleanupPeerRef.current(peerId);
+    onConnectionStateChange: (peerId, state, _pc, meta) => {
+      if (state === 'failed') {
+        // Attempt TURN escalation instead of immediate cleanup (up to 3 attempts total)
+        if (meta.attempt < 3 && !fallbackInProgressRef.current.has(peerId)) {
+          fallbackInProgressRef.current.add(peerId);
+          (async () => {
+            try {
+              const local = await ensureLocalCamera().catch(() => null);
+              const newPc = await forceTurnReconnect(peerId, true);
+              if (newPc && local) {
+                // Attach tracks (ensure only one video sender)
+                const track = local.getVideoTracks()[0];
+                if (track) {
+                  const existingSenders = newPc.getSenders().filter(s => s.track && s.track.kind === 'video');
+                  if (existingSenders.length === 0) newPc.addTrack(track, local);
+                  else {
+                    try {
+                      existingSenders[0].replaceTrack(track);
+                    } catch {}
+                  }
+                }
+              }
+              if (newPc) {
+                const offer = await newPc.createOffer({ offerToReceiveVideo: true });
+                await newPc.setLocalDescription(offer);
+                socket?.emit('videochat-offer', { roomId, targetUserId: peerId, sdp: offer });
+              }
+            } catch {
+              // If fallback negotiation fails, cleanup
+              cleanupPeerRef.current(peerId);
+            } finally {
+              fallbackInProgressRef.current.delete(peerId);
+            }
+          })();
+          return; // Defer cleanup until fallback completes
+        }
+        // After exhausting fallback attempts, cleanup
+        cleanupPeerRef.current(peerId);
+        return;
+      }
+      if (state === 'disconnected' || state === 'closed') cleanupPeerRef.current(peerId);
     },
     onTrack: (peerId, ev) => {
       const stream = ev.streams[0];
