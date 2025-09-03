@@ -46,6 +46,11 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
   const iceHandlerRef = useRef<UseWebRTCOptions['onIceCandidate']>(undefined);
   const stateHandlerRef = useRef<UseWebRTCOptions['onConnectionStateChange']>(undefined);
   const trackHandlerRef = useRef<UseWebRTCOptions['onTrack']>(undefined);
+  const debugEnabled = useRef<boolean>(false);
+  const remoteCandidateQueueRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+  // Track per-peer restart and fallback debounce
+  const restartedRef = useRef<Set<string>>(new Set());
+  const fallbackCooldownRef = useRef<Map<string, number>>(new Map());
 
   // Keep latest callbacks without re-binding existing peer listeners
   useEffect(() => {
@@ -57,6 +62,12 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
   useEffect(() => {
     trackHandlerRef.current = options.onTrack;
   }, [options.onTrack]);
+  useEffect(() => {
+    try {
+      const urlDebug = typeof window !== 'undefined' && new URL(window.location.href).searchParams.get('webrtcDebug');
+      debugEnabled.current = Boolean(urlDebug) || process.env.NEXT_PUBLIC_WEBRTC_DEBUG === '1';
+    } catch {}
+  }, []);
 
   const removePeer = useCallback((id: string) => {
     const entry = peersRef.current.get(id);
@@ -99,6 +110,13 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
       const attempt = forceTurn ? (existing ? existing.connectionAttempt + 1 : 2) : 1;
       const entry: PeerMapEntry = { pc, isUsingTurn: forceTurn, connectionAttempt: attempt };
       peersRef.current.set(id, entry);
+      if (process.env.NODE_ENV !== 'production') {
+        // Expose for manual debugging
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).__peers = (window as any).__peers || {};
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).__peers[id] = pc;
+      }
 
       // Attach generic event listeners once per peer
       pc.onicecandidate = ev => {
@@ -108,8 +126,22 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
           } catch {}
         }
       };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (pc as any)._applyQueuedCandidates = async () => {
+        const queued = remoteCandidateQueueRef.current.get(id);
+        if (!queued || !queued.length) return;
+        for (const c of queued) {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(c));
+          } catch (e) {
+            if (debugEnabled.current) console.warn('[WEBRTC] queued candidate failed', e);
+          }
+        }
+        remoteCandidateQueueRef.current.delete(id);
+      };
       pc.onconnectionstatechange = () => {
-        if (process.env.NODE_ENV !== 'production') {
+        if (debugEnabled.current) {
           console.log('[WEBRTC] connectionState', {
             peerId: id,
             state: pc.connectionState,
@@ -126,20 +158,38 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
           } catch {}
         }
         // Fallback if we fail on attempt 1 (stun-only) schedule a forced reconnect with all/turn
-        if (pc.connectionState === 'failed' && entry.connectionAttempt === 1) {
-          // Recreate with full config (STUN+TURN) after short delay to allow signaling cleanup upstream
-          setTimeout(() => {
-            forceTurnReconnect(id, true).catch(() => {});
-          }, 250);
-        } else if (pc.connectionState === 'failed' && entry.connectionAttempt === 2) {
-          // Second failure -> escalate to TURN-only
-          setTimeout(() => {
-            forceTurnReconnect(id, true).catch(() => {});
-          }, 300);
+        if (pc.connectionState === 'failed') {
+          const now = Date.now();
+          const last = fallbackCooldownRef.current.get(id) || 0;
+          if (now - last < 1500) return; // debounce
+          fallbackCooldownRef.current.set(id, now);
+          // First, if we have not attempted an ICE restart on this peer, try that before tearing down
+          if (!restartedRef.current.has(id) && entry.connectionAttempt === 1) {
+            try {
+              if (process.env.NODE_ENV !== 'production') console.log('[WEBRTC] restartIce()', { peerId: id });
+              restartedRef.current.add(id);
+              pc.restartIce();
+              // Give restart a short window, if it stays failed schedule fallback
+              setTimeout(() => {
+                if (pc.connectionState === 'failed' || pc.iceConnectionState === 'failed') {
+                  forceTurnReconnect(id, true).catch(() => {});
+                }
+              }, 1200);
+              return;
+            } catch {
+              // ignore and proceed to fallback
+            }
+          }
+          // Fallback escalations
+          if (entry.connectionAttempt === 1) {
+            setTimeout(() => forceTurnReconnect(id, true).catch(() => {}), 200);
+          } else if (entry.connectionAttempt === 2) {
+            setTimeout(() => forceTurnReconnect(id, true).catch(() => {}), 250);
+          }
         }
       };
       pc.ontrack = ev => {
-        if (process.env.NODE_ENV !== 'production') {
+        if (debugEnabled.current) {
           console.log('[WEBRTC] ontrack', { peerId: id, streams: ev.streams.length });
         }
         if (trackHandlerRef.current) {
@@ -152,7 +202,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
         }
       };
       pc.oniceconnectionstatechange = () => {
-        if (process.env.NODE_ENV !== 'production') {
+        if (debugEnabled.current) {
           console.log('[WEBRTC] iceConnectionState', { peerId: id, state: pc.iceConnectionState });
         }
       };
@@ -170,6 +220,24 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
     },
     [getOrCreatePeer, removePeer]
   );
+
+  const safeAddRemoteCandidate = useCallback(async (peerId: string, candidate: RTCIceCandidateInit) => {
+    const entry = peersRef.current.get(peerId);
+    if (!entry) return;
+    const pc = entry.pc;
+    if (!pc.remoteDescription || !pc.remoteDescription.type) {
+      const q = remoteCandidateQueueRef.current.get(peerId) || [];
+      q.push(candidate);
+      remoteCandidateQueueRef.current.set(peerId, q);
+      if (debugEnabled.current) console.log('[WEBRTC] queued candidate (remoteDescription not set)', { peerId });
+      return;
+    }
+    try {
+      await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    } catch (e) {
+      if (debugEnabled.current) console.warn('[WEBRTC] addIceCandidate error', { peerId, e });
+    }
+  }, []);
 
   return {
     getOrCreatePeer,
