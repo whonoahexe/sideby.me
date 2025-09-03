@@ -33,11 +33,24 @@ export async function fetchTurnCredentials(): Promise<RTCIceServer[] | null> {
       return null;
     }
 
-    const data: RTCIceServer[] = await response.json();
-    console.log('[TURN] API Response:', data);
+    const raw = await response.json();
+    console.log('[TURN] Raw API Response:', raw);
 
-    // The API returns RTCIceServer objects directly
-    return data;
+    const candidate = Array.isArray(raw) ? raw : Array.isArray(raw?.iceServers) ? raw.iceServers : null;
+    if (!candidate) {
+      console.warn('[TURN] Unexpected credential payload format. Expected array or { iceServers: [...] }');
+      return null;
+    }
+    // Basic validation: ensure at least one TURN (relay) server present
+    const hasTurn = candidate.some((s: RTCIceServer) =>
+      Array.isArray(s.urls)
+        ? (s.urls as string[]).some((u: string) => u.startsWith('turn:') || u.startsWith('turns:'))
+        : typeof s.urls === 'string' && (s.urls.startsWith('turn:') || s.urls.startsWith('turns:'))
+    );
+    if (!hasTurn) {
+      console.warn('[TURN] No TURN relay URLs found in response. Will still return servers for STUN usage.');
+    }
+    return candidate as RTCIceServer[];
   } catch (error) {
     console.warn('[TURN] Error fetching TURN credentials:', error);
     return null;
@@ -77,8 +90,24 @@ export async function createRTCConfiguration(): Promise<RTCConfiguration> {
 
   return {
     iceServers,
-    iceTransportPolicy: 'all', // Allow both STUN and TURN
+    iceTransportPolicy: 'all', // Allow both STUN and TURN (STUN preferred by browser)
     iceCandidatePoolSize: 10, // Pre-gather candidates for faster connection
+  };
+}
+
+// Creates a TURN-only RTCConfiguration used for fallback when direct/STUN connectivity fails.
+// This forces the browser to only use relay candidates which improves success rate across
+// restrictive/Symmetric NATs at the expense of latency and cost.
+export async function createTurnOnlyRTCConfiguration(): Promise<RTCConfiguration> {
+  const turnServers = await fetchTurnCredentials();
+  if (!turnServers || turnServers.length === 0) {
+    console.warn('[TURN] No TURN servers available for turn-only configuration. Falling back to STUN config.');
+    return createRTCConfiguration();
+  }
+  return {
+    iceServers: turnServers,
+    iceTransportPolicy: 'relay', // Force relay only for reliability
+    iceCandidatePoolSize: 0, // Pooling not very useful when relay-only and ephemeral creds
   };
 }
 

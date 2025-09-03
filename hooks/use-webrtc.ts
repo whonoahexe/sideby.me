@@ -1,7 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
-import { createStunOnlyRTCConfiguration, createRTCConfiguration } from '@/lib/ice-server';
+import {
+  createStunOnlyRTCConfiguration,
+  createRTCConfiguration,
+  createTurnOnlyRTCConfiguration,
+} from '@/lib/ice-server';
 
 export interface PeerMapEntry {
   pc: RTCPeerConnection;
@@ -33,6 +37,7 @@ export interface UseWebRTCReturn {
   removePeer: (id: string) => void;
   peers: () => string[];
   closeAll: () => void;
+  forceTurnReconnect: (id: string, initiator: boolean) => Promise<RTCPeerConnection | null>;
 }
 
 // Focused hook on peer connection lifecycle
@@ -78,9 +83,21 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
         removePeer(id);
       }
 
-      const cfg = forceTurn ? await createRTCConfiguration() : createStunOnlyRTCConfiguration();
+      // 3 attempts strategy
+      let cfg: RTCConfiguration;
+      if (forceTurn) {
+        // Distinguish between a second attempt with all vs a third with relay-only by checking existing entry
+        if (existing && (existing as PeerMapEntry).connectionAttempt >= 2) {
+          cfg = await createTurnOnlyRTCConfiguration();
+        } else {
+          cfg = await createRTCConfiguration();
+        }
+      } else {
+        cfg = createStunOnlyRTCConfiguration();
+      }
       const pc = new RTCPeerConnection(cfg);
-      const entry: PeerMapEntry = { pc, isUsingTurn: forceTurn, connectionAttempt: forceTurn ? 2 : 1 };
+      const attempt = forceTurn ? (existing ? existing.connectionAttempt + 1 : 2) : 1;
+      const entry: PeerMapEntry = { pc, isUsingTurn: forceTurn, connectionAttempt: attempt };
       peersRef.current.set(id, entry);
 
       // Attach generic event listeners once per peer
@@ -100,6 +117,18 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
             });
           } catch {}
         }
+        // Fallback if we fail on attempt 1 (stun-only) schedule a forced reconnect with all/turn
+        if (pc.connectionState === 'failed' && entry.connectionAttempt === 1) {
+          // Recreate with full config (STUN+TURN) after short delay to allow signaling cleanup upstream
+          setTimeout(() => {
+            forceTurnReconnect(id, true).catch(() => {});
+          }, 250);
+        } else if (pc.connectionState === 'failed' && entry.connectionAttempt === 2) {
+          // Second failure -> escalate to TURN-only
+          setTimeout(() => {
+            forceTurnReconnect(id, true).catch(() => {});
+          }, 300);
+        }
       };
       pc.ontrack = ev => {
         if (trackHandlerRef.current) {
@@ -117,10 +146,20 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
     [removePeer]
   );
 
+  const forceTurnReconnect = useCallback(
+    async (id: string, initiator: boolean) => {
+      const existing = peersRef.current.get(id);
+      if (existing) removePeer(id);
+      return getOrCreatePeer(id, initiator, true);
+    },
+    [getOrCreatePeer, removePeer]
+  );
+
   return {
     getOrCreatePeer,
     removePeer,
     peers: () => Array.from(peersRef.current.keys()),
     closeAll,
+    forceTurnReconnect,
   };
 }
