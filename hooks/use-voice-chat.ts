@@ -34,7 +34,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
   // Bridge cleanup via ref so we can pass callback before cleanupPeer is defined
   const cleanupPeerRef = useRef<(id: string) => void>(() => {});
   const fallbackInProgressRef = useRef<Set<string>>(new Set());
-  const { getOrCreatePeer, removePeer, closeAll, forceTurnReconnect } = useWebRTC({
+  const { getOrCreatePeer, removePeer, closeAll, forceTurnReconnect, safeAddRemoteCandidate } = useWebRTC({
     onIceCandidate: (peerId, candidate) => {
       if (!socket) return;
       socket.emit('voice-ice-candidate', { roomId, targetUserId: peerId, candidate });
@@ -373,6 +373,9 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       const pc = await getOrCreatePeer(fromUserId, false);
       if (pc.signalingState !== 'stable') return;
       await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+      // Apply any queued candidates now remoteDescription is available
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (pc as any)._applyQueuedCandidates?.();
       const local = await ensureLocalMic();
       const track = local.getAudioTracks()[0];
       if (track) {
@@ -397,15 +400,15 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       const pc = await getOrCreatePeer(fromUserId, true);
       if (pc.signalingState !== 'have-local-offer') return;
       await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+      // Flush queued ICE
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (pc as any)._applyQueuedCandidates?.();
       appliedRemoteAnswerRef.current.add(fromUserId);
     };
 
     // Remote ICE candidate -> apply to existing peer connection
     const handleIce = async ({ fromUserId, candidate }: { fromUserId: string; candidate: RTCIceCandidateInit }) => {
-      try {
-        const pc = await getOrCreatePeer(fromUserId, false);
-        await pc.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch {}
+      await safeAddRemoteCandidate(fromUserId, candidate);
     };
 
     // Peer left -> cleanup and possibly start solo timeout
