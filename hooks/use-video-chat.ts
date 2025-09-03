@@ -210,17 +210,17 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
     // Turning on
     for (const peerId of activePeerIds) {
       getOrCreatePeer(peerId, true).then(pc => {
-        const existingSenders = pc.getSenders().filter(s => s.track && s.track.kind === 'video');
         const track = s.getVideoTracks()[0];
         if (!track) return;
+        const existingSenders = pc.getSenders().filter(es => es.track && es.track.kind === 'video');
         if (existingSenders.length === 0) {
-          pc.addTrack(track, s);
+          try {
+            pc.addTrack(track, s);
+          } catch {}
         } else {
           try {
             existingSenders[0].replaceTrack(track);
-          } catch {
-            /* ignore */
-          }
+          } catch {}
         }
       });
     }
@@ -243,7 +243,15 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
         if (!activePeerIds.includes(id)) {
           const pc = await getOrCreatePeer(id, true);
           const local = await ensureLocalCamera();
-          local.getVideoTracks().forEach(track => pc.addTrack(track, local));
+          const track = local.getVideoTracks()[0];
+          if (track) {
+            const existingSenders = pc.getSenders().filter(s => s.track && s.track.kind === 'video');
+            if (existingSenders.length === 0) {
+              try {
+                pc.addTrack(track, local);
+              } catch {}
+            }
+          }
           const offer = await pc.createOffer({ offerToReceiveVideo: true });
           await pc.setLocalDescription(offer);
           socket.emit('videochat-offer', { roomId, targetUserId: id, sdp: offer });
@@ -259,7 +267,15 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
       if (pc.signalingState !== 'stable') return;
       await pc.setRemoteDescription(new RTCSessionDescription(sdp));
       const local = await ensureLocalCamera();
-      local.getVideoTracks().forEach(t => pc.addTrack(t, local));
+      const track = local.getVideoTracks()[0];
+      if (track) {
+        const existingSenders = pc.getSenders().filter(s => s.track && s.track.kind === 'video');
+        if (existingSenders.length === 0) {
+          try {
+            pc.addTrack(track, local);
+          } catch {}
+        }
+      }
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       socket.emit('videochat-answer', { roomId, targetUserId: fromUserId, sdp: answer });

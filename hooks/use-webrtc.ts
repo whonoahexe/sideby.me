@@ -109,6 +109,14 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
         }
       };
       pc.onconnectionstatechange = () => {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[WEBRTC] connectionState', {
+            peerId: id,
+            state: pc.connectionState,
+            attempt: entry.connectionAttempt,
+            usingTurn: entry.isUsingTurn,
+          });
+        }
         if (stateHandlerRef.current) {
           try {
             stateHandlerRef.current(id, pc.connectionState, pc, {
@@ -131,6 +139,9 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
         }
       };
       pc.ontrack = ev => {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[WEBRTC] ontrack', { peerId: id, streams: ev.streams.length });
+        }
         if (trackHandlerRef.current) {
           try {
             trackHandlerRef.current(id, ev, pc, {
@@ -138,6 +149,11 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
               attempt: entry.connectionAttempt,
             });
           } catch {}
+        }
+      };
+      pc.oniceconnectionstatechange = () => {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[WEBRTC] iceConnectionState', { peerId: id, state: pc.iceConnectionState });
         }
       };
 

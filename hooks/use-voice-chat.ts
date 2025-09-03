@@ -350,7 +350,15 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
         if (!activePeerIds.includes(id)) {
           const pc = await getOrCreatePeer(id, true);
           const local = await ensureLocalMic();
-          local.getAudioTracks().forEach(track => pc.addTrack(track, local));
+          const track = local.getAudioTracks()[0];
+          if (track) {
+            const existingSenders = pc.getSenders().filter(s => s.track && s.track.kind === 'audio');
+            if (existingSenders.length === 0) {
+              try {
+                pc.addTrack(track, local);
+              } catch {}
+            }
+          }
           const offer = await pc.createOffer({ offerToReceiveAudio: true });
           await pc.setLocalDescription(offer);
           socket.emit('voice-offer', { roomId, targetUserId: id, sdp: offer });
@@ -366,7 +374,15 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       if (pc.signalingState !== 'stable') return;
       await pc.setRemoteDescription(new RTCSessionDescription(sdp));
       const local = await ensureLocalMic();
-      local.getAudioTracks().forEach(t => pc.addTrack(t, local));
+      const track = local.getAudioTracks()[0];
+      if (track) {
+        const existingSenders = pc.getSenders().filter(s => s.track && s.track.kind === 'audio');
+        if (existingSenders.length === 0) {
+          try {
+            pc.addTrack(track, local);
+          } catch {}
+        }
+      }
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       socket.emit('voice-answer', { roomId, targetUserId: fromUserId, sdp: answer });
