@@ -33,10 +33,24 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
   // Bridge cleanup via ref so we can pass callback before cleanupPeer is defined
   const cleanupPeerRef = useRef<(id: string) => void>(() => {});
   const fallbackInProgressRef = useRef<Set<string>>(new Set());
-  const { getOrCreatePeer, removePeer, closeAll, forceTurnReconnect, safeAddRemoteCandidate } = useWebRTC({
+  const {
+    getOrCreatePeer,
+    removePeer,
+    closeAll,
+    forceTurnReconnect,
+    safeAddRemoteCandidate,
+    createOfferForPeer,
+    acceptOfferFromPeer,
+    acceptAnswerFromPeer,
+  } = useWebRTC({
     onIceCandidate: (peerId, candidate) => {
-      if (!socket) return;
-      socket.emit('voice-ice-candidate', { roomId, targetUserId: peerId, candidate });
+      socket?.emit('voice-ice-candidate', { roomId, targetUserId: peerId, candidate });
+    },
+    onOffer: (peerId, sdp) => {
+      socket?.emit('voice-offer', { roomId, targetUserId: peerId, sdp });
+    },
+    onAnswer: (peerId, sdp) => {
+      socket?.emit('voice-answer', { roomId, targetUserId: peerId, sdp });
     },
     onConnectionStateChange: (peerId, state, _pc, meta) => {
       if (state === 'failed') {
@@ -58,11 +72,7 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
                   }
                 }
               }
-              if (newPc) {
-                const offer = await newPc.createOffer({ offerToReceiveAudio: true });
-                await newPc.setLocalDescription(offer);
-                socket?.emit('voice-offer', { roomId, targetUserId: peerId, sdp: offer });
-              }
+              if (newPc) await createOfferForPeer(peerId, local, { offerToReceiveAudio: true }, ['audio']);
             } catch {
               cleanupPeerRef.current(peerId);
             } finally {
@@ -127,7 +137,6 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
 
   // Media & negotiation refs
   const localStreamRef = useRef<MediaStream | null>(null); // Local microphone stream
-  const appliedRemoteAnswerRef = useRef<Set<string>>(new Set()); // Guards against duplicate answer application
   const soloTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Auto-disconnect timer when alone
   const joinAttemptRef = useRef(false); // Prevents concurrent join attempts
   const audioContextRef = useRef<AudioContext | null>(null); // Shared AudioContext for speaking detection
@@ -167,8 +176,6 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
         } catch {}
         remoteAudioElsRef.current.delete(peerId);
       }
-      // Ensure we allow future answers after rejoin
-      appliedRemoteAnswerRef.current.delete(peerId);
       const analyserEntry = analyserNodesRef.current.get(peerId);
       if (analyserEntry) {
         if (analyserEntry.rafId) cancelAnimationFrame(analyserEntry.rafId);
@@ -203,8 +210,6 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
     setIsConnecting(false);
     setError('');
     setPublicParticipantCount(0);
-    // Reset signaling guards so a fresh join can negotiate cleanly
-    appliedRemoteAnswerRef.current.clear();
     // Remove any lingering remote audio elements
     for (const [id, el] of remoteAudioElsRef.current.entries()) {
       try {
@@ -347,21 +352,11 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
       }
       others.sort().forEach(async id => {
         if (!activePeerIds.includes(id)) {
-          const pc = await getOrCreatePeer(id, true);
-          const local = await ensureLocalMic();
-          const track = local.getAudioTracks()[0];
-          if (track) {
-            const existingSenders = pc.getSenders().filter(s => s.track && s.track.kind === 'audio');
-            if (existingSenders.length === 0) {
-              try {
-                pc.addTrack(track, local);
-              } catch {}
-            }
-          }
-          const offer = await pc.createOffer({ offerToReceiveAudio: true });
-          await pc.setLocalDescription(offer);
-          socket.emit('voice-offer', { roomId, targetUserId: id, sdp: offer });
-          setActivePeerIds(prev => (prev.includes(id) ? prev : [...prev, id]));
+          try {
+            const local = await ensureLocalMic();
+            await createOfferForPeer(id, local, { offerToReceiveAudio: true }, ['audio']);
+            setActivePeerIds(prev => (prev.includes(id) ? prev : [...prev, id]));
+          } catch {}
         }
       });
     };
@@ -369,40 +364,17 @@ export function useVoiceChat({ roomId, currentUser, maxParticipants = 5 }: UseVo
     // Incoming offer -> set remote, add local track, produce answer
     const handleOffer = async ({ fromUserId, sdp }: { fromUserId: string; sdp: RTCSessionDescriptionInit }) => {
       if (fromUserId === currentUser.id) return;
-      const pc = await getOrCreatePeer(fromUserId, false);
-      if (pc.signalingState !== 'stable') return;
-      await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-      // Apply any queued candidates now remoteDescription is available
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (pc as any)._applyQueuedCandidates?.();
-      const local = await ensureLocalMic();
-      const track = local.getAudioTracks()[0];
-      if (track) {
-        const existingSenders = pc.getSenders().filter(s => s.track && s.track.kind === 'audio');
-        if (existingSenders.length === 0) {
-          try {
-            pc.addTrack(track, local);
-          } catch {}
-        }
-      }
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      socket.emit('voice-answer', { roomId, targetUserId: fromUserId, sdp: answer });
-      setActivePeerIds(prev => (prev.includes(fromUserId) ? prev : [...prev, fromUserId]));
+      try {
+        const local = await ensureLocalMic();
+        const answer = await acceptOfferFromPeer(fromUserId, sdp, local, undefined, ['audio']);
+        if (answer) setActivePeerIds(prev => (prev.includes(fromUserId) ? prev : [...prev, fromUserId]));
+      } catch {}
     };
 
     // Incoming answer -> apply once
     const handleAnswer = async ({ fromUserId, sdp }: { fromUserId: string; sdp: RTCSessionDescriptionInit }) => {
-      if (appliedRemoteAnswerRef.current.has(fromUserId)) return;
-      const ids = activePeerIds;
-      if (!ids.includes(fromUserId)) return;
-      const pc = await getOrCreatePeer(fromUserId, true);
-      if (pc.signalingState !== 'have-local-offer') return;
-      await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-      // Flush queued ICE
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (pc as any)._applyQueuedCandidates?.();
-      appliedRemoteAnswerRef.current.add(fromUserId);
+      if (!activePeerIds.includes(fromUserId)) return;
+      await acceptAnswerFromPeer(fromUserId, sdp);
     };
 
     // Remote ICE candidate -> apply to existing peer connection

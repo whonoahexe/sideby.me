@@ -35,7 +35,7 @@ export function parseVideoUrl(url: string): { type: VideoType; embedUrl: string 
       return result;
     }
 
-    // Direct video URLs (MP4, WebM, etc.) - More specific validation
+    // Direct video URLs (MP4, WebM, etc.)
     if (url.match(/\.(mp4|webm|ogg|mov|avi|mkv)(\?.*)?$/i)) {
       // Additional validation for common video hosting patterns
       const isLikelyVideo =
@@ -84,10 +84,7 @@ export function calculateCurrentTime(videoState: {
   return videoState.currentTime + timeDiff;
 }
 
-/**
- * Gets supported video formats for the current browser
- * @returns Object with supported video MIME types
- */
+// Gets supported video formats for the current browser
 export function getSupportedVideoFormats(): Record<string, boolean> {
   const video = document.createElement('video');
 

@@ -1,7 +1,7 @@
 // Lightweight chat markdown tokenizer supporting a constrained subset
 // * / _ italic, ** bold, *** bold+italic, __ underline, __** underline+bold, __*** underline+bold+italic, ~~ strike
-// * Inline code `code` and masked links [label](https://...). Autolinks handled separately in renderer.
-// We treat underline distinctly from bold (non-standard vs CommonMark) so we can't rely on standard Markdown libs.
+// * Inline code `code` and masked links [label](https://...). Autolinks handled separately in renderer
+// We treat underline distinctly from bold so we can't rely on standard Markdown libs
 
 export type TextNode = { type: 'text'; value: string };
 export type CodeNode = { type: 'code'; value: string };

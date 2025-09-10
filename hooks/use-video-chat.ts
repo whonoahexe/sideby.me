@@ -42,11 +42,21 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
   const fallbackInProgressRef = useRef<Set<string>>(new Set());
   // Track overall connection timeouts per peer
   const connectionTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
-  const { getOrCreatePeer, removePeer, closeAll, forceTurnReconnect, safeAddRemoteCandidate } = useWebRTC({
+  const {
+    getOrCreatePeer,
+    removePeer,
+    closeAll,
+    forceTurnReconnect,
+    safeAddRemoteCandidate,
+    createOfferForPeer,
+    acceptOfferFromPeer,
+    acceptAnswerFromPeer,
+  } = useWebRTC({
     onIceCandidate: (peerId, candidate) => {
-      if (!socket) return;
-      socket.emit('videochat-ice-candidate', { roomId, targetUserId: peerId, candidate });
+      socket?.emit('videochat-ice-candidate', { roomId, targetUserId: peerId, candidate });
     },
+    onOffer: (peerId, sdp) => socket?.emit('videochat-offer', { roomId, targetUserId: peerId, sdp }),
+    onAnswer: (peerId, sdp) => socket?.emit('videochat-answer', { roomId, targetUserId: peerId, sdp }),
     onConnectionStateChange: (peerId, state, _pc, meta) => {
       if (state === 'connected') {
         // Clear any fallback attempts on successful connection
@@ -85,11 +95,7 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
                   }
                 }
               }
-              if (newPc) {
-                const offer = await newPc.createOffer({ offerToReceiveVideo: true });
-                await newPc.setLocalDescription(offer);
-                socket?.emit('videochat-offer', { roomId, targetUserId: peerId, sdp: offer });
-              }
+              if (newPc) await createOfferForPeer(peerId, local, { offerToReceiveVideo: true }, ['video']);
             } catch (error) {
               console.error('[WEBRTC] fallback failed', { peerId, error });
               // If fallback negotiation fails, cleanup
@@ -284,21 +290,8 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
             }, 15000);
             connectionTimeoutsRef.current.set(id, connectionTimeout);
 
-            const pc = await getOrCreatePeer(id, true);
             const local = await ensureLocalCamera();
-            const track = local.getVideoTracks()[0];
-            if (track) {
-              const existingSenders = pc.getSenders().filter(s => s.track && s.track.kind === 'video');
-              if (existingSenders.length === 0) {
-                try {
-                  pc.addTrack(track, local);
-                } catch {}
-              }
-            }
-            const offer = await pc.createOffer({ offerToReceiveVideo: true });
-            await pc.setLocalDescription(offer);
-            socket.emit('videochat-offer', { roomId, targetUserId: id, sdp: offer });
-            console.log('[WEBRTC] sent initial offer', { targetUserId: id });
+            await createOfferForPeer(id, local, { offerToReceiveVideo: true }, ['video']);
             setActivePeerIds(prev => (prev.includes(id) ? prev : [...prev, id]));
           } catch (error) {
             console.error('[WEBRTC] error creating initial offer', { targetUserId: id, error });
@@ -312,39 +305,9 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
     const handleOffer = async ({ fromUserId, sdp }: { fromUserId: string; sdp: RTCSessionDescriptionInit }) => {
       if (fromUserId === currentUser.id) return;
       try {
-        const pc = await getOrCreatePeer(fromUserId, false);
-        if (pc.signalingState !== 'stable') {
-          console.warn('[WEBRTC] received offer in invalid signaling state', {
-            fromUserId,
-            state: pc.signalingState,
-          });
-          return;
-        }
-
-        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-        console.log('[WEBRTC] applied remote offer', { fromUserId });
-
-        // Apply any queued remote ICE now that remoteDescription is set
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (pc as any)._applyQueuedCandidates?.();
-
         const local = await ensureLocalCamera();
-        const track = local.getVideoTracks()[0];
-        if (track) {
-          const existingSenders = pc.getSenders().filter(s => s.track && s.track.kind === 'video');
-          if (existingSenders.length === 0) {
-            try {
-              pc.addTrack(track, local);
-            } catch {}
-          }
-        }
-
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        socket.emit('videochat-answer', { roomId, targetUserId: fromUserId, sdp: answer });
-        console.log('[WEBRTC] sent answer', { fromUserId });
-
-        setActivePeerIds(prev => (prev.includes(fromUserId) ? prev : [...prev, fromUserId]));
+        const answer = await acceptOfferFromPeer(fromUserId, sdp, local, undefined, ['video']);
+        if (answer) setActivePeerIds(prev => (prev.includes(fromUserId) ? prev : [...prev, fromUserId]));
       } catch (error) {
         console.error('[WEBRTC] error handling offer', { fromUserId, error });
       }
@@ -352,27 +315,10 @@ export function useVideoChat({ roomId, currentUser, maxParticipants = 5 }: UseVi
 
     // Incoming answer -> apply once
     const handleAnswer = async ({ fromUserId, sdp }: { fromUserId: string; sdp: RTCSessionDescriptionInit }) => {
-      if (appliedRemoteAnswerRef.current.has(fromUserId)) return;
       if (!activePeerIds.includes(fromUserId)) return;
-
       try {
-        const pc = await getOrCreatePeer(fromUserId, true);
-        if (pc.signalingState !== 'have-local-offer') {
-          console.warn('[WEBRTC] received answer in invalid signaling state', {
-            fromUserId,
-            state: pc.signalingState,
-          });
-          return;
-        }
-
-        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-        console.log('[WEBRTC] applied remote answer', { fromUserId });
-
-        // Flush queued ICE
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (pc as any)._applyQueuedCandidates?.();
-
-        appliedRemoteAnswerRef.current.add(fromUserId);
+        const ok = await acceptAnswerFromPeer(fromUserId, sdp);
+        if (ok) appliedRemoteAnswerRef.current.add(fromUserId);
       } catch (error) {
         console.error('[WEBRTC] error handling answer', { fromUserId, error });
       }

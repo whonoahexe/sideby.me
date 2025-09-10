@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   createStunOnlyRTCConfiguration,
   createRTCConfiguration,
@@ -17,6 +17,10 @@ export interface PeerMapEntry {
 export interface UseWebRTCOptions {
   // Fired when a local ICE candidate is gathered
   onIceCandidate?: (peerId: string, candidate: RTCIceCandidate) => void;
+  // Fired when we create a local SDP offer (after setLocalDescription)
+  onOffer?: (peerId: string, sdp: RTCSessionDescriptionInit) => void;
+  // Fired when we create a local SDP answer (after setLocalDescription)
+  onAnswer?: (peerId: string, sdp: RTCSessionDescriptionInit) => void;
   // Fired on any connection state change
   onConnectionStateChange?: (
     peerId: string,
@@ -40,6 +44,23 @@ export interface UseWebRTCReturn {
   closeAll: () => void;
   forceTurnReconnect: (id: string, initiator: boolean) => Promise<RTCPeerConnection | null>;
   safeAddRemoteCandidate: (peerId: string, candidate: RTCIceCandidateInit) => Promise<void>;
+  createOfferForPeer: (
+    peerId: string,
+    stream: MediaStream | null,
+    offerOptions?: RTCOfferOptions,
+    trackKinds?: ('audio' | 'video')[]
+  ) => Promise<RTCSessionDescriptionInit | null>;
+  acceptOfferFromPeer: (
+    peerId: string,
+    sdp: RTCSessionDescriptionInit,
+    stream: MediaStream | null,
+    answerOptions?: RTCOfferOptions,
+    trackKinds?: ('audio' | 'video')[]
+  ) => Promise<RTCSessionDescriptionInit | null>;
+  acceptAnswerFromPeer: (peerId: string, sdp: RTCSessionDescriptionInit) => Promise<boolean>;
+  attachStreamTracks: (peerId: string, stream: MediaStream, trackKinds?: ('audio' | 'video')[]) => Promise<void>;
+  hasPeer: (peerId: string) => boolean;
+  peerIds: string[]; // local reactive list of peer ids
 }
 
 // Focused hook on peer connection lifecycle
@@ -48,8 +69,14 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
   const iceHandlerRef = useRef<UseWebRTCOptions['onIceCandidate']>(undefined);
   const stateHandlerRef = useRef<UseWebRTCOptions['onConnectionStateChange']>(undefined);
   const trackHandlerRef = useRef<UseWebRTCOptions['onTrack']>(undefined);
+  const offerHandlerRef = useRef<UseWebRTCOptions['onOffer']>(undefined);
+  const answerHandlerRef = useRef<UseWebRTCOptions['onAnswer']>(undefined);
   const debugEnabled = useRef<boolean>(false);
   const remoteCandidateQueueRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+  // Track applied remote answers to avoid duplicate setRemoteDescription calls
+  const appliedRemoteAnswersRef = useRef<Set<string>>(new Set());
+  // Reactive peer id list for consumers
+  const [peerIds, setPeerIds] = useState<string[]>([]);
   // Track per-peer restart and fallback debounce
   const restartedRef = useRef<Set<string>>(new Set());
   const fallbackCooldownRef = useRef<Map<string, number>>(new Map());
@@ -69,6 +96,12 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
     trackHandlerRef.current = options.onTrack;
   }, [options.onTrack]);
   useEffect(() => {
+    offerHandlerRef.current = options.onOffer;
+  }, [options.onOffer]);
+  useEffect(() => {
+    answerHandlerRef.current = options.onAnswer;
+  }, [options.onAnswer]);
+  useEffect(() => {
     try {
       const urlDebug = typeof window !== 'undefined' && new URL(window.location.href).searchParams.get('webrtcDebug');
       debugEnabled.current =
@@ -86,6 +119,8 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
       entry.pc.close();
     } catch {}
     peersRef.current.delete(id);
+    setPeerIds(prev => prev.filter(p => p !== id));
+    appliedRemoteAnswersRef.current.delete(id);
   }, []);
 
   const closeAll = useCallback(() => {
@@ -133,6 +168,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
         useOptimizedStrategy,
       };
       peersRef.current.set(id, entry);
+      setPeerIds(prev => (prev.includes(id) ? prev : [...prev, id]));
       // Clear any stale queued candidates from prior attempts
       remoteCandidateQueueRef.current.delete(id);
       // Clear any prior negotiation timeout
@@ -313,6 +349,101 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
     }
   }, []);
 
+  // Attach tracks (by kind filter) if missing; replace existing of same kind
+  const attachStreamTracks = useCallback(
+    async (peerId: string, stream: MediaStream, trackKinds: ('audio' | 'video')[] = ['audio', 'video']) => {
+      const entry = peersRef.current.get(peerId);
+      if (!entry) return;
+      const pc = entry.pc;
+      for (const kind of trackKinds) {
+        const track = kind === 'audio' ? stream.getAudioTracks()[0] : stream.getVideoTracks()[0];
+        if (!track) continue;
+        const existing = pc.getSenders().find(s => s.track && s.track.kind === kind);
+        if (!existing) {
+          try {
+            pc.addTrack(track, stream);
+          } catch {}
+        } else if (existing.track !== track) {
+          try {
+            existing.replaceTrack(track);
+          } catch {}
+        }
+      }
+    },
+    []
+  );
+
+  const createOfferForPeer = useCallback(
+    async (
+      peerId: string,
+      stream: MediaStream | null,
+      offerOptions?: RTCOfferOptions,
+      trackKinds: ('audio' | 'video')[] = ['audio', 'video']
+    ) => {
+      const pc = await getOrCreatePeer(peerId, true);
+      if (stream) await attachStreamTracks(peerId, stream, trackKinds);
+      try {
+        const offer = await pc.createOffer(offerOptions);
+        await pc.setLocalDescription(offer);
+        offerHandlerRef.current?.(peerId, offer);
+        return offer;
+      } catch (e) {
+        if (debugEnabled.current) console.warn('[WEBRTC] createOffer error', { peerId, e });
+        return null;
+      }
+    },
+    [getOrCreatePeer, attachStreamTracks]
+  );
+
+  const acceptOfferFromPeer = useCallback(
+    async (
+      peerId: string,
+      sdp: RTCSessionDescriptionInit,
+      stream: MediaStream | null,
+      answerOptions?: RTCOfferOptions,
+      trackKinds: ('audio' | 'video')[] = ['audio', 'video']
+    ) => {
+      const pc = await getOrCreatePeer(peerId, false);
+      if (pc.signalingState !== 'stable') return null; // guard double offers
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+        // Flush queued candidates
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (pc as any)._applyQueuedCandidates?.();
+        if (stream) await attachStreamTracks(peerId, stream, trackKinds);
+        const answer = await pc.createAnswer(answerOptions);
+        await pc.setLocalDescription(answer);
+        answerHandlerRef.current?.(peerId, answer);
+        return answer;
+      } catch (e) {
+        if (debugEnabled.current) console.warn('[WEBRTC] acceptOffer error', { peerId, e });
+        return null;
+      }
+    },
+    [getOrCreatePeer, attachStreamTracks]
+  );
+
+  const acceptAnswerFromPeer = useCallback(async (peerId: string, sdp: RTCSessionDescriptionInit) => {
+    if (appliedRemoteAnswersRef.current.has(peerId)) return false;
+    const entry = peersRef.current.get(peerId);
+    if (!entry) return false;
+    const pc = entry.pc;
+    if (pc.signalingState !== 'have-local-offer') return false;
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+      // Flush queued ICE
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (pc as any)._applyQueuedCandidates?.();
+      appliedRemoteAnswersRef.current.add(peerId);
+      return true;
+    } catch (e) {
+      if (debugEnabled.current) console.warn('[WEBRTC] acceptAnswer error', { peerId, e });
+      return false;
+    }
+  }, []);
+
+  const hasPeer = useCallback((peerId: string) => peersRef.current.has(peerId), []);
+
   return {
     getOrCreatePeer,
     removePeer,
@@ -320,5 +451,11 @@ export function useWebRTC(options: UseWebRTCOptions = {}): UseWebRTCReturn {
     closeAll,
     forceTurnReconnect,
     safeAddRemoteCandidate,
+    createOfferForPeer,
+    acceptOfferFromPeer,
+    acceptAnswerFromPeer,
+    attachStreamTracks,
+    hasPeer,
+    peerIds,
   };
 }
