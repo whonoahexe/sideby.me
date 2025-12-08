@@ -17,6 +17,7 @@ interface ChatMessageItemProps {
   onReply?: (messageId: string, userName: string, message: string) => void;
   onQuoteClick?: (messageId: string) => void;
   users?: { id: string; name: string }[];
+  onTimestampClick?: (seconds: number) => void;
 }
 
 export function ChatMessageItem({
@@ -27,6 +28,7 @@ export function ChatMessageItem({
   onReply,
   onQuoteClick,
   users = [],
+  onTimestampClick,
 }: ChatMessageItemProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const portalContainer = useFullscreenPortalContainer();
@@ -85,7 +87,14 @@ export function ChatMessageItem({
                 <Reply className="h-3 w-3 text-muted-foreground" />
                 <span className="font-medium text-muted-foreground">{message.replyTo.userName}</span>
               </div>
-              <div className="mt-1 text-muted-foreground">{truncateMessage(message.replyTo.message)}</div>
+              <div className="mt-1 text-muted-foreground">
+                <MessageWithMentions
+                  content={truncateMessage(message.replyTo.message)}
+                  currentUserId={currentUserId}
+                  users={users}
+                  onTimestampClick={onTimestampClick}
+                />
+              </div>
             </div>
           )}
 
@@ -96,7 +105,13 @@ export function ChatMessageItem({
             style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
           >
             {/* Message content */}
-            <MessageWithMentions content={message.message} currentUserId={currentUserId} users={users} />
+            <MessageWithMentions
+              content={message.message}
+              currentUserId={currentUserId}
+              users={users}
+              onTimestampClick={onTimestampClick}
+              isOwnMessage={isOwnMessage}
+            />
 
             {/* Action buttons (Reply & Reaction picker) */}
             <div className={`absolute -top-3 ${isOwnMessage ? 'right-2' : 'left-2'} flex gap-1`}>
@@ -193,17 +208,22 @@ const MessageWithMentions = ({
   content,
   currentUserId,
   users = [],
+  onTimestampClick,
+  isOwnMessage,
 }: {
   content: string;
   currentUserId: string;
   users?: { id: string; name: string }[];
+  onTimestampClick?: (seconds: number) => void;
+  isOwnMessage?: boolean;
 }) => {
   const STRUCTURED = /@\[([^\]]{1,30})\]\(([0-9a-fA-F\-]{36})\)/g;
   const hasStructured = STRUCTURED.test(content);
   STRUCTURED.lastIndex = 0;
 
   // Fast path: no '@' at all
-  if (!content.includes('@')) return <MarkdownMessage content={content} />;
+  if (!content.includes('@'))
+    return <MarkdownMessage content={content} onTimestampClick={onTimestampClick} isOwnMessage={isOwnMessage} />;
 
   if (hasStructured) {
     const parts: React.ReactNode[] = [];
@@ -214,7 +234,14 @@ const MessageWithMentions = ({
       const start = m.index;
       if (start > lastIndex) {
         const slice = content.slice(lastIndex, start);
-        parts.push(<MarkdownMessage key={start + '-pre'} content={slice} />);
+        parts.push(
+          <MarkdownMessage
+            key={start + '-pre'}
+            content={slice}
+            onTimestampClick={onTimestampClick}
+            isOwnMessage={isOwnMessage}
+          />
+        );
       }
       const isYou = id === currentUserId;
       parts.push(
@@ -230,12 +257,21 @@ const MessageWithMentions = ({
       );
       lastIndex = start + full.length;
     }
-    if (lastIndex < content.length) parts.push(<MarkdownMessage key={'final'} content={content.slice(lastIndex)} />);
+    if (lastIndex < content.length)
+      parts.push(
+        <MarkdownMessage
+          key={'final'}
+          content={content.slice(lastIndex)}
+          onTimestampClick={onTimestampClick}
+          isOwnMessage={isOwnMessage}
+        />
+      );
     return <>{parts}</>;
   }
 
   // Plain mention mode: try to match @Name where Name equals a user name (case-insensitive).
-  if (!users.length) return <MarkdownMessage content={content} />;
+  if (!users.length)
+    return <MarkdownMessage content={content} onTimestampClick={onTimestampClick} isOwnMessage={isOwnMessage} />;
   const nameMap = new Map(users.map(u => [u.name.toLowerCase(), u] as const));
   const parts: React.ReactNode[] = [];
   let i = 0;
@@ -288,7 +324,14 @@ const MessageWithMentions = ({
       const nextAt = content.indexOf('@', i + 1);
       const end = nextAt === -1 ? len : nextAt;
       const slice = content.slice(i, end);
-      parts.push(<MarkdownMessage key={i + '-txt'} content={slice} />);
+      parts.push(
+        <MarkdownMessage
+          key={i + '-txt'}
+          content={slice}
+          onTimestampClick={onTimestampClick}
+          isOwnMessage={isOwnMessage}
+        />
+      );
       i = end;
     }
   }
