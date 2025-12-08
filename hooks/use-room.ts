@@ -173,14 +173,6 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
           users: [...updatedUsers],
         };
       });
-
-      // Only show toast if the current user didn't initiate the kick
-      setCurrentUser(currentUser => {
-        if (currentUser && kickedBy && currentUser.id !== kickedBy) {
-          toast.info(`Awkward, ${userName} has been kicked from the room!`);
-        }
-        return currentUser;
-      });
     };
 
     const handleVideoSet = ({
@@ -483,7 +475,6 @@ export function useRoom({ roomId }: UseRoomOptions): UseRoomReturn {
       const targetUser = room?.users.find(u => u.id === userId);
       if (targetUser) {
         socket.emit('kick-user', { roomId, userId });
-        toast.success(`Awkward, ${targetUser.name} has been kicked from the room!`);
       }
     },
     [socket, currentUser?.isHost, roomId, room?.users]

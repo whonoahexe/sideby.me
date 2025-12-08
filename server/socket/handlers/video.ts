@@ -2,12 +2,15 @@ import { Socket, Server as IOServer } from 'socket.io';
 import { redisService } from '@/server/redis';
 import { SetVideoDataSchema, VideoControlDataSchema, SyncCheckDataSchema } from '@/types';
 import { SocketEvents, SocketData } from '../types';
-import { validateData } from '../utils';
+import { validateData, emitSystemMessage } from '../utils';
 import { resolveSource } from '@/server/video/resolve-source';
 
+// Map to store pause timeouts per room
+const lastErrorReport: Record<string, number> = {};
+const lastPlayEmitTime: Record<string, number> = {};
+const lastPauseEmitTime: Record<string, number> = {};
+
 export function registerVideoHandlers(socket: Socket<SocketEvents, SocketEvents, object, SocketData>, io: IOServer) {
-  // Debounce map per room to avoid spam re-resolution
-  const lastErrorReport: Record<string, number> = {};
   // Set video URL
   socket.on('set-video', async data => {
     try {
@@ -38,6 +41,9 @@ export function registerVideoHandlers(socket: Socket<SocketEvents, SocketEvents,
       await redisService.rooms.setVideoUrl(roomId, meta.playbackUrl, legacyVideoType, meta);
 
       io.to(roomId).emit('video-set', { videoUrl: meta.playbackUrl, videoType: legacyVideoType, videoMeta: meta });
+      emitSystemMessage(io, roomId, `Video source changed`, 'video-change', {
+        videoUrl: meta.playbackUrl,
+      });
       console.log(`Video set in room ${roomId}: ${videoUrl} -> playback: ${meta.playbackUrl} (${meta.deliveryType})`);
     } catch (error) {
       console.error('Error setting video:', error);
@@ -62,6 +68,15 @@ export function registerVideoHandlers(socket: Socket<SocketEvents, SocketEvents,
       if (!currentUser?.isHost) {
         socket.emit('error', { error: 'Only hosts can control the video' });
         return;
+      }
+
+      // Only announce resume if we were actually paused
+      // AND debounce duplicate play events (client sometimes sends double)
+      const now = Date.now();
+      const lastEmit = lastPlayEmitTime[roomId] || 0;
+      if (!room.videoState.isPlaying && now - lastEmit > 1000) {
+        emitSystemMessage(io, roomId, 'Video resumed', 'play', { userName: currentUser.name });
+        lastPlayEmitTime[roomId] = now;
       }
 
       const videoState = {
@@ -117,6 +132,14 @@ export function registerVideoHandlers(socket: Socket<SocketEvents, SocketEvents,
         currentTime,
         timestamp: videoState.lastUpdateTime,
       });
+
+      // Announce pause immediately (no throttle), but debounce duplicates
+      const now = Date.now();
+      const lastEmit = lastPauseEmitTime[roomId] || 0;
+      if (now - lastEmit > 1000) {
+        emitSystemMessage(io, roomId, 'Video paused', 'pause', { userName: currentUser.name });
+        lastPauseEmitTime[roomId] = now;
+      }
 
       console.log(`Video paused in room ${roomId} at ${currentTime}s`);
     } catch (error) {
@@ -237,6 +260,7 @@ export function registerVideoHandlers(socket: Socket<SocketEvents, SocketEvents,
         else if (meta.videoType === 'm3u8') legacyVideoType = 'm3u8';
         await redisService.rooms.setVideoUrl(roomId, meta.playbackUrl, legacyVideoType, meta);
         io.to(roomId).emit('video-set', { videoUrl: meta.playbackUrl, videoType: legacyVideoType, videoMeta: meta });
+        emitSystemMessage(io, roomId, `Video source changed`, 'video-change', { videoUrl: meta.playbackUrl });
         console.log(`Re-resolved video source for room ${roomId} -> ${meta.deliveryType}`);
       }
     } catch (err) {
