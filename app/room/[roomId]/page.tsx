@@ -26,6 +26,7 @@ import { VideoChatOverlay } from '@/components/room/video-chat-overlay';
 import { useFullscreenPortalContainer } from '@/hooks/use-fullscreen-portal-container';
 import { Spinner } from '../../../components/ui/spinner';
 import { toast } from 'sonner';
+import { LeaveRoomGuard } from '@/components/room/leave-room-guard';
 
 type ClientVideoMeta = {
   originalUrl: string;
@@ -481,6 +482,8 @@ export default function RoomPage() {
           portalContainer={fullscreenPortalContainer}
         />
       )}
+
+      <LeaveRoomGuard roomId={roomId} room={room} socket={socket} />
     </div>
   );
 }
