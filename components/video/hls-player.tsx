@@ -19,12 +19,16 @@ interface HLSPlayerProps {
   onSeeked?: () => void;
   onLoadedMetadata?: () => void;
   onTimeUpdate?: () => void;
+  onError?: (info: { type?: string; details?: string; fatal?: boolean; url?: string; responseCode?: number }) => void;
   className?: string;
   isHost?: boolean;
 }
 
 const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(
-  ({ src, onPlay, onPause, onSeeked, onLoadedMetadata, onTimeUpdate, className = '', isHost = false }, ref) => {
+  (
+    { src, onPlay, onPause, onSeeked, onLoadedMetadata, onTimeUpdate, onError, className = '', isHost = false },
+    ref
+  ) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const hlsRef = useRef<{ destroy: () => void } | null>(null);
     const programmaticActionRef = useRef(false);
@@ -76,11 +80,28 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(
           // Dynamically import HLS.js
           const { default: Hls } = await import('hls.js');
 
+          const toProxyUrl = (target: string) => {
+            if (target.startsWith('/api/video-proxy') || target.includes('/api/video-proxy?')) {
+              return target;
+            }
+            try {
+              const absolute = new URL(target, window.location.origin).toString();
+              return `/api/video-proxy?url=${encodeURIComponent(absolute)}`;
+            } catch {
+              return `/api/video-proxy?url=${encodeURIComponent(target)}`;
+            }
+          };
+
           if (Hls.isSupported()) {
             // Use HLS.js for browsers that don't support HLS natively
             const hls = new Hls({
               enableWorker: true,
               lowLatencyMode: true,
+              // Route all manifest/segment requests through our proxy to avoid CORS
+              xhrSetup: (xhr: XMLHttpRequest, url: string) => {
+                const proxied = toProxyUrl(url);
+                xhr.open('GET', proxied, true);
+              },
             });
 
             hlsRef.current = hls as { destroy: () => void };
@@ -93,28 +114,29 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(
 
             hls.on(Hls.Events.ERROR, (_event: unknown, data: unknown) => {
               console.error('HLS error:', data);
-              const errorData = data as { fatal?: boolean; type?: string };
+              const errorData = data as {
+                fatal?: boolean;
+                type?: string;
+                details?: string;
+                response?: { code?: number };
+                url?: string;
+              };
+
               if (errorData.fatal) {
-                switch (errorData.type) {
-                  case Hls.ErrorTypes.NETWORK_ERROR:
-                    console.log('Fatal network error encountered, try to recover');
-                    hls.startLoad();
-                    break;
-                  case Hls.ErrorTypes.MEDIA_ERROR:
-                    console.log('Fatal media error encountered, try to recover');
-                    hls.recoverMediaError();
-                    break;
-                  default:
-                    console.log('Fatal error, cannot recover');
-                    hls.destroy();
-                    break;
-                }
+                onError?.({
+                  type: errorData.type,
+                  details: errorData.details,
+                  fatal: true,
+                  url: errorData.url,
+                  responseCode: errorData.response?.code,
+                });
+                // Stop attempting recovery for fatal errors to avoid loops; surface to UI instead.
+                hls.destroy();
               }
             });
           } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            // Native HLS support (Safari)
-            video.src = src;
-            console.log('📺 Using native HLS support');
+            video.src = toProxyUrl(src);
+            console.log('📺 Using native HLS support via proxy');
           } else {
             console.error('HLS is not supported in this browser');
           }
