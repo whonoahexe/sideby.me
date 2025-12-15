@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
+import NextTopLoader from 'nextjs-toploader';
 import { Space_Grotesk, Space_Mono } from 'next/font/google';
-import './globals.css';
 import { Navigation } from '@/components/layout/navigation';
 import { Footer } from '@/components/layout/footer';
 import { SocketProvider } from '@/contexts/socket-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/contexts/theme-provider';
+import './globals.css';
 
 const spaceGrotesk = Space_Grotesk({
   variable: '--font-space-grotesk',
@@ -35,9 +36,36 @@ export const metadata: Metadata = {
   publisher: 'sideby.me',
   metadataBase: new URL('https://sideby.me'),
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon-32x32.png',
-    apple: '/apple-touch-icon.png',
+    icon: [
+      {
+        url: '/favicon-light.ico',
+        media: '(prefers-color-scheme: light)',
+      },
+      {
+        url: '/favicon-dark.ico',
+        media: '(prefers-color-scheme: dark)',
+      },
+    ],
+    shortcut: [
+      {
+        url: '/favicon-32x32-light.png',
+        media: '(prefers-color-scheme: light)',
+      },
+      {
+        url: '/favicon-32x32-dark.png',
+        media: '(prefers-color-scheme: dark)',
+      },
+    ],
+    apple: [
+      {
+        url: '/apple-touch-icon-light.png',
+        media: '(prefers-color-scheme: light)',
+      },
+      {
+        url: '/apple-touch-icon-dark.png',
+        media: '(prefers-color-scheme: dark)',
+      },
+    ],
     other: [{ rel: 'manifest', url: '/site.webmanifest' }],
   },
   // Open Graph Metadata
@@ -89,13 +117,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${spaceGrotesk.variable} ${spaceMono.variable} antialiased`}>
+        <NextTopLoader color="#ffffff" height={4} showSpinner={false} shadow="0 0 20px #ffffff, 0 0 40px #ffffff" />
         <ThemeProvider>
           <SocketProvider>
-            {/* Legacy gradient effect */}
-            {/* <div className="min-h-screen bg-background bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-background to-background"> */}
-            <div className="mx-auto flex min-h-screen max-w-screen-2xl flex-col bg-background">
+            <div className="max-w-screen-4xl mx-auto flex min-h-screen flex-col bg-background">
               <Navigation />
-              <main className="container mx-auto flex-1 px-2 py-6">{children}</main>
+              <main className="container mx-auto flex-1 py-6">{children}</main>
               <Footer />
             </div>
             <Toaster richColors />

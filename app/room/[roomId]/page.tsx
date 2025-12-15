@@ -24,9 +24,10 @@ import { useVideoChat } from '@/hooks/use-video-chat';
 import { VideoChatGrid } from '@/components/room/video-chat-grid';
 import { VideoChatOverlay } from '@/components/room/video-chat-overlay';
 import { useFullscreenPortalContainer } from '@/hooks/use-fullscreen-portal-container';
-import { Spinner } from '../../../components/ui/spinner';
-import { toast } from 'sonner';
 import { LeaveRoomGuard } from '@/components/room/leave-room-guard';
+import { JoinRoomDialog } from '@/components/room/join-room-dialog';
+import { Spinner } from '@/components/ui/spinner';
+import { toast } from 'sonner';
 
 type ClientVideoMeta = {
   originalUrl: string;
@@ -74,6 +75,9 @@ export default function RoomPage() {
     copyRoomId,
     shareRoom,
     handleToggleReaction,
+    showJoinDialog,
+    handleJoinWithName,
+    handleCancelJoin,
   } = useRoom({ roomId });
 
   // Helper function to extract video ID from URL for subtitle storage
@@ -277,8 +281,21 @@ export default function RoomPage() {
     return <ErrorDisplay error={error} onRetry={() => router.push('/join')} />;
   }
 
-  // Handle loading state
+  // Handle loading state - but show join dialog if needed
   if (!room || !currentUser) {
+    if (showJoinDialog) {
+      return (
+        <>
+          <LoadingDisplay roomId={roomId} />
+          <JoinRoomDialog
+            open={showJoinDialog}
+            roomId={roomId}
+            onJoin={handleJoinWithName}
+            onCancel={handleCancelJoin}
+          />
+        </>
+      );
+    }
     return <LoadingDisplay roomId={roomId} />;
   }
 
@@ -310,7 +327,7 @@ export default function RoomPage() {
   const youTubeId = effectiveVideoType === 'youtube' ? extractYouTubeId(effectiveVideoUrl) : undefined;
 
   return (
-    <div className="space-y-6">
+    <div className="4xl:max-w-screen-3xl mx-auto max-w-screen-2xl space-y-6">
       {/* Room Header */}
       <RoomHeader
         roomId={roomId}
@@ -330,9 +347,9 @@ export default function RoomPage() {
         <GuestInfoBanner onLearnMore={() => setShowHostDialog(true)} onDismiss={() => setShowGuestInfoBanner(false)} />
       )}
 
-      <div className="grid gap-6 lg:grid-cols-4">
+      <div className="grid gap-6 xl:grid-cols-4">
         {/* Main Content */}
-        <div className="col-span-full lg:col-span-3">
+        <div className="col-span-full xl:col-span-3">
           {/* Video Player */}
           {effectiveVideoUrl && effectiveVideoType ? (
             <VideoPlayerContainer
@@ -369,7 +386,7 @@ export default function RoomPage() {
         </div>
 
         {/* Chat */}
-        <div className="col-span-full lg:col-span-1">
+        <div className="col-span-full xl:col-span-1">
           <Chat
             mode="sidebar"
             messages={messages}
@@ -482,6 +499,8 @@ export default function RoomPage() {
           portalContainer={fullscreenPortalContainer}
         />
       )}
+
+      <JoinRoomDialog open={showJoinDialog} roomId={roomId} onJoin={handleJoinWithName} onCancel={handleCancelJoin} />
 
       <LeaveRoomGuard roomId={roomId} room={room} socket={socket} />
     </div>
