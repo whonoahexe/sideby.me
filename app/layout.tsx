@@ -120,7 +120,7 @@ export default function RootLayout({
         <NextTopLoader color="#ffffff" height={4} showSpinner={false} shadow="0 0 20px #ffffff, 0 0 40px #ffffff" />
         <ThemeProvider>
           <SocketProvider>
-            <div className="max-w-screen-4xl mx-auto flex min-h-screen flex-col bg-background">
+            <div className="mx-auto flex min-h-screen max-w-screen-4xl flex-col bg-background">
               <Navigation />
               <main className="container mx-auto flex-1 py-6">{children}</main>
               <Footer />

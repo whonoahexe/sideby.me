@@ -327,7 +327,7 @@ export default function RoomPage() {
   const youTubeId = effectiveVideoType === 'youtube' ? extractYouTubeId(effectiveVideoUrl) : undefined;
 
   return (
-    <div className="4xl:max-w-screen-3xl mx-auto max-w-screen-2xl space-y-6">
+    <div className="mx-auto max-w-screen-2xl space-y-6 4xl:max-w-screen-3xl">
       {/* Room Header */}
       <RoomHeader
         roomId={roomId}

@@ -266,7 +266,7 @@ export function Chat({
 
         {/* Messages */}
         <CardContent className="p-0">
-          <ScrollArea className="4xl:h-[640px] 3xl:h-[480px] h-96 px-4" ref={scrollAreaRef}>
+          <ScrollArea className="h-96 px-4 3xl:h-[480px] 4xl:h-[640px]" ref={scrollAreaRef}>
             <div className="min-w-0 space-y-4 pb-4">
               {messages.length === 0 ? (
                 <EmptyState />
